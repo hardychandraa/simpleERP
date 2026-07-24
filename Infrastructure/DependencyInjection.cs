@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<ICustomerService,    CustomerService>();
         services.AddScoped<ISaleService,        SaleService>();
         services.AddScoped<IReportService,      ReportService>();
+        services.AddScoped<IFinancialReportService, FinancialReportService>();
         services.AddScoped<IAppSettingsService, AppSettingsService>();
         services.AddScoped<SimpleERP.Application.Services.AuditService>();
         services.AddScoped<IAuditService>(

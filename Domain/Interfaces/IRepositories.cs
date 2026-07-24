@@ -37,7 +37,28 @@ public interface ISaleRepository {
     Task<string> GenerateInvoiceNumberAsync();
     Task AddAsync(Sale sale);
     void Update(Sale sale);
+    /// <summary>
+    /// Aggregated P&amp;L figures for [from, to), active sales only.
+    /// Deliberately set-based (SUM/COUNT in SQL) rather than loading rows into
+    /// memory — a P&amp;L can span a full year, which GetAllAsync would materialise.
+    /// </summary>
+    Task<SalesPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to);
 }
+
+/// <summary>
+/// Period totals backing the P&amp;L report.
+/// <paramref name="Revenue"/> is the ex-PPN taxable base, NOT GrandTotal: PPN is
+/// collected on the government's behalf and is a liability, not turnover. Booking
+/// it as revenue would overstate the top line and break reconciliation against the
+/// consultant's statement. <paramref name="GrossSales"/> keeps the tax-inclusive
+/// figure for tying back to cash/AR movements.
+/// </summary>
+public record SalesPeriodTotals(
+    int     InvoiceCount,
+    decimal Revenue,
+    decimal Cogs,
+    decimal TaxCollected,
+    decimal GrossSales);
 
 public interface IPaymentRecordRepository {
     Task AddAsync(PaymentRecord record);

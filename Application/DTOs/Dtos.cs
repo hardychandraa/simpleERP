@@ -234,6 +234,36 @@ public class DueCustomerDto {
     public bool     HasOverdue    { get; set; }
 }
 
+// ── Financial reports ─────────────────────────────────────────────────────────
+/// <summary>
+/// Commercial P&amp;L for a period. Currently covers the trading section only
+/// (Penjualan → HPP → Laba Kotor); rebate income, operating expenses and
+/// commission arrive with their respective modules. <see cref="IsComplete"/>
+/// reports whether the bottom line is trustworthy yet.
+/// </summary>
+public class ProfitAndLossDto {
+    public DateTime From          { get; set; }
+    public DateTime To            { get; set; }
+    public int      InvoiceCount  { get; set; }
+
+    /// <summary>Penjualan — net of PPN. See SalesPeriodTotals for why.</summary>
+    public decimal  Revenue       { get; set; }
+    /// <summary>HPP — from each line's cost snapshot at sale time.</summary>
+    public decimal  Cogs          { get; set; }
+    public decimal  GrossProfit   => Revenue - Cogs;
+    public decimal  GrossMarginPct=> Revenue == 0 ? 0 : GrossProfit / Revenue * 100m;
+
+    /// <summary>PPN collected. A memo line: a liability owed on, not income.</summary>
+    public decimal  TaxCollected  { get; set; }
+    /// <summary>Tax-inclusive invoiced total, for tying back to cash and AR.</summary>
+    public decimal  GrossSales    { get; set; }
+
+    /// <summary>Sections that have no data source yet, shown so the gap is visible
+    /// in the report rather than silently omitted.</summary>
+    public List<string> PendingSections { get; set; } = new();
+    public bool     IsComplete    => PendingSections.Count == 0;
+}
+
 // ── Audit ─────────────────────────────────────────────────────────────────────
 public class AuditLogDto {
     public long     Id        { get; set; }

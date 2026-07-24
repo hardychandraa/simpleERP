@@ -1,4 +1,5 @@
 using SimpleERP.Domain.Entities;
+using SimpleERP.Domain.Enums;
 using SimpleERP.Domain.Interfaces;
 using SimpleERP.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -92,6 +93,38 @@ public class SaleRepository : ISaleRepository
         if (from.HasValue) q = q.Where(s => s.SaleDate >= from.Value);
         if (to.HasValue)   q = q.Where(s => s.SaleDate <= to.Value);
         return q.OrderByDescending(s => s.SaleDate).ToListAsync();
+    }
+
+    public async Task<SalesPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to)
+    {
+        // Two aggregate round-trips, both translated to SQL. The decimal? casts make
+        // EF emit SUM() that yields NULL (not an exception) when no rows match, so an
+        // empty period returns zeroes instead of throwing.
+        var head = await _db.Sales
+            .Where(s => s.SaleDate >= from && s.SaleDate < to
+                     && s.Status == SaleStatus.Active)
+            .GroupBy(_ => 1)
+            .Select(g => new {
+                Count      = g.Count(),
+                Revenue    = g.Sum(s => (decimal?)s.TaxBase)    ?? 0m,
+                Tax        = g.Sum(s => (decimal?)s.TaxAmount)  ?? 0m,
+                GrossSales = g.Sum(s => (decimal?)s.GrandTotal) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        // COGS uses the cost snapshotted onto each line at sale time, so restating
+        // the product's moving-average cost later cannot rewrite historical margin.
+        var cogs = await _db.SaleItems
+            .Where(i => i.Sale!.SaleDate >= from && i.Sale.SaleDate < to
+                     && i.Sale.Status == SaleStatus.Active)
+            .SumAsync(i => (decimal?)(i.CostAtSale * i.Qty)) ?? 0m;
+
+        return new SalesPeriodTotals(
+            InvoiceCount: head?.Count      ?? 0,
+            Revenue:      head?.Revenue    ?? 0m,
+            Cogs:         cogs,
+            TaxCollected: head?.Tax        ?? 0m,
+            GrossSales:   head?.GrossSales ?? 0m);
     }
 
     public Task<List<Sale>> GetDueSalesAsync() =>

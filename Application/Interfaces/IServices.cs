@@ -45,6 +45,10 @@ public interface IReportService {
     Task<List<WarrantyItemDto>> GetWarrantiesAsync(string? search = null, bool activeOnly = true);
     Task<List<AuditLogDto>> GetAuditLogAsync(int count = 100);
 }
+public interface IFinancialReportService {
+    /// <summary>Commercial P&amp;L over an inclusive date range.</summary>
+    Task<ProfitAndLossDto> GetProfitAndLossAsync(DateTime from, DateTime to);
+}
 public interface IAppSettingsService {
     Task<AppSettingsDto> GetAsync();
     Task<ServiceResult> SaveAsync(AppSettingsDto dto);

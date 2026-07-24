@@ -1,0 +1,109 @@
+@page "/Reports/ProfitLoss"
+@model SimpleERP.Web.Pages.Reports.ProfitLossModel
+@{ ViewData["Title"] = "Profit & Loss"; }
+
+<div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:18px" class="no-print">
+  <form method="get" style="display:flex;gap:10px;align-items:flex-end">
+    <div class="fg" style="margin:0">
+      <label>From</label>
+      <input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")"/>
+    </div>
+    <div class="fg" style="margin:0">
+      <label>To</label>
+      <input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")"/>
+    </div>
+    <button type="submit" class="btn btn-primary">View</button>
+  </form>
+  <button onclick="window.print()" class="btn btn-outline btn-sm">🖨 Print Report</button>
+</div>
+
+<div style="text-align:center;margin-bottom:16px">
+  <div style="font-size:22px;font-weight:800;color:#1a1a2e">Laporan Laba Rugi</div>
+  <div style="font-size:13px;color:#9ca3af">Profit &amp; Loss Statement</div>
+  <div style="color:#6b7280;margin-top:4px">
+    @Model.From.ToString("dd MMM yyyy") &ndash; @Model.To.ToString("dd MMM yyyy")
+    <span style="color:#9ca3af">· @Model.Report.InvoiceCount invoice@(Model.Report.InvoiceCount == 1 ? "" : "s")</span>
+  </div>
+</div>
+
+<div class="stats" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat blue"><div class="stat-lbl">Penjualan (excl. PPN)</div><div class="stat-val" style="font-size:18px">@Model.Report.Revenue.ToString("N0")</div></div>
+  <div class="stat orange"><div class="stat-lbl">HPP</div><div class="stat-val" style="font-size:18px">@Model.Report.Cogs.ToString("N0")</div></div>
+  <div class="stat green"><div class="stat-lbl">Laba Kotor</div><div class="stat-val" style="font-size:18px">@Model.Report.GrossProfit.ToString("N0")</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+  <div class="card">
+    <div class="card-title">Laba Rugi</div>
+    <table style="width:100%;font-size:14px">
+      <tbody>
+        <tr>
+          <td style="padding:7px 0">Penjualan <span style="color:#9ca3af;font-size:11px">(excl. PPN)</span></td>
+          <td style="text-align:right;font-weight:600">@Model.Report.Revenue.ToString("N0")</td>
+        </tr>
+        <tr>
+          <td style="padding:7px 0;color:#dc2626">(&minus;) Harga Pokok Penjualan</td>
+          <td style="text-align:right;font-weight:600;color:#dc2626">@Model.Report.Cogs.ToString("N0")</td>
+        </tr>
+        <tr style="border-top:2px solid #1a1a2e">
+          <td style="padding:9px 0;font-weight:700;font-size:15px">Laba Kotor</td>
+          <td style="text-align:right;font-weight:700;font-size:15px;color:#059669">@Model.Report.GrossProfit.ToString("N0")</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:#6b7280;font-size:12px">Margin</td>
+          <td style="text-align:right;color:#6b7280;font-size:12px">@Model.Report.GrossMarginPct.ToString("N2")%</td>
+        </tr>
+      </tbody>
+    </table>
+
+    @if (!Model.Report.IsComplete)
+    {
+      <div class="alert alert-warning" style="margin-top:16px;font-size:12px;line-height:1.6">
+        <strong>This is not yet a complete P&amp;L.</strong>
+        It stops at Laba Kotor — the sections below have no data source in the system yet,
+        so no net profit figure is shown rather than showing a misleading one:
+        <ul style="margin:8px 0 0 18px;padding:0">
+          @foreach (var s in Model.Report.PendingSections)
+          {
+            <li style="margin-bottom:3px">@s</li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+
+  <div class="card">
+    <div class="card-title">PPN &amp; Reconciliation</div>
+    <table style="width:100%;font-size:14px">
+      <tbody>
+        <tr>
+          <td style="padding:7px 0">PPN Keluaran collected</td>
+          <td style="text-align:right;font-weight:600">@Model.Report.TaxCollected.ToString("N0")</td>
+        </tr>
+        <tr>
+          <td style="padding:7px 0;border-top:1px solid #f3f4f6">Total invoiced <span style="color:#9ca3af;font-size:11px">(incl. PPN)</span></td>
+          <td style="text-align:right;font-weight:600;border-top:1px solid #f3f4f6">@Model.Report.GrossSales.ToString("N0")</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:#6b7280;margin-top:14px;line-height:1.6">
+      PPN is shown as a memo line, not as income. It is collected on the government's
+      behalf and owed onward, so including it in Penjualan would overstate turnover.
+      <strong>Total invoiced</strong> is the tax-inclusive figure — use that one when
+      tying this report back to cash received and outstanding receivables.
+    </p>
+    <p style="font-size:11px;color:#9ca3af;margin-top:10px;line-height:1.6">
+      PPN Masukan (input tax on purchases) is not included — it arrives with the
+      Purchase module, after which this becomes a true payable position.
+    </p>
+  </div>
+
+</div>
+
+<p style="font-size:11px;color:#9ca3af;margin-top:14px;line-height:1.6">
+  Commercial basis, matching the SPT column of the annual statement. Fiscal corrections
+  and PPh Badan remain your tax consultant's work — this report supplies the inputs.
+  Cancelled invoices are excluded; HPP uses each line's cost as captured at the moment
+  of sale, so later cost changes cannot restate historical margin.
+</p>
