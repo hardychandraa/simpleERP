@@ -1,0 +1,23 @@
+@page
+@model SimpleERP.Web.Pages.Inventory.LedgerModel
+@{ ViewData["Title"]="Inventory Ledger"; }
+<div class="card" style="margin-bottom:14px">
+<form method="get" style="display:flex;gap:14px;align-items:flex-end">
+  <div class="fg" style="margin:0;flex:1"><label>From</label><input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))"/></div>
+  <div class="fg" style="margin:0;flex:1"><label>To</label><input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))"/></div>
+  <button type="submit" class="btn btn-primary">Filter</button>
+  <a href="/Inventory/Ledger" class="btn btn-outline">Reset</a>
+</form></div>
+<div class="card"><table><thead><tr><th>Date</th><th>Product</th><th>Type</th><th>Qty In</th><th>Qty Out</th><th>Unit Cost</th><th>Total</th></tr></thead><tbody>
+@foreach(var e in Model.Entries)
+{
+    var bc = e.ReferenceType switch { "Purchase" => "ok", "Sale" => "info", "Cancel" => "warn", _ => "gray" };
+<tr><td>@e.TransactionDate.ToLocalTime().ToString("dd-MMM-yy HH:mm")</td>
+<td>@e.ProductName</td>
+<td><span class="badge @bc">@e.ReferenceType</span></td>
+<td style="color:@(e.QtyIn>0?"#059669":"#9ca3af")">@(e.QtyIn>0?$"+{e.QtyIn:N2}":"—")</td>
+<td style="color:@(e.QtyOut>0?"#dc2626":"#9ca3af")">@(e.QtyOut>0?$"-{e.QtyOut:N2}":"—")</td>
+<td>@e.UnitCost.ToString("N0")</td><td>@e.TotalCost.ToString("N0")</td></tr>
+}
+@if(!Model.Entries.Any()){<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:28px">No entries found.</td></tr>}
+</tbody></table></div>

@@ -1,0 +1,15 @@
+@page
+@model SimpleERP.Web.Pages.Customers.CreateModel
+@{ ViewData["Title"]="Add Customer"; }
+<div style="max-width:480px">
+@if(Model.Error!=null){<div class="alert alert-danger">@Model.Error</div>}
+<div class="card"><div class="card-title">New Customer</div>
+<form method="post">
+  <div class="fg"><label>Full Name *</label><input type="text" asp-for="Input.Name" required placeholder="e.g. John Doe"/></div>
+  <div class="fg"><label>Phone</label><input type="text" asp-for="Input.Phone" placeholder="e.g. 08123456789"/></div>
+  <div class="fg"><label>Address</label><textarea asp-for="Input.Address" rows="2" placeholder="Street address..."></textarea></div>
+  <div style="display:flex;gap:10px;margin-top:6px">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="/Customers" class="btn btn-outline">Cancel</a>
+  </div>
+</form></div></div>

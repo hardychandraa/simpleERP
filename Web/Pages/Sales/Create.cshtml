@@ -1,0 +1,339 @@
+@page
+@model SimpleERP.Web.Pages.Sales.CreateModel
+@using System.Text.Json
+@{ ViewData["Title"] = "New Sale"; }
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" id="saleForm">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+
+        <!-- Left: header fields -->
+        <div class="card" style="margin-bottom:0">
+            <div class="card-title">Sale Info</div>
+            <div class="fg">
+                <label>Customer *</label>
+                <select asp-for="CustomerId" asp-items="Model.CustomerOptions" required>
+                    <option value="">— Select customer —</option>
+                </select>
+            </div>
+            <div class="fg">
+                <label>Payment Type</label>
+                <select asp-for="PaymentType" id="paymentTypeSelect" onchange="onPaymentTypeChange()">
+                    <option value="1">Cash — paid now</option>
+                    <option value="2">Due — credit / pay later</option>
+                    <option value="3">TOP 30 days</option>
+                    <option value="4">TOP 45 days</option>
+                    <option value="5">TOP 60 days</option>
+                    <option value="6">TOP 90 days</option>
+                </select>
+            </div>
+            <div id="dueDatePreview" style="display:none;margin-top:6px">
+                <span style="font-size:13px;color:#6b7280">Estimated due date: </span>
+                <span id="dueDateText" style="font-weight:600;color:#d97706"></span>
+            </div>
+            <div class="fg" style="margin-top:10px;display:flex;align-items:center;gap:10px">
+                <input type="checkbox" asp-for="IsTaxInclusive" id="taxInclusiveCheck"
+                       style="width:18px;height:18px;margin:0" />
+                <label for="taxInclusiveCheck" style="margin:0;white-space:nowrap">
+                    Prices already include PPN
+                </label>
+            </div>
+            <div style="font-size:11px;color:#9ca3af;margin:-4px 0 10px 28px">
+                Unticked: PPN is added on top of the prices entered.
+                Ticked: the prices entered already contain PPN, and it's extracted from them.
+            </div>
+            <div class="fg" style="margin-top:10px">
+                <label>Sale Notes</label>
+                <input type="text" asp-for="Notes" maxlength="500" placeholder="Optional remarks..." />
+            </div>
+        </div>
+
+        <!-- Right: live summary + submit -->
+        <div class="card" style="margin-bottom:0">
+            <div class="card-title">Summary</div>
+            <table style="font-size:14px;width:100%">
+                <tr>
+                    <td style="padding:6px 0;color:#6b7280">Subtotal</td>
+                    <td style="text-align:right;font-weight:600" id="sumSub">0</td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#dc2626">Discount</td>
+                    <td style="text-align:right;color:#dc2626" id="sumDisc">—</td>
+                </tr>
+                <tr style="border-top:2px solid #e5e7eb">
+                    <td style="padding:10px 0;font-size:17px;font-weight:700">Grand Total</td>
+                    <td style="text-align:right;font-size:17px;font-weight:700;color:#059669" id="sumTotal">0</td>
+                </tr>
+            </table>
+            <input type="hidden" name="ItemsJson" id="ItemsJson" value="[]" />
+            <button type="submit" id="submitBtn" class="btn btn-primary"
+                    style="width:100%;margin-top:14px;padding:12px;font-size:15px">
+                🧾 Create Invoice
+            </button>
+            <div id="submitErr" class="alert alert-danger" style="display:none;margin-top:10px"></div>
+        </div>
+    </div>
+
+    <!-- Item builder -->
+    <div class="card">
+        <div class="card-title">Add Items</div>
+
+        <!-- Row 1: product, qty, price, discount, warranty, add button -->
+        <div style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1fr 0.8fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
+            <div>
+                <label>Product</label>
+                <select id="inProd" onchange="onProductChange()">
+                    <option value="">— Select —</option>
+                    @foreach (var p in Model.AvailableProducts)
+                    {
+                        <option value="@p.Id"
+                                data-price="@p.UnitPrice"
+                                data-stock="@p.CurrentStock"
+                                data-warranty="@(p.DefaultWarrantyMonths ?? 0)"
+                                data-name="@p.Name">
+                            @p.Name (@p.SKU) — Stk: @p.CurrentStock.ToString("N0")
+                        </option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label>Qty</label>
+                <input type="number" id="inQty" min="0.01" step="0.01" value="1" />
+            </div>
+            <div>
+                <label>Unit Price</label>
+                <input type="number" id="inPrice" min="0" step="0.01" placeholder="0" oninput="onPriceInput()" />
+            </div>
+            <div>
+                <label>Discount</label>
+                <input type="number" id="inDisc" min="0" step="0.01" value="0" placeholder="0" />
+            </div>
+            <div>
+                <label>Warranty(mo)</label>
+                <input type="number" id="inWarranty" min="0" value="0" placeholder="0" />
+            </div>
+            <div>
+                <label>&nbsp;</label>
+                <button type="button" class="btn btn-success" onclick="addItem()">Add</button>
+            </div>
+        </div>
+
+        <!-- Row 2: line notes + price reason (contextual) -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div>
+                <label style="font-size:12px;color:#6b7280">Line Notes <span style="font-weight:400">(serial number, condition, etc.)</span></label>
+                <input type="text" id="inNotes" maxlength="500" placeholder="Optional..." />
+            </div>
+            <div id="priceReasonBlock" style="display:none">
+                <label style="font-size:12px;color:#d97706">⚠ Price Override Reason <span style="font-weight:700;color:#dc2626">*Required</span></label>
+                <input type="text" id="inPriceReason" maxlength="300" placeholder="e.g. Special customer rate, clearance..." />
+            </div>
+        </div>
+
+        <div id="addErr" class="alert alert-danger" style="display:none;margin-bottom:10px"></div>
+
+        <table id="tbl">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th style="text-align:center">Qty</th>
+                    <th style="text-align:right">Price</th>
+                    <th style="text-align:right">Disc</th>
+                    <th style="text-align:right">Total</th>
+                    <th style="text-align:center">Warranty</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="tblBody">
+                <tr id="emptyRow">
+                    <td colspan="7" style="text-align:center;color:#9ca3af;padding:24px">
+                        No items yet — select a product above and click Add.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+// Product data from server (master prices stored for price-override detection)
+const PRODUCTS = @Html.Raw(JsonSerializer.Serialize(
+    Model.AvailableProducts.Select(p => new {
+        id = p.Id.ToString(),
+        name = p.Name,
+        price = p.UnitPrice,
+        stock = p.CurrentStock,
+        warranty = p.DefaultWarrantyMonths ?? 0
+    })
+));
+
+let items = [];  // { productId, name, masterPrice, qty, price, disc, warranty, notes, priceReason, total }
+
+// ── Payment type → due date preview ──────────────────────────────────────────
+const TOP_DAYS = { '3': 30, '4': 45, '5': 60, '6': 90 };
+
+function onPaymentTypeChange() {
+    const val = document.getElementById('paymentTypeSelect').value;
+    const days = TOP_DAYS[val];
+    const block = document.getElementById('dueDatePreview');
+    if (days) {
+        const d = new Date();
+        d.setDate(d.getDate() + days);
+        document.getElementById('dueDateText').textContent = d.toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'});
+        block.style.display = 'block';
+    } else {
+        block.style.display = 'none';
+    }
+}
+
+// ── Product selection → auto-fill price + warranty ───────────────────────────
+function onProductChange() {
+    const opt = document.getElementById('inProd').options[document.getElementById('inProd').selectedIndex];
+    if (!opt.value) return;
+    document.getElementById('inPrice').value    = opt.dataset.price;
+    document.getElementById('inWarranty').value = opt.dataset.warranty;
+    onPriceInput();  // re-evaluate override reason visibility
+}
+
+// ── Price input → show/hide price reason block ───────────────────────────────
+function onPriceInput() {
+    const prodId = document.getElementById('inProd').value;
+    if (!prodId) return;
+    const prod = PRODUCTS.find(p => p.id === prodId);
+    if (!prod) return;
+    const inputPrice = parseFloat(document.getElementById('inPrice').value) || 0;
+    const differs = Math.abs(inputPrice - prod.price) > 0.001;
+    document.getElementById('priceReasonBlock').style.display = differs ? 'block' : 'none';
+    if (!differs) document.getElementById('inPriceReason').value = '';
+}
+
+function addItem() {
+    hideErr('addErr');
+    const selEl      = document.getElementById('inProd');
+    const prodId     = selEl.value;
+    const qty        = parseFloat(document.getElementById('inQty').value)   || 0;
+    const price      = parseFloat(document.getElementById('inPrice').value)  || 0;
+    const disc       = parseFloat(document.getElementById('inDisc').value)   || 0;
+    const warranty   = parseInt(document.getElementById('inWarranty').value) || 0;
+    const notes      = document.getElementById('inNotes').value.trim();
+    const priceReason= document.getElementById('inPriceReason').value.trim();
+
+    if (!prodId)   return showErr('addErr', 'Please select a product.');
+    if (qty <= 0)  return showErr('addErr', 'Quantity must be greater than zero.');
+    if (price < 0) return showErr('addErr', 'Price cannot be negative.');
+    if (disc < 0)  return showErr('addErr', 'Discount cannot be negative.');
+    if (disc >= price && price > 0) return showErr('addErr', 'Discount cannot equal or exceed price.');
+
+    const prod = PRODUCTS.find(p => p.id === prodId);
+    if (!prod) return showErr('addErr', 'Product not found.');
+
+    // Price override requires reason
+    const differs = Math.abs(price - prod.price) > 0.001;
+    if (differs && !priceReason)
+        return showErr('addErr', `Price differs from master price (${fmt(prod.price)}). Please enter a price override reason.`);
+
+    // Check total qty for this product across all items
+    const alreadyQty = items.filter(i => i.productId === prodId).reduce((s,i) => s + i.qty, 0);
+    if (alreadyQty + qty > prod.stock)
+        return showErr('addErr', `Not enough stock. Available: ${fmt(prod.stock - alreadyQty)}`);
+
+    items.push({
+        productId:   prodId,
+        name:        prod.name,
+        masterPrice: prod.price,
+        qty, price, disc, warranty,
+        notes:       notes || null,
+        priceReason: differs ? priceReason : null,
+        total:       (price - disc) * qty
+    });
+
+    render();
+
+    // Reset inputs
+    selEl.value = '';
+    document.getElementById('inQty').value        = '1';
+    document.getElementById('inPrice').value      = '';
+    document.getElementById('inDisc').value       = '0';
+    document.getElementById('inWarranty').value   = '0';
+    document.getElementById('inNotes').value      = '';
+    document.getElementById('inPriceReason').value= '';
+    document.getElementById('priceReasonBlock').style.display = 'none';
+}
+
+function removeItem(idx) {
+    items.splice(idx, 1);
+    render();
+}
+
+function render() {
+    const body = document.getElementById('tblBody');
+
+    if (items.length === 0) {
+        body.innerHTML = '';
+        body.appendChild(document.getElementById('emptyRow'));
+        syncSummary(0, 0);
+        document.getElementById('ItemsJson').value = '[]';
+        return;
+    }
+
+    let subTotal = 0, discTotal = 0;
+    let html = '';
+    items.forEach((item, i) => {
+        subTotal  += item.price * item.qty;
+        discTotal += item.disc  * item.qty;
+        const overrideTag = item.priceReason
+            ? `<br><small style="color:#d97706">⚠ ${esc(item.priceReason)}</small>` : '';
+        const notesTag = item.notes
+            ? `<br><small style="color:#6b7280">📝 ${esc(item.notes)}</small>` : '';
+        html += `<tr>
+            <td><strong>${esc(item.name)}</strong>${overrideTag}${notesTag}</td>
+            <td style="text-align:center">${item.qty}</td>
+            <td style="text-align:right">${fmt(item.price)}</td>
+            <td style="text-align:right;color:#dc2626">${item.disc > 0 ? '-' + fmt(item.disc) : '—'}</td>
+            <td style="text-align:right;font-weight:600">${fmt(item.total)}</td>
+            <td style="text-align:center">${item.warranty > 0 ? item.warranty + ' mo' : '—'}</td>
+            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(${i})">✕</button></td>
+        </tr>`;
+    });
+    body.innerHTML = html;
+    syncSummary(subTotal, discTotal);
+
+    document.getElementById('ItemsJson').value = JSON.stringify(items.map(i => ({
+        productId:      i.productId,
+        qty:            i.qty,
+        unitPrice:      i.price,
+        discountAmount: i.disc,
+        warrantyMonths: i.warranty || null,
+        notes:          i.notes    || null,
+        priceReason:    i.priceReason || null
+    })));
+}
+
+function syncSummary(sub, disc) {
+    document.getElementById('sumSub').textContent   = fmt(sub);
+    document.getElementById('sumDisc').textContent  = disc > 0 ? '-' + fmt(disc) : '—';
+    document.getElementById('sumTotal').textContent = fmt(sub - disc);
+}
+
+document.getElementById('saleForm').addEventListener('submit', function(e) {
+    if (items.length === 0) {
+        e.preventDefault();
+        showErr('submitErr', 'Please add at least one item before creating the invoice.');
+    }
+    if (!document.querySelector('select[name="CustomerId"]').value) {
+        e.preventDefault();
+        showErr('submitErr', 'Please select a customer.');
+    }
+});
+
+function fmt(n)    { return Math.round(n).toLocaleString(); }
+function esc(s)    { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block'; }
+function hideErr(id)      { document.getElementById(id).style.display = 'none'; }
+</script>
+}

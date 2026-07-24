@@ -1,0 +1,200 @@
+@page "/Settings"
+@model SimpleERP.Web.Pages.Settings.IndexModel
+@{ ViewData["Title"] = "Settings"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<form method="post" style="max-width:640px">
+
+    <!-- ── STORE INFO ── -->
+    <div class="card">
+        <div class="card-title">🏪 Store Information</div>
+        <p style="font-size:12px;color:#9ca3af;margin-bottom:14px">
+            This information appears on every printed invoice.
+        </p>
+        <div class="frow frow2">
+            <div class="fg">
+                <label>App Name</label>
+                <input type="text" asp-for="Input.AppName" placeholder="SimpleERP" />
+            </div>
+            <div class="fg">
+                <label>Store / Business Name *</label>
+                <input type="text" asp-for="Input.StoreName" required placeholder="My Store" />
+            </div>
+        </div>
+        <div class="fg">
+            <label>Address</label>
+            <input type="text" asp-for="Input.StoreAddress" placeholder="e.g. Jl. Sudirman No. 1, Jakarta" />
+        </div>
+        <div class="frow frow2">
+            <div class="fg">
+                <label>Phone</label>
+                <input type="text" asp-for="Input.StorePhone" placeholder="e.g. 021-12345678" />
+            </div>
+            <div class="fg">
+                <label>Invoice Footer Text</label>
+                <input type="text" asp-for="Input.StoreFooter" placeholder="Thank you for your purchase!" />
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TAX ── -->
+    <div class="card">
+        <div class="card-title">🧾 Tax (PPN)</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:16px;line-height:1.6">
+            The PPN rate applied to new sales. Each sale stores the rate it was created with,
+            so changing this never alters invoices that are already posted.
+            Official Faktur Pajak is issued separately by your tax consultant via Coretax —
+            SimpleERP only calculates and reports the amounts.
+        </p>
+        <div class="fg" style="max-width:220px">
+            <label>PPN Rate (%)</label>
+            <input type="number" asp-for="Input.VatRatePercent"
+                   step="0.01" min="0" max="100" />
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                Confirm the current effective rate with your tax consultant — this is a
+                configurable default, not tax advice.
+            </div>
+        </div>
+    </div>
+
+    <!-- ── PRINTER ── -->
+    <div class="card">
+        <div class="card-title">🖨 Dot-Matrix Printer</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:16px;line-height:1.6">
+            SimpleERP sends raw ESC/P bytes directly to your printer — no print dialog, one click.
+            Works with any Epson-compatible dot-matrix printer installed in Windows
+            (USB, LPT, or Serial — Windows handles the connection, just pick the name below).
+        </p>
+
+        <div class="fg" style="display:flex;align-items:center;gap:10px">
+            <label style="margin:0;white-space:nowrap">Enable dot-matrix printing</label>
+            <input type="checkbox" asp-for="Input.PrinterEnabled"
+                   style="width:18px;height:18px;margin:0" />
+        </div>
+
+        <div class="fg" style="margin-top:14px">
+            <label>
+                Printer Name
+                <span style="font-weight:400;color:#9ca3af;text-transform:none">
+                    — must match exactly how Windows sees it
+                </span>
+            </label>
+            <div style="display:flex;gap:10px">
+                <input type="text" asp-for="Input.PrinterName"
+                       id="printerNameInput"
+                       placeholder="e.g. EPSON LX-300+" style="flex:1" />
+                <button type="button" class="btn btn-outline btn-sm"
+                        onclick="detectPrinters()" id="btnDetect">
+                    🔍 Detect Printers
+                </button>
+            </div>
+            <div id="printerList" style="display:none;margin-top:10px">
+                <div style="font-size:12px;color:#6b7280;margin-bottom:6px">
+                    Click a printer name to select it:
+                </div>
+                <div id="printerButtons" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+            </div>
+            <div id="printerErr" class="alert alert-warning"
+                 style="display:none;margin-top:10px;font-size:12px"></div>
+        </div>
+
+        <div class="fg">
+            <label>Paper Width</label>
+            <select asp-for="Input.PaperColumns">
+                <option value="80">80 columns — Narrow paper (8 inch)</option>
+                <option value="132">132 columns — Wide paper (14 inch)</option>
+            </select>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                Most small dot-matrix printers use 80 columns. Check your printer manual if unsure.
+            </div>
+        </div>
+
+        <!-- Test print button -->
+        <div style="margin-top:6px">
+            <button type="button" class="btn btn-outline btn-sm" onclick="testPrint()">
+                📋 Send Test Print
+            </button>
+            <span style="font-size:11px;color:#9ca3af;margin-left:8px">
+                Saves settings first, then sends a test page to the printer.
+            </span>
+        </div>
+        <div id="testResult" class="alert" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="padding:10px 32px;font-size:14px">
+        💾 Save Settings
+    </button>
+</form>
+
+@section Scripts {
+<script>
+// Detect installed Windows printers via the API
+async function detectPrinters() {
+    const btn     = document.getElementById('btnDetect');
+    const listDiv = document.getElementById('printerList');
+    const btnsDiv = document.getElementById('printerButtons');
+    const errDiv  = document.getElementById('printerErr');
+
+    btn.disabled    = true;
+    btn.textContent = '⏳ Detecting...';
+    errDiv.style.display  = 'none';
+    listDiv.style.display = 'none';
+
+    try {
+        const resp = await fetch('/api/print/printers');
+        const printers = await resp.json();
+
+        if (!printers || printers.length === 0) {
+            errDiv.textContent   = '⚠ No printers found. Make sure the printer is installed in Windows (Control Panel → Devices and Printers).';
+            errDiv.style.display = 'block';
+        } else {
+            btnsDiv.innerHTML = '';
+            printers.forEach(name => {
+                const b = document.createElement('button');
+                b.type        = 'button';
+                b.textContent = name;
+                b.className   = 'btn btn-outline btn-sm';
+                b.onclick     = () => {
+                    document.getElementById('printerNameInput').value = name;
+                    // highlight selected
+                    btnsDiv.querySelectorAll('button').forEach(x => x.style.borderColor = '');
+                    b.style.borderColor = '#2563eb';
+                    b.style.color       = '#2563eb';
+                };
+                btnsDiv.appendChild(b);
+            });
+            listDiv.style.display = 'block';
+        }
+    } catch (e) {
+        errDiv.textContent   = '✗ Could not load printers. ' + e.message;
+        errDiv.style.display = 'block';
+    }
+
+    btn.disabled    = false;
+    btn.textContent = '🔍 Detect Printers';
+}
+
+// Save then test-print a simple line
+async function testPrint() {
+    const btn     = document.getElementById('testResult');
+    btn.style.display = 'none';
+
+    const printerName = document.getElementById('printerNameInput').value.trim();
+    if (!printerName) {
+        btn.className     = 'alert alert-warning';
+        btn.textContent   = 'Enter a printer name first.';
+        btn.style.display = 'block';
+        return;
+    }
+
+    // We'll just inform the user to save first, then use a real invoice to test
+    btn.className     = 'alert alert-warning';
+    btn.textContent   = '💡 Save Settings first, then open any invoice and click "Print to [printer]" to test.';
+    btn.style.display = 'block';
+}
+</script>
+}

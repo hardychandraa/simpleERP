@@ -1,0 +1,8 @@
+@page
+@model ErrorModel
+@{ ViewData["Title"] = "Error"; }
+<div class="card" style="max-width:500px;margin-top:40px;">
+  <h2 style="color:#dc2626;">Something went wrong</h2>
+  @if(Model.RequestId!=null){<p style="font-size:12px;color:#6b7280;">Request: @Model.RequestId</p>}
+  <a href="/" class="btn btn-primary" style="margin-top:16px;">← Go Home</a>
+</div>

@@ -1,0 +1,72 @@
+@page
+@model IndexModel
+@{ ViewData["Title"] = "Dashboard"; }
+
+<div class="stats">
+  <div class="stat blue"><div class="stat-lbl">Active Products</div><div class="stat-val">@Model.TotalProducts</div></div>
+  <div class="stat green"><div class="stat-lbl">Today Revenue</div><div class="stat-val" style="font-size:17px">@Model.TodayRevenue.ToString("N0")</div></div>
+  <div class="stat teal"><div class="stat-lbl">Today Cash In</div><div class="stat-val" style="font-size:17px">@Model.TodayCashIn.ToString("N0")</div></div>
+  <div class="stat red"><div class="stat-lbl">Outstanding Due</div><div class="stat-val" style="font-size:17px">@Model.TotalOutstanding.ToString("N0")</div></div>
+</div>
+
+@if (Model.OverdueCount > 0) {
+  <div class="alert alert-danger">
+    🚨 <strong>@Model.OverdueCount</strong> sale(s) are <strong>OVERDUE</strong> — payment due date has passed.
+    <a href="/Payments" style="color:#b91c1c;font-weight:700;margin-left:6px">View overdue →</a>
+  </div>
+} else if (Model.OutstandingCount > 0) {
+  <div class="alert alert-warning">
+    ⚠ <strong>@Model.OutstandingCount</strong> sale(s) have unpaid balances totalling <strong>@Model.TotalOutstanding.ToString("N0")</strong>.
+    <a href="/Payments" style="color:#92400e;font-weight:700;margin-left:6px">Collect now →</a>
+  </div>
+}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="card">
+    <div class="card-title">Recent Sales</div>
+    @if (!Model.RecentSales.Any()) { <p style="color:#9ca3af;font-size:13px">No sales yet. <a href="/Sales/Create">Create one →</a></p> }
+    else {
+      <table>
+        <thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Type</th><th>Status</th></tr></thead>
+        <tbody>
+        @foreach (var s in Model.RecentSales) {
+          <tr>
+            <td><a href="/Sales/@s.Id" style="color:#2563eb;text-decoration:none;font-weight:600">@s.InvoiceNumber</a></td>
+            <td>@s.CustomerName</td>
+            <td>@s.GrandTotal.ToString("N0")</td>
+            <td><span class="badge @(s.PaymentType=="Cash"?"ok":"warn")">@s.PaymentType</span></td>
+            <td><span class="badge @(s.Status=="Active"?"ok":"err")">@s.Status</span></td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    }
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <a href="/Sales" class="btn btn-outline btn-sm">All Sales →</a>
+      <a href="/Reports/EndOfDay" class="btn btn-outline btn-sm">📅 End of Day →</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚠ Low / Out of Stock</div>
+    @if (!Model.LowStock.Any()) { <p style="color:#059669;font-size:13px">✓ All stock levels are above threshold.</p> }
+    else {
+      <table>
+        <thead><tr><th>Product</th><th>Stock</th><th>Alert at</th></tr></thead>
+        <tbody>
+        @foreach (var s in Model.LowStock) {
+          <tr>
+            <td><strong>@s.ProductName</strong><br/><code style="font-size:10px;color:#9ca3af">@s.SKU</code></td>
+            <td><span class="badge @(s.CurrentStock<=0?"err":"warn")">@s.CurrentStock.ToString("N0")</span></td>
+            <td style="color:#9ca3af;font-size:12px">≤ @s.LowStockThreshold</td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    }
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <a href="/Inventory/StockIn" class="btn btn-success btn-sm">📥 Stock In →</a>
+      <a href="/Inventory" class="btn btn-outline btn-sm">View All →</a>
+    </div>
+  </div>
+</div>

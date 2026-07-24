@@ -1,0 +1,25 @@
+@page "/Audit"
+@model SimpleERP.Web.Pages.Audit.IndexModel
+@{ ViewData["Title"] = "Audit Log"; }
+<div class="card">
+  <div class="card-title">Recent Activity (last 200 events)</div>
+  <table>
+    <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Detail</th></tr></thead>
+    <tbody>
+    @foreach (var log in Model.Logs) 
+    {
+        var clr = log.Action.Contains("Cancel") ? "err" : log.Action.Contains("Create") ? "ok" : log.Action.Contains("Adjust") ? "warn" : "info"; 
+      <tr>
+        <td style="font-size:12px;white-space:nowrap">@log.Timestamp.ToLocalTime().ToString("dd-MMM-yy HH:mm:ss")</td>
+        <td style="font-size:12px;color:#9ca3af">@log.User</td>
+        <td><span class="badge @clr">@log.Action</span></td>
+        <td style="font-size:12px;color:#374151;max-width:400px">@(log.Detail ?? "—")</td>
+      </tr>
+    }
+    @if (!Model.Logs.Any()) 
+    {
+      <tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:28px">No audit events yet.</td></tr>
+    }
+    </tbody>
+  </table>
+</div>

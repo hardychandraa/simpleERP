@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>@ViewData["Title"] — SimpleERP</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;background:#f0f2f5;color:#1a1a2e;display:flex;min-height:100vh}
+.sb{width:215px;background:#1e2433;color:#c8d0e0;flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;overflow-y:auto}
+.sb-brand{padding:16px 16px 12px;border-bottom:1px solid #2d3a52}
+.sb-brand h1{font-size:15px;font-weight:800;color:#fff;letter-spacing:.5px}
+.sb-brand small{font-size:10px;color:#4a5568}
+.sb-nav{flex:1;padding:8px 0}
+.sb-sec{padding:10px 16px 3px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#4a5568;font-weight:600}
+.sb-nav a{display:flex;align-items:center;gap:8px;padding:8px 16px;color:#b0bac8;text-decoration:none;font-size:13px;transition:background .1s;border-left:3px solid transparent}
+.sb-nav a:hover{background:#2d3a52;color:#fff}
+.sb-nav a.active{background:#2a3650;color:#60a5fa;border-left-color:#3b82f6;font-weight:600}
+.sb-foot{padding:10px 16px;border-top:1px solid #2d3a52;font-size:10px;color:#4a5568}
+.main{flex:1;display:flex;flex-direction:column;margin-left:215px;min-width:0}
+.topbar{background:#fff;padding:10px 24px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar h2{font-size:15px;font-weight:700;color:#1a1a2e}
+.content{flex:1;padding:20px 24px}
+.card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:20px;margin-bottom:16px}
+.card-title{font-size:12px;font-weight:700;color:#374151;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #f3f4f6;text-transform:uppercase;letter-spacing:.05em}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f9fafb;padding:9px 12px;text-align:left;font-weight:600;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #e5e7eb}
+td{padding:9px 12px;border-bottom:1px solid #f3f4f6;color:#374151;vertical-align:middle}
+tr:hover td{background:#fafafa}
+tr:last-child td{border-bottom:none}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.ok{background:#d1fae5;color:#065f46}.err{background:#fee2e2;color:#991b1b}
+.warn{background:#fef3c7;color:#92400e}.info{background:#dbeafe;color:#1e40af}.gray{background:#f3f4f6;color:#6b7280}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:none;text-decoration:none;transition:opacity .12s;white-space:nowrap}
+.btn:hover{opacity:.85}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:#2563eb;color:#fff}.btn-success{background:#059669;color:#fff}
+.btn-danger{background:#dc2626;color:#fff}.btn-warn{background:#d97706;color:#fff}
+.btn-secondary{background:#6b7280;color:#fff}.btn-outline{background:#fff;border:1px solid #d1d5db;color:#374151}
+.btn-sm{padding:4px 10px;font-size:12px}
+.fg{margin-bottom:13px}
+label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:7px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;color:#1a1a2e;background:#fff;outline:none;transition:border-color .12s}
+input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.1)}
+.frow{display:grid;gap:13px}.frow2{grid-template-columns:1fr 1fr}.frow3{grid-template-columns:1fr 1fr 1fr}
+.alert{padding:10px 14px;border-radius:6px;margin-bottom:13px;font-size:13px;line-height:1.5}
+.alert-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.alert-success{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
+.alert-warning{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+.alert-info{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat{background:#fff;border-radius:8px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:4px solid}
+.stat.blue{border-left-color:#3b82f6}.stat.green{border-left-color:#059669}
+.stat.orange{border-left-color:#d97706}.stat.red{border-left-color:#dc2626}
+.stat.purple{border-left-color:#7c3aed}.stat.teal{border-left-color:#0891b2}
+.stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;font-weight:600}
+.stat-val{font-size:21px;font-weight:700;color:#1a1a2e;margin-top:3px}
+.search-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+.search-bar input,.search-bar select{flex:1;min-width:160px}
+@@media print{.sb,.topbar,.no-print{display:none!important}.main{margin-left:0}.content{padding:0}.card{box-shadow:none;border:none}body{background:#fff;font-family:'Courier New',monospace;font-size:10pt}}
+</style>
+</head>
+<body>
+<nav class="sb">
+  <div class="sb-brand">
+    <h1>⚡ SimpleERP</h1>
+    <small>Store Management System</small>
+  </div>
+  <div class="sb-nav">
+    @{ var page = ViewContext.RouteData.Values["page"]?.ToString() ?? ""; }
+    <div class="sb-sec">Main</div>
+    <a href="/" class="@(page=="/Index"?"active":"")">🏠 Dashboard</a>
+
+    <div class="sb-sec">Records</div>
+    <a href="/Products"  class="@(page.StartsWith("/Products") ?"active":"")">📦 Products</a>
+    <a href="/Customers" class="@(page.StartsWith("/Customers")?"active":"")">👥 Customers</a>
+
+    <div class="sb-sec">Transactions</div>
+    <a href="/Sales/Create" class="@(page=="/Sales/Create"?"active":"")">🧾 New Sale</a>
+    <a href="/Sales"        class="@(page.StartsWith("/Sales")&&page!="/Sales/Create"?"active":"")">📋 Sales History</a>
+    <a href="/Payments"     class="@(page.StartsWith("/Payments")?"active":"")">💳 Due Payments</a>
+
+    <div class="sb-sec">Inventory</div>
+    <a href="/Inventory/StockIn"  class="@(page=="/Inventory/StockIn" ?"active":"")">📥 Stock In</a>
+    <a href="/Inventory/Adjust"   class="@(page=="/Inventory/Adjust"  ?"active":"")">⚖️ Adjust Stock</a>
+    <a href="/Inventory"          class="@(page=="/Inventory/Index"   ?"active":"")">📊 Stock Levels</a>
+    <a href="/Inventory/Ledger"   class="@(page=="/Inventory/Ledger"  ?"active":"")">📒 Ledger</a>
+
+    <div class="sb-sec">Reports</div>
+    <a href="/Reports/EndOfDay"  class="@(page=="/Reports/EndOfDay" ?"active":"")">📅 End of Day</a>
+    <a href="/Reports/Warranty"  class="@(page=="/Reports/Warranty" ?"active":"")">🛡 Warranty</a>
+    <a href="/Audit"             class="@(page.StartsWith("/Audit") ?"active":"")">🔍 Audit Log</a>
+
+    <div class="sb-sec">System</div>
+    <a href="/Settings" class="@(page.StartsWith("/Settings")?"active":"")">⚙️ Settings</a>
+  </div>
+  <div class="sb-foot">PostgreSQL · Auto-backup daily</div>
+</nav>
+<div class="main">
+  <div class="topbar">
+    <h2>@ViewData["Title"]</h2>
+    <span style="font-size:12px;color:#9ca3af">@DateTime.Now.ToString("ddd, dd MMM yyyy  HH:mm")</span>
+  </div>
+  <div class="content">
+    @RenderBody()
+  </div>
+</div>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

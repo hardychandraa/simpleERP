@@ -1,0 +1,35 @@
+# ── Build output ──────────────────────────────────────────────────────────────
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vs/
+.idea/
+*.swp
+
+# ── Local database + backups ──────────────────────────────────────────────────
+# SQLite artifacts from the pre-PostgreSQL era; PostgreSQL dumps from BackupService.
+*.db
+*.db-shm
+*.db-wal
+backups/
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+# Connection strings with credentials belong in user-secrets (dev) or
+# environment config (deployment) — never committed.
+appsettings.*.local.json
+secrets.json
+*.pfx
+
+# ── Confidential business documents ───────────────────────────────────────────
+# Real company financials and the business spec. Deliberately NOT version
+# controlled: git history is permanent, so committing these once would expose
+# them in every future clone even if a later commit deleted them.
+# These stay local — see CLAUDE.md for where they live.
+*.pdf
+*.docx
+*.xlsx

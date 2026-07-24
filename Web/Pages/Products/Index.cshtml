@@ -1,0 +1,52 @@
+@page
+@model SimpleERP.Web.Pages.Products.IndexModel
+@{ ViewData["Title"] = "Products"; }
+@if (Model.Msg != null) {
+    <div class="alert @(Model.IsErr?"alert-danger":"alert-success")">@Model.Msg</div>
+}
+<div class="search-bar">
+    <form method="get" style="display:contents">
+        <input type="text" name="search" value="@Model.Search" placeholder="Search name, SKU, category..." />
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        @if (!string.IsNullOrEmpty(Model.Search)) {
+            <a href="/Products" class="btn btn-outline btn-sm">✕ Clear</a>
+        }
+    </form>
+    <a href="/Products/Create" class="btn btn-primary" style="margin-left:auto">＋ Add Product</a>
+</div>
+<div class="card">
+<table>
+  <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Low Alert</th><th>Avg Cost</th><th>Warranty</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  @foreach (var p in Model.Products) {
+    <tr>
+      <td><strong>@p.Name</strong></td>
+      <td><code style="font-size:11px">@p.SKU</code></td>
+      <td>@(p.Category ?? "—")</td>
+      <td>@p.UnitPrice.ToString("N0")</td>
+      <td><span class="badge @(p.CurrentStock<=0?"err":p.IsLow?"warn":"ok")">@p.CurrentStock.ToString("N0")</span></td>
+      <td style="color:#9ca3af;font-size:12px">≤ @p.LowStockThreshold</td>
+      <td>@p.AvgCost.ToString("N0")</td>
+      <td>@(p.DefaultWarrantyMonths.HasValue ? $"{p.DefaultWarrantyMonths} mo" : "—")</td>
+      <td><span class="badge @(p.IsActive?"ok":"gray")">@(p.IsActive?"Active":"Inactive")</span></td>
+      <td style="white-space:nowrap">
+        <a href="/Products/Edit/@p.Id" class="btn btn-outline btn-sm">Edit</a>
+        @if (p.IsActive) {
+          <form method="post" asp-page-handler="Deactivate" style="display:inline" onsubmit="return confirm('Deactivate this product?')">
+            <input type="hidden" name="id" value="@p.Id"/>
+            <input type="hidden" name="search" value="@Model.Search"/>
+            <button type="submit" class="btn btn-danger btn-sm">Off</button>
+          </form>
+        }
+      </td>
+    </tr>
+  }
+  @if (!Model.Products.Any()) {
+    <tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:28px">
+      @(string.IsNullOrEmpty(Model.Search) ? "No products yet. " : $"No results for {Model.Search}. ")
+      <a href="/Products/Create">Add one →</a>
+    </td></tr>
+  }
+  </tbody>
+</table>
+</div>

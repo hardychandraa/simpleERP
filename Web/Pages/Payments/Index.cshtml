@@ -1,0 +1,75 @@
+@page "/Payments"
+@model SimpleERP.Web.Pages.Payments.IndexModel
+@{ ViewData["Title"] = "Due Payments"; }
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+  <div>
+    <span style="font-size:13px;color:#6b7280">Total outstanding: </span>
+    <span style="font-size:20px;font-weight:700;color:#dc2626">@Model.TotalOutstanding.ToString("N0")</span>
+    @if (Model.OverdueCount > 0) {
+      <span style="margin-left:12px;background:#fee2e2;color:#b91c1c;font-size:12px;font-weight:700;padding:3px 8px;border-radius:12px">
+        ⚠ @Model.OverdueCount overdue
+      </span>
+    }
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Outstanding Credit Sales — click View to record a payment</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Invoice</th>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Term</th>
+        <th>Due Date</th>
+        <th>Total</th>
+        <th>Paid</th>
+        <th style="color:#dc2626">Balance Due</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    @foreach (var s in Model.Outstanding) {
+      var rowStyle = s.IsOverdue ? "background:#fff7f7" : "";
+      <tr style="@rowStyle">
+        <td><strong>@s.InvoiceNumber</strong></td>
+        <td style="font-size:12px">@s.SaleDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+        <td>@s.CustomerName</td>
+        <td>
+          @{
+            var termLabel = s.PaymentType switch {
+              "Due"   => "Due",
+              "TOP30" => "TOP 30",
+              "TOP45" => "TOP 45",
+              "TOP60" => "TOP 60",
+              "TOP90" => "TOP 90",
+              _       => s.PaymentType
+            };
+          }
+          <span style="font-size:12px;color:#374151">@termLabel</span>
+        </td>
+        <td style="font-size:12px">
+          @if (s.DueDate.HasValue) {
+            if (s.IsOverdue) {
+              <span style="color:#dc2626;font-weight:700">⚠ @s.DueDate.Value.ToString("dd-MMM-yy")</span>
+            } else {
+              <span style="color:#d97706">@s.DueDate.Value.ToString("dd-MMM-yy")</span>
+            }
+          } else {
+            <span style="color:#9ca3af">—</span>
+          }
+        </td>
+        <td>@s.GrandTotal.ToString("N0")</td>
+        <td>@s.AmountPaid.ToString("N0")</td>
+        <td><span style="color:#dc2626;font-weight:700;font-size:14px">@s.BalanceDue.ToString("N0")</span></td>
+        <td><a href="/Sales/@s.Id" class="btn btn-primary btn-sm">View &amp; Pay</a></td>
+      </tr>
+    }
+    @if (!Model.Outstanding.Any()) {
+      <tr><td colspan="9" style="text-align:center;color:#059669;padding:28px;font-weight:600">✓ No outstanding dues! All customers are settled.</td></tr>
+    }
+    </tbody>
+  </table>
+</div>

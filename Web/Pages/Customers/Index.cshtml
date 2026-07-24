@@ -1,0 +1,46 @@
+@page
+@model SimpleERP.Web.Pages.Customers.IndexModel
+@{ ViewData["Title"] = "Customers"; }
+@if (Model.Msg != null) { <div class="alert @(Model.IsErr?"alert-danger":"alert-success")">@Model.Msg</div> }
+<div class="search-bar">
+    <form method="get" style="display:contents">
+        <input type="text" name="search" value="@Model.Search" placeholder="Search name, phone, address..." />
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        @if (!string.IsNullOrEmpty(Model.Search)) {
+            <a href="/Customers" class="btn btn-outline btn-sm">✕ Clear</a>
+        }
+    </form>
+    <a href="/Customers/Create" class="btn btn-primary" style="margin-left:auto">＋ Add Customer</a>
+</div>
+<div class="card">
+<table>
+  <thead><tr><th>Name</th><th>Phone</th><th>Address</th><th>Outstanding Due</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  @foreach (var c in Model.Customers) {
+    <tr>
+      <td><strong>@c.Name</strong></td>
+      <td>@(c.Phone ?? "—")</td>
+      <td style="color:#6b7280;font-size:12px">@(c.Address ?? "—")</td>
+      <td>
+        @if (c.TotalDue > 0) {
+          <span style="color:#dc2626;font-weight:700">@c.TotalDue.ToString("N0")</span>
+        } else {
+          <span style="color:#9ca3af">—</span>
+        }
+      </td>
+      <td><span class="badge @(c.IsActive?"ok":"gray")">@(c.IsActive?"Active":"Inactive")</span></td>
+      <td><a href="/Customers/Edit/@c.Id" class="btn btn-outline btn-sm">Edit</a></td>
+    </tr>
+  }
+  @if (!Model.Customers.Any()) {
+  <tr>
+    <td colspan="6" style="text-align:center;color:#9ca3af;padding:28px">
+      @(string.IsNullOrEmpty(Model.Search) 
+          ? "No customers yet." 
+          : $"No results for \"{Model.Search}\".")
+    </td>
+  </tr>
+}
+  </tbody>
+</table>
+</div>

@@ -1,0 +1,70 @@
+@page
+@model SimpleERP.Web.Pages.Inventory.AdjustModel
+@{ ViewData["Title"] = "Stock Adjustment"; }
+<div style="max-width:540px">
+@if (Model.Error   != null) { <div class="alert alert-danger">@Model.Error</div> }
+@if (Model.Success != null) { <div class="alert alert-success">✓ @Model.Success</div> }
+<div class="card">
+  <div class="card-title">⚖️ Physical Count Adjustment</div>
+  <div class="alert alert-info" style="font-size:12px;margin-bottom:14px">
+    Use this when a physical stock count differs from the system. Enter the <strong>actual physical count</strong>
+    — the system will calculate the difference and record it in the ledger.
+  </div>
+  <form method="post" id="adjForm">
+    <div class="fg">
+      <label>Product *</label>
+      <select asp-for="Input.ProductId" asp-items="Model.Products" required id="selProd"
+              onchange="this.form.submit()">
+        <option value="">— Select product —</option>
+      </select>
+    </div>
+    @if (Model.Input.ProductId != Guid.Empty) {
+      <div class="fg">
+        <label>System Stock</label>
+        <div style="padding:8px 11px;background:#f9fafb;border-radius:6px;font-size:14px;font-weight:600;color:#374151">
+          @Model.CurrentStock.ToString("N0") units
+        </div>
+      </div>
+      <div class="fg">
+        <label>Actual Physical Count *</label>
+        <input type="number" asp-for="Input.AdjustedQty" min="0" step="0.01" required
+               style="font-size:16px;font-weight:600"/>
+        @{ var diff = Model.Input.AdjustedQty - Model.CurrentStock; }
+        @if (Model.CurrentStock > 0 || Model.Input.AdjustedQty > 0) {
+          <div style="font-size:12px;margin-top:4px;font-weight:600;color:@(diff>0?"#059669":diff<0?"#dc2626":"#9ca3af")">
+            @(diff>0 ? $"↑ Will add {diff:N2} units to stock" : diff<0 ? $"↓ Will remove {Math.Abs(diff):N2} units from stock" : "No change")
+          </div>
+        }
+      </div>
+      <div class="fg">
+        <label>Reason *</label>
+        <input type="text" asp-for="Input.Reason" required placeholder="e.g. Physical count on 22-Apr-2026, damaged items removed"/>
+      </div>
+      <div class="alert alert-warning" style="font-size:12px">
+        ⚠ This action is permanent and logged in the audit trail. Only use after a physical stock count.
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button type="submit" class="btn btn-warn" onclick="return confirm('Confirm stock adjustment? This cannot be undone.')">
+          ⚖️ Apply Adjustment
+        </button>
+        <a href="/Inventory" class="btn btn-outline">Cancel</a>
+      </div>
+    }
+  </form>
+</div>
+</div>
+@section Scripts {
+<script>
+// Live diff calculation
+document.querySelector('input[name="Input.AdjustedQty"]')?.addEventListener('input', function() {
+    const sysStock = @Model.CurrentStock;
+    const newVal   = parseFloat(this.value) || 0;
+    const diff     = newVal - sysStock;
+    const hint     = this.nextElementSibling;
+    if (!hint) return;
+    if (diff > 0)       { hint.textContent=`↑ Will add ${diff.toFixed(2)} units`;  hint.style.color='#059669'; }
+    else if (diff < 0)  { hint.textContent=`↓ Will remove ${Math.abs(diff).toFixed(2)} units`; hint.style.color='#dc2626'; }
+    else                { hint.textContent='No change'; hint.style.color='#9ca3af'; }
+});
+</script>
+}

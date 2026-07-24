@@ -1,0 +1,17 @@
+@page "/Customers/Edit/{id:guid}"
+@model SimpleERP.Web.Pages.Customers.EditModel
+@{ ViewData["Title"]="Edit Customer"; }
+<div style="max-width:480px">
+@if(Model.Error!=null){<div class="alert alert-danger">@Model.Error</div>}
+<div class="card"><div class="card-title">Edit Customer</div>
+<form method="post">
+  <input type="hidden" asp-for="Input.Id"/>
+  <div class="fg"><label>Full Name *</label><input type="text" asp-for="Input.Name" required/></div>
+  <div class="fg"><label>Phone</label><input type="text" asp-for="Input.Phone"/></div>
+  <div class="fg"><label>Address</label><textarea asp-for="Input.Address" rows="2"></textarea></div>
+  <div class="fg"><label>Status</label><select asp-for="Input.IsActive"><option value="true">Active</option><option value="false">Inactive</option></select></div>
+  <div style="display:flex;gap:10px;margin-top:6px">
+    <button type="submit" class="btn btn-primary">Update</button>
+    <a href="/Customers" class="btn btn-outline">Cancel</a>
+  </div>
+</form></div></div>

@@ -1,0 +1,84 @@
+@page
+@model SimpleERP.Web.Pages.Sales.IndexModel
+@{ ViewData["Title"] = "Sales History"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div class="card" style="margin-bottom:14px">
+    <form method="get" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="margin:0;flex:1;min-width:140px">
+            <label>From</label>
+            <input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="fg" style="margin:0;flex:1;min-width:140px">
+            <label>To</label>
+            <input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="/Sales" class="btn btn-outline">Reset</a>
+        <a href="/Sales/Create" class="btn btn-success" style="margin-left:auto">＋ New Sale</a>
+    </form>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Invoice</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Payment</th>
+                <th>Total</th>
+                <th>Paid</th>
+                <th>Balance</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model.Sales)
+            {
+                <tr>
+                    <td><strong>@s.InvoiceNumber</strong></td>
+                    <td>@s.SaleDate.ToLocalTime().ToString("dd-MMM-yy HH:mm")</td>
+                    <td>@s.CustomerName</td>
+                    <td><span class="badge @(s.PaymentType == "Cash" ? "ok" : "warn")">
+                        @(s.PaymentType switch { "TOP30"=>"TOP 30","TOP45"=>"TOP 45","TOP60"=>"TOP 60","TOP90"=>"TOP 90", _=>s.PaymentType })
+                    </span>
+                    @if (s.DueDate.HasValue && s.BalanceDue > 0) {
+                        var od = s.IsOverdue;
+                        <div style="font-size:11px;color:@(od?"#dc2626":"#d97706");font-weight:600">
+                            @(od ? "⚠ OVERDUE" : "") @s.DueDate.Value.ToString("dd-MMM-yy")
+                        </div>
+                    }
+                    </td>
+                    <td>@s.GrandTotal.ToString("N0")</td>
+                    <td>@s.AmountPaid.ToString("N0")</td>
+                    <td>
+                        @if (s.BalanceDue > 0)
+                        {
+                            <span style="color:#dc2626;font-weight:700">@s.BalanceDue.ToString("N0")</span>
+                        }
+                        else
+                        {
+                            <span style="color:#9ca3af">—</span>
+                        }
+                    </td>
+                    <td><span class="badge @(s.Status == "Active" ? "ok" : "err")">@s.Status</span></td>
+                    <td><a href="/Sales/@s.Id" class="btn btn-outline btn-sm">View</a></td>
+                </tr>
+            }
+            @if (!Model.Sales.Any())
+            {
+                <tr>
+                    <td colspan="9" style="text-align:center;color:#9ca3af;padding:30px">
+                        No sales found. <a href="/Sales/Create">Create one →</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

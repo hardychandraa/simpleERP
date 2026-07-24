@@ -1,0 +1,63 @@
+@page "/Reports/Warranty"
+@model SimpleERP.Web.Pages.Reports.WarrantyModel
+@{ ViewData["Title"] = "Warranty Lookup"; }
+
+<div class="card" style="margin-bottom:14px">
+  <form method="get" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+    <div class="fg" style="margin:0;flex:1;min-width:200px">
+      <label>Search customer, product, invoice, or phone</label>
+      <input type="text" name="search" value="@Model.Search" placeholder="e.g. John Doe, Samsung, INV-202501..."/>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding-top:18px">
+      <input type="checkbox" name="activeOnly" value="true" @(Model.ActiveOnly?"checked":"") id="chkActive" style="width:16px;height:16px;margin:0"/>
+      <label for="chkActive" style="font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;margin:0">Active warranties only</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Search</button>
+    <a href="/Reports/Warranty" class="btn btn-outline">Reset</a>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-title">Warranties found: @Model.Items.Count</div>
+  <table>
+    <thead>
+      <tr><th>Invoice</th><th>Sale Date</th><th>Customer</th><th>Product</th><th style="text-align:center">Warranty</th><th>Expires</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var w in Model.Items) {
+      <tr>
+        <td style="font-weight:600">@w.InvoiceNumber</td>
+        <td style="font-size:12px">@w.SaleDate.ToLocalTime().ToString("dd-MMM-yyyy")</td>
+        <td>
+          <div style="font-weight:600">@w.CustomerName</div>
+          @if (!string.IsNullOrEmpty(w.CustomerPhone)) {
+            <div style="font-size:11px;color:#9ca3af">📞 @w.CustomerPhone</div>
+          }
+        </td>
+        <td>
+          <div>@w.ProductName</div>
+          <div style="font-size:11px;color:#9ca3af">@w.SKU</div>
+        </td>
+        <td style="text-align:center">@w.WarrantyMonths mo</td>
+        <td>@w.WarrantyExpiry.ToLocalTime().ToString("dd MMM yyyy")</td>
+        <td>
+          @if (w.IsExpired) {
+            <span class="badge err">Expired</span>
+          } else if (w.DaysRemaining <= 30) {
+            <span class="badge warn">⚠ @w.DaysRemaining days left</span>
+          } else {
+            <span class="badge ok">@w.DaysRemaining days left</span>
+          }
+        </td>
+      </tr>
+    }
+    @if (!Model.Items.Any()) {
+      <tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:28px">
+        @(string.IsNullOrEmpty(Model.Search)
+          ? "No warranty records found."
+          : $"No warranties match \"{Model.Search}\".")
+      </td></tr>
+    }
+    </tbody>
+  </table>
+</div>

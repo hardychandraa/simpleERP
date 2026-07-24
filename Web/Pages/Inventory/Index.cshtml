@@ -1,0 +1,17 @@
+@page "/Inventory"
+@model SimpleERP.Web.Pages.Inventory.IndexModel
+@{ ViewData["Title"]="Stock Levels"; }
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+  <div><strong>Total Stock Value: </strong><span style="font-size:18px;font-weight:700;color:#059669">@Model.TotalValue.ToString("N0")</span></div>
+  <div style="display:flex;gap:10px">
+    <a href="/Inventory/StockIn" class="btn btn-success">📥 Stock In</a>
+    <a href="/Inventory/Ledger" class="btn btn-outline">📒 Ledger</a>
+  </div>
+</div>
+<div class="card"><table><thead><tr><th>Product</th><th>SKU</th><th>Stock</th><th>Avg Cost</th><th>Stock Value</th></tr></thead><tbody>
+@foreach(var s in Model.Levels){
+<tr><td><strong>@s.ProductName</strong></td><td><code>@s.SKU</code></td>
+<td>@{var sc=s.CurrentStock<=0?"err":s.CurrentStock<=2?"warn":"ok";}<span class="badge @sc">@s.CurrentStock.ToString("N0")</span></td>
+<td>@s.AvgCost.ToString("N0")</td><td>@s.StockValue.ToString("N0")</td></tr>}
+@if(!Model.Levels.Any()){<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:28px">No products found.</td></tr>}
+</tbody></table></div>

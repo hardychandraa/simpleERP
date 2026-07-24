@@ -1,0 +1,104 @@
+@page "/Reports/EndOfDay"
+@model SimpleERP.Web.Pages.Reports.EndOfDayModel
+@{ ViewData["Title"] = "End of Day"; }
+
+<div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:18px" class="no-print">
+  <form method="get" style="display:flex;gap:10px;align-items:flex-end">
+    <div class="fg" style="margin:0">
+      <label>Date</label>
+      <input type="date" name="date" value="@Model.SelectedDate.ToString("yyyy-MM-dd")"/>
+    </div>
+    <button type="submit" class="btn btn-primary">View</button>
+  </form>
+  <button onclick="window.print()" class="btn btn-outline btn-sm">🖨 Print Report</button>
+</div>
+
+<div style="text-align:center;margin-bottom:16px">
+  <div style="font-size:22px;font-weight:800;color:#1a1a2e">End of Day Report</div>
+  <div style="color:#6b7280">@Model.SelectedDate.ToString("dddd, dd MMMM yyyy")</div>
+</div>
+
+<!-- Summary stats -->
+<div class="stats" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat green"><div class="stat-lbl">Total Revenue</div><div class="stat-val" style="font-size:18px">@Model.Report.TotalRevenue.ToString("N0")</div></div>
+  <div class="stat blue"><div class="stat-lbl">Cash In (Sales + Collections)</div><div class="stat-val" style="font-size:18px">@Model.Report.TotalCashIn.ToString("N0")</div></div>
+  <div class="stat red"><div class="stat-lbl">All-time Outstanding Due</div><div class="stat-val" style="font-size:18px">@Model.Report.OutstandingDueTotal.ToString("N0")</div></div>
+</div>
+<div class="stats" style="grid-template-columns:repeat(4,1fr)">
+  <div class="stat blue"><div class="stat-lbl">Total Sales</div><div class="stat-val">@Model.Report.TotalSales</div></div>
+  <div class="stat green"><div class="stat-lbl">Cash Sales</div><div class="stat-val">@Model.Report.CashSales</div></div>
+  <div class="stat orange"><div class="stat-lbl">Due Sales</div><div class="stat-val">@Model.Report.DueSales</div></div>
+  <div class="stat red"><div class="stat-lbl">Cancelled</div><div class="stat-val">@Model.Report.CancelledSales</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <!-- Revenue breakdown -->
+  <div class="card">
+    <div class="card-title">Revenue Breakdown</div>
+    <table>
+      <tbody>
+        <tr><td>Cash sales revenue</td><td style="text-align:right;font-weight:600;color:#059669">@Model.Report.CashRevenue.ToString("N0")</td></tr>
+        <tr><td>Due sales revenue (invoiced)</td><td style="text-align:right;font-weight:600;color:#d97706">@Model.Report.DueRevenue.ToString("N0")</td></tr>
+        <tr><td>Payments collected today</td><td style="text-align:right;font-weight:600;color:#2563eb">@Model.Report.PaymentsCollected.ToString("N0")</td></tr>
+        <tr style="border-top:2px solid #e5e7eb;background:#f9fafb">
+          <td style="font-weight:700">Total Cash In Hand</td>
+          <td style="text-align:right;font-weight:700;font-size:15px;color:#059669">@Model.Report.TotalCashIn.ToString("N0")</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Payments collected today -->
+  <div class="card">
+    <div class="card-title">Payments Collected Today (@Model.Report.PaymentsList.Count)</div>
+    @if (!Model.Report.PaymentsList.Any()) {
+      <p style="color:#9ca3af;font-size:13px">No payments collected today.</p>
+    } else {
+      <table>
+        <thead><tr><th>Invoice</th><th>Customer</th><th style="text-align:right">Amount</th></tr></thead>
+        <tbody>
+        @foreach (var p in Model.Report.PaymentsList) {
+          <tr>
+            <td style="font-size:12px">@p.InvoiceNumber</td>
+            <td>@p.CustomerName</td>
+            <td style="text-align:right;font-weight:600;color:#059669">@p.Amount.ToString("N0")</td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>
+
+<!-- Sales list -->
+<div class="card">
+  <div class="card-title">Sales Today (@Model.Report.TotalSales)</div>
+  @if (!Model.Report.SalesList.Any()) {
+    <p style="color:#9ca3af;font-size:13px">No sales recorded for this date.</p>
+  } else {
+    <table>
+      <thead><tr><th>Invoice</th><th>Customer</th><th>Payment</th><th style="text-align:right">Total</th><th style="text-align:right">Paid</th><th style="text-align:right">Balance</th></tr></thead>
+      <tbody>
+      @foreach (var s in Model.Report.SalesList) {
+        <tr>
+          <td><a href="/Sales/@s.Id" style="color:#2563eb;text-decoration:none;font-weight:600" class="no-print">@s.InvoiceNumber</a><span class="print-only">@s.InvoiceNumber</span></td>
+          <td>@s.CustomerName</td>
+          <td><span class="badge @(s.PaymentType=="Cash"?"ok":"warn")">@s.PaymentType</span></td>
+          <td style="text-align:right">@s.GrandTotal.ToString("N0")</td>
+          <td style="text-align:right">@s.AmountPaid.ToString("N0")</td>
+          <td style="text-align:right">
+            @if (s.BalanceDue > 0) { <span style="color:#dc2626;font-weight:700">@s.BalanceDue.ToString("N0")</span> }
+            else { <span style="color:#9ca3af">—</span> }
+          </td>
+        </tr>
+      }
+      <tr style="background:#f9fafb;font-weight:700;border-top:2px solid #e5e7eb">
+        <td colspan="3">Total</td>
+        <td style="text-align:right">@Model.Report.TotalRevenue.ToString("N0")</td>
+        <td style="text-align:right">@Model.Report.SalesList.Sum(s=>s.AmountPaid).ToString("N0")</td>
+        <td style="text-align:right;color:#dc2626">@Model.Report.SalesList.Sum(s=>s.BalanceDue).ToString("N0")</td>
+      </tr>
+      </tbody>
+    </table>
+  }
+</div>
