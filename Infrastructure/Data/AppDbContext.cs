@@ -59,6 +59,8 @@ public class AppDbContext : DbContext
             e.Property(s => s.InvoiceNumber).IsRequired().HasMaxLength(50);
             e.Property(s => s.SubTotal).HasColumnType("decimal(18,4)");
             e.Property(s => s.DiscountTotal).HasColumnType("decimal(18,4)");
+            e.Property(s => s.InvoiceDiscountAmount).HasColumnType("decimal(18,4)");
+            e.Property(s => s.InvoiceDiscountPercent).HasColumnType("decimal(18,4)");
             e.Property(s => s.TaxBase).HasColumnType("decimal(18,4)");
             e.Property(s => s.TaxRate).HasColumnType("decimal(18,4)");
             e.Property(s => s.TaxAmount).HasColumnType("decimal(18,4)");
@@ -86,6 +88,8 @@ public class AppDbContext : DbContext
             e.Property(i => i.Qty).HasColumnType("decimal(18,4)");
             e.Property(i => i.UnitPrice).HasColumnType("decimal(18,4)");
             e.Property(i => i.DiscountAmount).HasColumnType("decimal(18,4)");
+            e.Property(i => i.DiscountPercent).HasColumnType("decimal(18,4)");
+            e.Property(i => i.AllocatedInvoiceDiscount).HasColumnType("decimal(18,4)");
             e.Property(i => i.LineTotal).HasColumnType("decimal(18,4)");
             e.Property(i => i.CostAtSale).HasColumnType("decimal(18,4)");
             e.Property(i => i.Notes).HasMaxLength(500);

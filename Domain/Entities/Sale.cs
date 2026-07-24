@@ -21,7 +21,17 @@ public class Sale
     /// </summary>
     public DateTime?   DueDate       { get; set; }
     public decimal     SubTotal      { get; set; }
+    /// <summary>Sum of line-level discounts only. Invoice-level sits separately below.</summary>
     public decimal     DiscountTotal { get; set; }
+    /// <summary>
+    /// Whole-invoice discount as negotiated (e.g. "take 500,000 off the total").
+    /// Allocated pro-rata onto SaleItem.AllocatedInvoiceDiscount so that per-line
+    /// margin, commission and returns all keep working from line-level numbers —
+    /// a header-only discount would silently overstate every one of them.
+    /// </summary>
+    public decimal     InvoiceDiscountAmount  { get; set; }
+    /// <summary>Percent as entered, when given that way. Null = flat amount. Never used for arithmetic.</summary>
+    public decimal?    InvoiceDiscountPercent { get; set; }
     /// <summary>PPN taxable base (DPP) for this sale — normally SubTotal − DiscountTotal.</summary>
     public decimal     TaxBase       { get; set; }
     /// <summary>

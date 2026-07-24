@@ -111,7 +111,20 @@
         </td>
         <td style="text-align:center">@item.Qty.ToString("N0")</td>
         <td style="text-align:right">@item.UnitPrice.ToString("N0")</td>
-        <td style="text-align:right;color:#dc2626">@(item.DiscountAmount>0?$"-{item.DiscountAmount:N0}":"—")</td>
+        <td style="text-align:right;color:#dc2626">
+          @if (item.DiscountAmount > 0)
+          {
+            @($"-{item.DiscountAmount:N0}")
+            @if (item.DiscountPercent.HasValue)
+            {
+              <br /><small style="color:#9ca3af">(@item.DiscountPercent.Value.ToString("0.##")%)</small>
+            }
+          }
+          else
+          {
+            @("—")
+          }
+        </td>
         <td style="text-align:right;font-weight:600">@item.LineTotal.ToString("N0")</td>
       </tr>
     }
@@ -121,7 +134,18 @@
   <div style="max-width:240px;margin-left:auto">
     <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6"><span style="color:#6b7280">Subtotal</span><span>@Model.Sale.SubTotal.ToString("N0")</span></div>
     @if (Model.Sale.DiscountTotal > 0) {
-      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#dc2626">Discount</span><span style="color:#dc2626">-@Model.Sale.DiscountTotal.ToString("N0")</span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#dc2626">Line discount</span><span style="color:#dc2626">-@Model.Sale.DiscountTotal.ToString("N0")</span></div>
+    }
+    @if (Model.Sale.InvoiceDiscountAmount > 0) {
+      <div style="display:flex;justify-content:space-between;padding:4px 0">
+        <span style="color:#dc2626">
+          Invoice discount
+          @if (Model.Sale.InvoiceDiscountPercent.HasValue) {
+            <span style="font-size:11px;color:#9ca3af">(@Model.Sale.InvoiceDiscountPercent.Value.ToString("0.##")%)</span>
+          }
+        </span>
+        <span style="color:#dc2626">-@Model.Sale.InvoiceDiscountAmount.ToString("N0")</span>
+      </div>
     }
     @if (Model.Sale.TaxAmount > 0) {
       <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6"><span style="color:#6b7280">DPP (tax base)</span><span>@Model.Sale.TaxBase.ToString("N0")</span></div>

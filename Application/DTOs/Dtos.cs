@@ -140,6 +140,10 @@ public class CreateSaleDto {
     public PaymentType PaymentType  { get; set; }
     /// <summary>Credit term. Null = open credit with no agreed due date. Ignored for Cash.</summary>
     public Guid?       PaymentTermId { get; set; }
+    /// <summary>Flat whole-invoice discount. Ignored when InvoiceDiscountPercent is supplied.</summary>
+    public decimal     InvoiceDiscountAmount  { get; set; }
+    /// <summary>Whole-invoice discount as a percentage of the post-line-discount total (0–100).</summary>
+    public decimal?    InvoiceDiscountPercent { get; set; }
     public string?     Notes        { get; set; }
     /// <summary>True if the entered prices already include PPN; false to add PPN on top.</summary>
     public bool        IsTaxInclusive { get; set; }
@@ -149,7 +153,10 @@ public class CreateSaleItemDto {
     public Guid    ProductId      { get; set; }
     public decimal Qty            { get; set; }
     public decimal UnitPrice      { get; set; }
+    /// <summary>Flat discount per unit. Ignored when DiscountPercent is supplied.</summary>
     public decimal DiscountAmount { get; set; }
+    /// <summary>Discount as a percentage of unit price (0–100). Takes precedence over DiscountAmount.</summary>
+    public decimal? DiscountPercent{ get; set; }
     public int?    WarrantyMonths { get; set; }
     /// <summary>Free-text line-item notes (serial number, condition, etc.)</summary>
     public string? Notes          { get; set; }
@@ -168,6 +175,8 @@ public class SaleDto {
     public DateTime? DueDate       { get; set; }
     public decimal   SubTotal      { get; set; }
     public decimal   DiscountTotal { get; set; }
+    public decimal   InvoiceDiscountAmount  { get; set; }
+    public decimal?  InvoiceDiscountPercent { get; set; }
     public decimal   TaxBase       { get; set; }
     /// <summary>PPN rate as a fraction (0.10 = 10%), as applied to this sale.</summary>
     public decimal   TaxRate       { get; set; }
@@ -189,7 +198,13 @@ public class SaleItemDto {
     public decimal  Qty            { get; set; }
     public decimal  UnitPrice      { get; set; }
     public decimal  DiscountAmount { get; set; }
+    /// <summary>Percent as entered, when given that way. Null = flat amount.</summary>
+    public decimal? DiscountPercent{ get; set; }
     public decimal  LineTotal      { get; set; }
+    /// <summary>This line's share of the invoice-level discount.</summary>
+    public decimal  AllocatedInvoiceDiscount { get; set; }
+    /// <summary>LineTotal net of the allocated invoice discount — the real revenue for this line.</summary>
+    public decimal  NetLineTotal   => LineTotal - AllocatedInvoiceDiscount;
     public int?     WarrantyMonths { get; set; }
     public DateTime? WarrantyExpiry{ get; set; }
     /// <summary>Free-text notes per line item.</summary>

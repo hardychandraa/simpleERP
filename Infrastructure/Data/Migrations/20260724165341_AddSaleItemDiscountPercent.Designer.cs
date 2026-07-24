@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SimpleERP.Infrastructure.Data;
@@ -11,9 +12,11 @@ using SimpleERP.Infrastructure.Data;
 namespace SimpleERP.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724165341_AddSaleItemDiscountPercent")]
+    partial class AddSaleItemDiscountPercent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -556,12 +559,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<decimal>("GrandTotal")
                         .HasColumnType("decimal(18,4)");
 
-                    b.Property<decimal>("InvoiceDiscountAmount")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<decimal?>("InvoiceDiscountPercent")
-                        .HasColumnType("decimal(18,4)");
-
                     b.Property<string>("InvoiceNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -621,9 +618,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<decimal>("AllocatedInvoiceDiscount")
-                        .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("CostAtSale")
                         .HasColumnType("decimal(18,4)");

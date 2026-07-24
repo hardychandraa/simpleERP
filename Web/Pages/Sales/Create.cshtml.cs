@@ -14,10 +14,12 @@ public class CreateModel : PageModel
     private readonly ICustomerService    _customers;
     private readonly IProductService     _products;
     private readonly IPaymentTermService _terms;
+    private readonly IAppSettingsService _settings;
 
     public CreateModel(ISaleService sales, ICustomerService customers,
-                       IProductService products, IPaymentTermService terms)
-    { _sales=sales; _customers=customers; _products=products; _terms=terms; }
+                       IProductService products, IPaymentTermService terms,
+                       IAppSettingsService settings)
+    { _sales=sales; _customers=customers; _products=products; _terms=terms; _settings=settings; }
 
     [BindProperty] public Guid        CustomerId  { get; set; }
     [BindProperty] public PaymentType PaymentType { get; set; } = PaymentType.Cash;
@@ -28,7 +30,13 @@ public class CreateModel : PageModel
     /// <summary>Selected credit term. Empty = open credit with no agreed due date.</summary>
     [BindProperty] public Guid?       PaymentTermId  { get; set; }
 
+    /// <summary>Flat whole-invoice discount, or a percent when InvoiceDiscountIsPercent.</summary>
+    [BindProperty] public decimal InvoiceDiscountInput { get; set; }
+    [BindProperty] public bool    InvoiceDiscountIsPercent { get; set; }
+
     public List<PaymentTermDto> TermOptions { get; set; } = new();
+    /// <summary>PPN rate as a fraction, so the summary can preview tax the same way the server computes it.</summary>
+    public decimal VatRate { get; set; }
 
     public List<SelectListItem> CustomerOptions   { get; set; } = new();
     public List<ProductDto>     AvailableProducts { get; set; } = new();
@@ -62,6 +70,10 @@ public class CreateModel : PageModel
             PaymentTermId  = PaymentTermId,
             Notes          = notes,
             IsTaxInclusive = IsTaxInclusive,
+            // Only one of the two is sent; the service resolves a percent into an
+            // amount itself rather than trusting anything computed on the client.
+            InvoiceDiscountAmount  = InvoiceDiscountIsPercent ? 0m : InvoiceDiscountInput,
+            InvoiceDiscountPercent = InvoiceDiscountIsPercent ? InvoiceDiscountInput : null,
             Items          = items
         }, user);
 
@@ -77,5 +89,6 @@ public class CreateModel : PageModel
             c.Id.ToString())).ToList();
         AvailableProducts = await _products.GetAllActiveAsync();
         TermOptions = await _terms.GetAllAsync(activeOnly: true);
+        VatRate     = (await _settings.GetAsync()).VatRatePercent / 100m;
     }
 }

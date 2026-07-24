@@ -52,7 +52,7 @@
             </div>
             <div class="fg" style="margin-top:10px;display:flex;align-items:center;gap:10px">
                 <input type="checkbox" asp-for="IsTaxInclusive" id="taxInclusiveCheck"
-                       style="width:18px;height:18px;margin:0" />
+                       style="width:18px;height:18px;margin:0" onchange="render()" />
                 <label for="taxInclusiveCheck" style="margin:0;white-space:nowrap">
                     Prices already include PPN
                 </label>
@@ -76,8 +76,41 @@
                     <td style="text-align:right;font-weight:600" id="sumSub">0</td>
                 </tr>
                 <tr>
-                    <td style="padding:6px 0;color:#dc2626">Discount</td>
+                    <td style="padding:6px 0;color:#dc2626">Line discount</td>
                     <td style="text-align:right;color:#dc2626" id="sumDisc">—</td>
+                </tr>
+            </table>
+
+            <!-- Whole-invoice discount: spread across lines pro-rata on save, so
+                 per-line margin, commission and returns stay correct. -->
+            <div style="border-top:1px solid #f3f4f6;padding-top:10px;margin-top:4px">
+                <label style="font-size:12px;color:#6b7280">Invoice Discount</label>
+                <div style="display:flex;gap:4px;margin-top:4px">
+                    <input type="number" asp-for="InvoiceDiscountInput" min="0" step="0.01"
+                           placeholder="0" style="flex:1;min-width:0" oninput="render()" />
+                    <select id="invDiscMode" onchange="onInvDiscModeChange()"
+                            style="width:58px;flex:none;padding:0 2px 0 8px"
+                            title="Fixed amount off the invoice, or a percentage of the total">
+                        <option value="amt">Rp</option>
+                        <option value="pct">%</option>
+                    </select>
+                </div>
+                <input type="hidden" asp-for="InvoiceDiscountIsPercent" id="invDiscIsPct" value="false" />
+                <div id="invDiscHint" style="font-size:11px;color:#9ca3af;margin-top:4px;min-height:14px"></div>
+            </div>
+
+            <table style="font-size:14px;width:100%;margin-top:6px">
+                <tr id="rowInvDisc" style="display:none">
+                    <td style="padding:6px 0;color:#dc2626">Invoice discount</td>
+                    <td style="text-align:right;color:#dc2626" id="sumInvDisc">—</td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#6b7280;border-top:1px solid #f3f4f6">DPP <span style="font-size:11px;color:#9ca3af">(tax base)</span></td>
+                    <td style="text-align:right;font-weight:600;border-top:1px solid #f3f4f6" id="sumBase">0</td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#6b7280">PPN <span id="sumVatLabel" style="font-size:11px;color:#9ca3af"></span></td>
+                    <td style="text-align:right" id="sumTax">0</td>
                 </tr>
                 <tr style="border-top:2px solid #e5e7eb">
                     <td style="padding:10px 0;font-size:17px;font-weight:700">Grand Total</td>
@@ -98,7 +131,7 @@
         <div class="card-title">Add Items</div>
 
         <!-- Row 1: product, qty, price, discount, warranty, add button -->
-        <div style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1fr 0.8fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
+        <div style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1.35fr 0.8fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
             <div>
                 <label>Product</label>
                 <select id="inProd" onchange="onProductChange()">
@@ -123,9 +156,27 @@
                 <label>Unit Price</label>
                 <input type="number" id="inPrice" min="0" step="0.01" placeholder="0" oninput="onPriceInput()" />
             </div>
-            <div>
+            <!-- position:relative so the resolved-amount hint can sit below without
+                 adding height to this cell, which would break the row's flex-end alignment -->
+            <div style="position:relative">
                 <label>Discount</label>
-                <input type="number" id="inDisc" min="0" step="0.01" value="0" placeholder="0" />
+                <div style="display:flex;gap:4px">
+                    <input type="number" id="inDisc" min="0" step="0.01" value="0" placeholder="0"
+                           style="flex:1;min-width:0" oninput="onDiscountInput()" />
+                    <!-- Zero vertical padding: a native select is intrinsically ~2px taller
+                         than a text input, and via flex stretch it would drag the whole cell
+                         out of line with Qty/Price/Warranty. Letting the input set the height
+                         keeps the row aligned without hardcoding a pixel value. -->
+                    <select id="inDiscMode" onchange="onDiscountInput()"
+                            style="width:58px;flex:none;padding:0 2px 0 8px"
+                            title="Fixed amount per unit, or a percentage of unit price">
+                        <option value="amt">Rp</option>
+                        <option value="pct">%</option>
+                    </select>
+                </div>
+                <div id="discHint"
+                     style="position:absolute;top:100%;left:0;font-size:10px;color:#9ca3af;
+                            white-space:nowrap;pointer-events:none;line-height:1.3"></div>
             </div>
             <div>
                 <label>Warranty(mo)</label>
@@ -246,13 +297,30 @@ function onPriceInput() {
     if (!differs) document.getElementById('inPriceReason').value = '';
 }
 
+// Shows what a percentage resolves to per unit, so staff can see the real
+// number before committing the line.
+function onDiscountInput() {
+    const val   = parseFloat(document.getElementById('inDisc').value) || 0;
+    const isPct = document.getElementById('inDiscMode').value === 'pct';
+    const price = parseFloat(document.getElementById('inPrice').value) || 0;
+    const hint  = document.getElementById('discHint');
+
+    if (isPct && val > 0 && price > 0) {
+        const amt = Math.round((price * val / 100) * 100) / 100;
+        hint.textContent = '= ' + fmt(amt) + ' /unit';
+    } else {
+        hint.textContent = '';
+    }
+}
+
 function addItem() {
     hideErr('addErr');
     const selEl      = document.getElementById('inProd');
     const prodId     = selEl.value;
     const qty        = parseFloat(document.getElementById('inQty').value)   || 0;
     const price      = parseFloat(document.getElementById('inPrice').value)  || 0;
-    const disc       = parseFloat(document.getElementById('inDisc').value)   || 0;
+    const discInput  = parseFloat(document.getElementById('inDisc').value)   || 0;
+    const discIsPct  = document.getElementById('inDiscMode').value === 'pct';
     const warranty   = parseInt(document.getElementById('inWarranty').value) || 0;
     const notes      = document.getElementById('inNotes').value.trim();
     const priceReason= document.getElementById('inPriceReason').value.trim();
@@ -260,8 +328,16 @@ function addItem() {
     if (!prodId)   return showErr('addErr', 'Please select a product.');
     if (qty <= 0)  return showErr('addErr', 'Quantity must be greater than zero.');
     if (price < 0) return showErr('addErr', 'Price cannot be negative.');
-    if (disc < 0)  return showErr('addErr', 'Discount cannot be negative.');
-    if (disc >= price && price > 0) return showErr('addErr', 'Discount cannot equal or exceed price.');
+    if (discInput < 0) return showErr('addErr', 'Discount cannot be negative.');
+    if (discIsPct && discInput >= 100)
+        return showErr('addErr', 'Discount percent must be less than 100.');
+
+    // Resolve percent to a per-unit amount, mirroring the server so the preview
+    // totals match what actually gets posted. The server recomputes it regardless.
+    const discPct = discIsPct ? discInput : null;
+    const discAmt = discIsPct ? Math.round((price * discInput / 100) * 100) / 100 : discInput;
+
+    if (discAmt >= price && price > 0) return showErr('addErr', 'Discount cannot equal or exceed price.');
 
     const prod = PRODUCTS.find(p => p.id === prodId);
     if (!prod) return showErr('addErr', 'Product not found.');
@@ -280,10 +356,12 @@ function addItem() {
         productId:   prodId,
         name:        prod.name,
         masterPrice: prod.price,
-        qty, price, disc, warranty,
+        qty, price, warranty,
+        disc:        discAmt,
+        discPct:     discPct,
         notes:       notes || null,
         priceReason: differs ? priceReason : null,
-        total:       (price - disc) * qty
+        total:       (price - discAmt) * qty
     });
 
     render();
@@ -293,6 +371,8 @@ function addItem() {
     document.getElementById('inQty').value        = '1';
     document.getElementById('inPrice').value      = '';
     document.getElementById('inDisc').value       = '0';
+    document.getElementById('inDiscMode').value   = 'amt';
+    onDiscountInput();
     document.getElementById('inWarranty').value   = '0';
     document.getElementById('inNotes').value      = '';
     document.getElementById('inPriceReason').value= '';
@@ -328,7 +408,9 @@ function render() {
             <td><strong>${esc(item.name)}</strong>${overrideTag}${notesTag}</td>
             <td style="text-align:center">${item.qty}</td>
             <td style="text-align:right">${fmt(item.price)}</td>
-            <td style="text-align:right;color:#dc2626">${item.disc > 0 ? '-' + fmt(item.disc) : '—'}</td>
+            <td style="text-align:right;color:#dc2626">${item.disc > 0
+                ? '-' + fmt(item.disc) + (item.discPct ? `<br><small style="color:#9ca3af">(${item.discPct}%)</small>` : '')
+                : '—'}</td>
             <td style="text-align:right;font-weight:600">${fmt(item.total)}</td>
             <td style="text-align:center">${item.warranty > 0 ? item.warranty + ' mo' : '—'}</td>
             <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(${i})">✕</button></td>
@@ -342,16 +424,68 @@ function render() {
         qty:            i.qty,
         unitPrice:      i.price,
         discountAmount: i.disc,
+        discountPercent: i.discPct,
         warrantyMonths: i.warranty || null,
         notes:          i.notes    || null,
         priceReason:    i.priceReason || null
     })));
 }
 
+const VAT_RATE = @Model.VatRate.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+function onInvDiscModeChange() {
+    // Keep the hidden bound field in step with the visible selector.
+    const isPct = document.getElementById('invDiscMode').value === 'pct';
+    document.getElementById('invDiscIsPct').value = isPct ? 'true' : 'false';
+    render();
+}
+
+// Mirrors SaleService exactly: resolve the invoice discount, then apply PPN on the
+// remainder. Kept in step deliberately — a preview that disagrees with the posted
+// invoice is worse than no preview, and this one silently did before PPN existed.
 function syncSummary(sub, disc) {
-    document.getElementById('sumSub').textContent   = fmt(sub);
-    document.getElementById('sumDisc').textContent  = disc > 0 ? '-' + fmt(disc) : '—';
-    document.getElementById('sumTotal').textContent = fmt(sub - disc);
+    const lineNet   = sub - disc;
+    const rawInput  = parseFloat(document.getElementById('InvoiceDiscountInput').value) || 0;
+    const isPct     = document.getElementById('invDiscMode').value === 'pct';
+    const taxIncl   = document.getElementById('taxInclusiveCheck').checked;
+
+    let invDisc = isPct
+        ? Math.round((lineNet * rawInput / 100) * 100) / 100
+        : rawInput;
+    if (invDisc < 0) invDisc = 0;
+    if (invDisc > lineNet) invDisc = lineNet;   // preview only; the server rejects this outright
+
+    const netTotal = lineNet - invDisc;
+
+    let base, tax, grand;
+    if (VAT_RATE <= 0) {
+        base = netTotal; tax = 0; grand = netTotal;
+    } else if (taxIncl) {
+        grand = netTotal;
+        base  = Math.round((netTotal / (1 + VAT_RATE)) * 100) / 100;
+        tax   = netTotal - base;
+    } else {
+        base  = netTotal;
+        tax   = Math.round((netTotal * VAT_RATE) * 100) / 100;
+        grand = base + tax;
+    }
+
+    document.getElementById('sumSub').textContent  = fmt(sub);
+    document.getElementById('sumDisc').textContent = disc > 0 ? '-' + fmt(disc) : '—';
+
+    document.getElementById('rowInvDisc').style.display = invDisc > 0 ? '' : 'none';
+    document.getElementById('sumInvDisc').textContent   = invDisc > 0 ? '-' + fmt(invDisc) : '—';
+
+    const hint = document.getElementById('invDiscHint');
+    hint.textContent = (isPct && rawInput > 0 && lineNet > 0)
+        ? '= ' + fmt(invDisc) + ' off the invoice'
+        : '';
+
+    document.getElementById('sumBase').textContent = fmt(base);
+    document.getElementById('sumTax').textContent  = fmt(tax);
+    document.getElementById('sumVatLabel').textContent =
+        VAT_RATE > 0 ? '(' + (VAT_RATE * 100).toFixed(2).replace(/\.?0+$/, '') + '%' + (taxIncl ? ', included' : '') + ')' : '';
+    document.getElementById('sumTotal').textContent = fmt(grand);
 }
 
 document.getElementById('saleForm').addEventListener('submit', function(e) {

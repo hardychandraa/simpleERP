@@ -58,6 +58,18 @@ public class SaleService : ISaleService
         {
             if (item.Qty <= 0) return ServiceResult<SaleDto>.Fail("All quantities must be > 0.");
             if (item.UnitPrice < 0) return ServiceResult<SaleDto>.Fail("Price cannot be negative.");
+
+            // A percentage discount is resolved to a per-unit amount here, before any
+            // validation runs, so both entry modes go through exactly the same guards
+            // and everything downstream only ever sees an amount.
+            if (item.DiscountPercent.HasValue)
+            {
+                if (item.DiscountPercent < 0 || item.DiscountPercent >= 100)
+                    return ServiceResult<SaleDto>.Fail("Discount percent must be between 0 and 100.");
+                item.DiscountAmount = Math.Round(
+                    item.UnitPrice * item.DiscountPercent.Value / 100m, 2, MidpointRounding.AwayFromZero);
+            }
+
             if (item.DiscountAmount < 0) return ServiceResult<SaleDto>.Fail("Discount cannot be negative.");
             if (item.DiscountAmount >= item.UnitPrice && item.UnitPrice > 0)
                 return ServiceResult<SaleDto>.Fail("Discount cannot equal or exceed unit price.");
@@ -97,6 +109,7 @@ public class SaleService : ISaleService
                 Qty            = itemDto.Qty,
                 UnitPrice      = itemDto.UnitPrice,
                 DiscountAmount = itemDto.DiscountAmount,
+                DiscountPercent= itemDto.DiscountPercent,
                 LineTotal      = (itemDto.UnitPrice - itemDto.DiscountAmount) * itemDto.Qty,
                 CostAtSale     = cost,
                 WarrantyMonths = wMonths,
@@ -107,8 +120,29 @@ public class SaleService : ISaleService
             });
         }
 
-        // Net of line-level discounts, before PPN.
-        var netTotal = saleItems.Sum(i => i.LineTotal);
+        // Net of line-level discounts, before the invoice-level discount and PPN.
+        var lineNetTotal = saleItems.Sum(i => i.LineTotal);
+
+        // ── Invoice-level discount ─────────────────────────────────────────────────
+        // Resolved to an amount here (same rule as line discounts: a supplied percent
+        // wins and the amount is recomputed, so a tampered client value can't stick).
+        var invoiceDiscount = dto.InvoiceDiscountAmount;
+        if (dto.InvoiceDiscountPercent.HasValue)
+        {
+            if (dto.InvoiceDiscountPercent < 0 || dto.InvoiceDiscountPercent >= 100)
+                return ServiceResult<SaleDto>.Fail("Invoice discount percent must be between 0 and 100.");
+            invoiceDiscount = Math.Round(
+                lineNetTotal * dto.InvoiceDiscountPercent.Value / 100m, 2, MidpointRounding.AwayFromZero);
+        }
+        if (invoiceDiscount < 0)
+            return ServiceResult<SaleDto>.Fail("Invoice discount cannot be negative.");
+        if (invoiceDiscount >= lineNetTotal && lineNetTotal > 0)
+            return ServiceResult<SaleDto>.Fail(
+                $"Invoice discount ({invoiceDiscount:N0}) cannot equal or exceed the total ({lineNetTotal:N0}).");
+
+        AllocateInvoiceDiscount(saleItems, invoiceDiscount, lineNetTotal);
+
+        var netTotal = lineNetTotal - invoiceDiscount;
 
         // ── PPN ────────────────────────────────────────────────────────────────────
         // Rate is snapshotted onto the sale, so later changes to AppSettings.VatRate
@@ -182,6 +216,8 @@ public class SaleService : ISaleService
             DueDate       = dueDate,
             SubTotal      = saleItems.Sum(i => i.UnitPrice * i.Qty),
             DiscountTotal = saleItems.Sum(i => i.DiscountAmount * i.Qty),
+            InvoiceDiscountAmount  = invoiceDiscount,
+            InvoiceDiscountPercent = dto.InvoiceDiscountPercent,
             TaxBase        = taxBase,
             TaxRate        = taxRate,
             TaxAmount      = taxAmount,
@@ -358,6 +394,37 @@ public class SaleService : ISaleService
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Spreads an invoice-level discount across lines in proportion to line total, writing
+    /// each share onto SaleItem.AllocatedInvoiceDiscount.
+    ///
+    /// Each share is rounded, then the residual is given to the largest line rather than
+    /// simply the last — the shares must sum to the discount *exactly* (otherwise the
+    /// invoice doesn't reconcile), and the largest line is the one guaranteed able to
+    /// absorb the adjustment without being driven negative.
+    /// </summary>
+    private static void AllocateInvoiceDiscount(List<SaleItem> items, decimal discount, decimal lineNetTotal)
+    {
+        foreach (var i in items) i.AllocatedInvoiceDiscount = 0m;
+        if (discount <= 0m || lineNetTotal <= 0m || items.Count == 0) return;
+
+        decimal allocated = 0m;
+        foreach (var item in items)
+        {
+            var share = Math.Round(discount * item.LineTotal / lineNetTotal, 2, MidpointRounding.AwayFromZero);
+            item.AllocatedInvoiceDiscount = share;
+            allocated += share;
+        }
+
+        var residual = discount - allocated;
+        if (residual != 0m)
+        {
+            var largest = items[0];
+            foreach (var item in items) if (item.LineTotal > largest.LineTotal) largest = item;
+            largest.AllocatedInvoiceDiscount += residual;
+        }
+    }
+
     private static string? SanitiseText(string? s, int maxLen)
     {
         if (string.IsNullOrWhiteSpace(s)) return null;
@@ -376,6 +443,8 @@ public class SaleService : ISaleService
         DueDate       = s.DueDate,
         SubTotal      = s.SubTotal,
         DiscountTotal = s.DiscountTotal,
+        InvoiceDiscountAmount  = s.InvoiceDiscountAmount,
+        InvoiceDiscountPercent = s.InvoiceDiscountPercent,
         TaxBase        = s.TaxBase,
         TaxRate        = s.TaxRate,
         TaxAmount      = s.TaxAmount,
@@ -392,7 +461,9 @@ public class SaleService : ISaleService
             Qty            = i.Qty,
             UnitPrice      = i.UnitPrice,
             DiscountAmount = i.DiscountAmount,
+            DiscountPercent= i.DiscountPercent,
             LineTotal      = i.LineTotal,
+            AllocatedInvoiceDiscount = i.AllocatedInvoiceDiscount,
             WarrantyMonths = i.WarrantyMonths,
             WarrantyExpiry = i.WarrantyExpiry,
             Notes          = i.Notes,
