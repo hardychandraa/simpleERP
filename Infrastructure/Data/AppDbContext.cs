@@ -18,6 +18,8 @@ public class AppDbContext : DbContext
     public DbSet<AuditLog>        AuditLogs         => Set<AuditLog>();
     public DbSet<AppSettings>     AppSettings       => Set<AppSettings>();
     public DbSet<PaymentTerm>     PaymentTerms      => Set<PaymentTerm>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<Expense>         Expenses          => Set<Expense>();
 
     protected override void OnModelCreating(ModelBuilder m)
     {
@@ -131,6 +133,26 @@ public class AppDbContext : DbContext
             e.HasIndex(t => t.Name).IsUnique();
         });
 
+        m.Entity<ExpenseCategory>(e => {
+            e.HasKey(c => c.Id);
+            e.Property(c => c.Name).IsRequired().HasMaxLength(100);
+            e.HasIndex(c => c.Name).IsUnique();
+        });
+
+        m.Entity<Expense>(e => {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Amount).HasColumnType("decimal(18,4)");
+            e.Property(x => x.Description).HasMaxLength(500);
+            e.Property(x => x.ReferenceNo).HasMaxLength(100);
+            e.Property(x => x.CreatedBy).HasMaxLength(100);
+            // Restrict: a category used by a posted expense must not be deletable —
+            // deactivate it instead, so historical expenses stay categorised.
+            e.HasOne(x => x.Category).WithMany()
+                .HasForeignKey(x => x.ExpenseCategoryId).OnDelete(DeleteBehavior.Restrict);
+            // Drives the period-and-category rollup the P&L does.
+            e.HasIndex(x => new { x.ExpenseDate, x.ExpenseCategoryId });
+        });
+
         m.Entity<AppSettings>(e => {
             e.HasKey(a => a.Id);
             e.Property(a => a.AppName).HasMaxLength(100);
@@ -156,6 +178,22 @@ public class AppDbContext : DbContext
             new PaymentTerm { Id = new Guid("00000000-0000-0000-0000-000000000103"), Name = "TOP 45", DueDays = 45, IsActive = true, SortOrder = 3 },
             new PaymentTerm { Id = new Guid("00000000-0000-0000-0000-000000000104"), Name = "TOP 60", DueDays = 60, IsActive = true, SortOrder = 4 },
             new PaymentTerm { Id = new Guid("00000000-0000-0000-0000-000000000105"), Name = "TOP 90", DueDays = 90, IsActive = true, SortOrder = 5 });
+
+        // Seeded from the Biaya Usaha lines on the FY2025 statement, so the P&L
+        // reports against categories the accountant already uses.
+        m.Entity<ExpenseCategory>().HasData(
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-000000000201"), Name = "Gaji",              SortOrder =  1 },
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-000000000202"), Name = "Sewa Kendaraan",    SortOrder =  2 },
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-000000000203"), Name = "BBM",               SortOrder =  3 },
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-000000000204"), Name = "Service Kendaraan", SortOrder =  4 },
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-000000000205"), Name = "ATK",               SortOrder =  5 },
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-000000000206"), Name = "Listrik",           SortOrder =  6 },
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-000000000207"), Name = "Air",               SortOrder =  7 },
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-000000000208"), Name = "Telepon",           SortOrder =  8 },
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-000000000209"), Name = "Admin Bank",        SortOrder =  9 },
+            // Tax penalties are added back as a fiscal correction by the consultant.
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-00000000020a"), Name = "Bunga & Denda Pajak", SortOrder = 10, IsTaxDeductible = false },
+            new ExpenseCategory { Id = new Guid("00000000-0000-0000-0000-00000000020b"), Name = "Lain-lain",         SortOrder = 99 });
 
         m.Entity<AppSettings>().HasData(new AppSettings {
             Id = "default", AppName = "SimpleERP", StoreName = "My Store",

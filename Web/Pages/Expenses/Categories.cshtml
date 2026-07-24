@@ -1,0 +1,103 @@
+@page "/Expenses/Categories"
+@model SimpleERP.Web.Pages.Expenses.CategoriesModel
+@{ ViewData["Title"] = "Expense Categories"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div style="margin-bottom:14px">
+    <a href="/Expenses" class="btn btn-outline btn-sm">← Back to Expenses</a>
+</div>
+
+<div class="card">
+    <div class="card-title">➕ Add Category</div>
+    <form method="post" asp-page-handler="Create">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="fg" style="margin:0;flex:1;min-width:180px">
+                <label>Name *</label>
+                <input type="text" asp-for="Input.Name" required maxlength="100" placeholder="e.g. Asuransi" />
+            </div>
+            <div class="fg" style="margin:0;width:110px">
+                <label>Sort Order</label>
+                <input type="number" asp-for="Input.SortOrder" min="0" />
+            </div>
+            <div class="fg" style="margin:0;display:flex;align-items:center;gap:8px;padding-bottom:9px">
+                <input type="checkbox" asp-for="Input.IsActive" style="width:18px;height:18px;margin:0" />
+                <label style="margin:0;white-space:nowrap">Active</label>
+            </div>
+            <div class="fg" style="margin:0;display:flex;align-items:center;gap:8px;padding-bottom:9px">
+                <input type="checkbox" asp-for="Input.IsTaxDeductible" style="width:18px;height:18px;margin:0" />
+                <label style="margin:0;white-space:nowrap">Tax deductible</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-title">Categories (@Model.Categories.Count)</div>
+    <table style="width:100%">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th style="width:90px;text-align:center">Sort</th>
+                <th style="width:110px;text-align:center">Status</th>
+                <th style="width:140px;text-align:center">Deductible</th>
+                <th style="width:130px"></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var c in Model.Categories)
+        {
+            <tr>
+                <td style="font-weight:600">@c.Name</td>
+                <td style="text-align:center;color:#9ca3af">@c.SortOrder</td>
+                <td style="text-align:center">
+                    @if (c.IsActive)
+                    {
+                        <span style="color:#059669;font-weight:600;font-size:12px">Active</span>
+                    }
+                    else
+                    {
+                        <span style="color:#9ca3af;font-size:12px">Inactive</span>
+                    }
+                </td>
+                <td style="text-align:center">
+                    @if (c.IsTaxDeductible)
+                    {
+                        <span style="color:#6b7280;font-size:12px">Yes</span>
+                    }
+                    else
+                    {
+                        <span style="color:#d97706;font-weight:600;font-size:12px">No</span>
+                    }
+                </td>
+                <td style="white-space:nowrap">
+                    @if (c.InUse)
+                    {
+                        <span style="font-size:11px;color:#9ca3af">in use</span>
+                    }
+                    else
+                    {
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@c.Id"
+                              style="display:inline"
+                              onsubmit="return confirm('Delete category @c.Name?');">
+                            <button type="submit" class="btn btn-outline btn-sm"
+                                    style="color:#dc2626;border-color:#fecaca">Delete</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <p style="font-size:11px;color:#9ca3af;margin-top:12px;line-height:1.6">
+        Categories with expenses recorded against them can't be deleted.
+        <strong>Non-deductible</strong> marks categories your consultant adds back as a
+        fiscal correction (e.g. tax penalties) — SimpleERP still reports them as real
+        commercial costs, but shows the total separately on the P&amp;L so the
+        correction is visible during the year rather than at year end.
+    </p>
+</div>

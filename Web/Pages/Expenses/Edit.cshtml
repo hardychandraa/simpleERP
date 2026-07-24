@@ -1,0 +1,55 @@
+@page "/Expenses/Edit"
+@model SimpleERP.Web.Pages.Expenses.EditModel
+@{ ViewData["Title"] = "Edit Expense"; }
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" style="max-width:560px">
+    <input type="hidden" asp-for="Input.Id" />
+
+    <div class="card">
+        <div class="card-title">✏️ Edit Expense</div>
+
+        <div style="display:flex;gap:12px">
+            <div class="fg" style="flex:1">
+                <label>Date *</label>
+                <input type="date" asp-for="Input.ExpenseDate" required
+                       max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="fg" style="flex:1">
+                <label>Amount *</label>
+                <input type="number" asp-for="Input.Amount" required min="1" step="0.01" />
+            </div>
+        </div>
+
+        <div class="fg">
+            <label>Category *</label>
+            <select asp-for="Input.CategoryId" required>
+                @foreach (var c in Model.Categories)
+                {
+                    <option value="@c.Id">
+                        @c.Name@(c.IsTaxDeductible ? "" : "  (non-deductible)")
+                    </option>
+                }
+            </select>
+        </div>
+
+        <div class="fg">
+            <label>Description</label>
+            <input type="text" asp-for="Input.Description" maxlength="500" />
+        </div>
+
+        <div class="fg">
+            <label>Reference No.</label>
+            <input type="text" asp-for="Input.ReferenceNo" maxlength="100" />
+        </div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary" style="padding:10px 32px">💾 Save</button>
+        <a href="/Expenses" class="btn btn-outline">Cancel</a>
+    </div>
+</form>

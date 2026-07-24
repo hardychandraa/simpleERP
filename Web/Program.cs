@@ -28,7 +28,7 @@ builder.Services.AddControllers();
 var connectionString = builder.Configuration.GetConnectionString("SimpleERP")
     ?? throw new InvalidOperationException(
         "No 'SimpleERP' connection string configured. For local development run:\n" +
-        "  dotnet user-secrets set \"ConnectionStrings:SimpleERP\" \"Host=localhost;Database=simpleerp;Username=simpleerp;Password=...\"\n" +
+        "  dotnet user-secrets set \"ConnectionStrings:SimpleERP\" \"Host=localhost;Database=simpleerp;Username=simpleerp;Password=...\" --project Web\n" +
         "In deployment, supply it via environment configuration.");
 builder.Services.AddInfrastructure(connectionString);
 

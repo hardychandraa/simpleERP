@@ -45,6 +45,18 @@ public interface IReportService {
     Task<List<WarrantyItemDto>> GetWarrantiesAsync(string? search = null, bool activeOnly = true);
     Task<List<AuditLogDto>> GetAuditLogAsync(int count = 100);
 }
+public interface IExpenseService {
+    Task<List<ExpenseDto>> GetAllAsync(DateTime? from = null, DateTime? to = null, Guid? categoryId = null);
+    Task<ExpenseDto?> GetByIdAsync(Guid id);
+    Task<ServiceResult> CreateAsync(CreateExpenseDto dto, string user);
+    Task<ServiceResult> UpdateAsync(UpdateExpenseDto dto, string user);
+    Task<ServiceResult> DeleteAsync(Guid id, string user);
+
+    Task<List<ExpenseCategoryDto>> GetCategoriesAsync(bool activeOnly = false);
+    Task<ServiceResult> CreateCategoryAsync(ExpenseCategoryDto dto, string user);
+    Task<ServiceResult> UpdateCategoryAsync(ExpenseCategoryDto dto, string user);
+    Task<ServiceResult> DeleteCategoryAsync(Guid id, string user);
+}
 public interface IPaymentTermService {
     Task<List<PaymentTermDto>> GetAllAsync(bool activeOnly = false);
     Task<PaymentTermDto?> GetByIdAsync(Guid id);

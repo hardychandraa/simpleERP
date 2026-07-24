@@ -60,6 +60,37 @@ public record SalesPeriodTotals(
     decimal TaxCollected,
     decimal GrossSales);
 
+public interface IExpenseCategoryRepository {
+    Task<List<ExpenseCategory>> GetAllAsync(bool activeOnly = false);
+    Task<ExpenseCategory?> GetByIdAsync(Guid id);
+    Task<bool> NameExistsAsync(string name, Guid? excludeId = null);
+    Task<bool> IsInUseAsync(Guid id);
+    Task AddAsync(ExpenseCategory category);
+    void Update(ExpenseCategory category);
+    void Remove(ExpenseCategory category);
+}
+
+public interface IExpenseRepository {
+    Task<List<Expense>> GetAllAsync(DateTime? from = null, DateTime? to = null, Guid? categoryId = null);
+    Task<Expense?> GetByIdAsync(Guid id);
+    Task AddAsync(Expense expense);
+    void Update(Expense expense);
+    void Remove(Expense expense);
+    /// <summary>
+    /// Per-category totals for [from, to), aggregated in SQL. Backs the Biaya
+    /// Usaha section of the P&amp;L without materialising every expense row.
+    /// </summary>
+    Task<List<ExpenseCategoryTotal>> GetCategoryTotalsAsync(DateTime from, DateTime to);
+}
+
+/// <summary>One Biaya Usaha line on the P&amp;L.</summary>
+public record ExpenseCategoryTotal(
+    Guid    CategoryId,
+    string  CategoryName,
+    bool    IsTaxDeductible,
+    int     EntryCount,
+    decimal Amount);
+
 public interface IPaymentTermRepository {
     Task<List<PaymentTerm>> GetAllAsync(bool activeOnly = false);
     Task<PaymentTerm?> GetByIdAsync(Guid id);

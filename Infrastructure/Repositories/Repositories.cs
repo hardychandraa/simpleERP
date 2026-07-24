@@ -21,6 +21,86 @@ public class BranchRepository : IBranchRepository
     public Task<Branch?> GetByIdAsync(Guid id) => _db.Branches.FindAsync(id).AsTask();
 }
 
+public class ExpenseCategoryRepository : IExpenseCategoryRepository
+{
+    private readonly AppDbContext _db;
+    public ExpenseCategoryRepository(AppDbContext db) => _db = db;
+
+    public Task<List<ExpenseCategory>> GetAllAsync(bool activeOnly = false)
+    {
+        var q = _db.ExpenseCategories.AsQueryable();
+        if (activeOnly) q = q.Where(c => c.IsActive);
+        return q.OrderBy(c => c.SortOrder).ThenBy(c => c.Name).ToListAsync();
+    }
+
+    public Task<ExpenseCategory?> GetByIdAsync(Guid id) => _db.ExpenseCategories.FindAsync(id).AsTask();
+
+    public Task<bool> NameExistsAsync(string name, Guid? excludeId = null) =>
+        _db.ExpenseCategories.AnyAsync(c => c.Name.ToLower() == name.ToLower()
+                                         && (excludeId == null || c.Id != excludeId));
+
+    public Task<bool> IsInUseAsync(Guid id) => _db.Expenses.AnyAsync(e => e.ExpenseCategoryId == id);
+
+    public async Task AddAsync(ExpenseCategory c) => await _db.ExpenseCategories.AddAsync(c);
+    public void Update(ExpenseCategory c) => _db.ExpenseCategories.Update(c);
+    public void Remove(ExpenseCategory c) => _db.ExpenseCategories.Remove(c);
+}
+
+public class ExpenseRepository : IExpenseRepository
+{
+    private readonly AppDbContext _db;
+    public ExpenseRepository(AppDbContext db) => _db = db;
+
+    public Task<List<Expense>> GetAllAsync(DateTime? from = null, DateTime? to = null, Guid? categoryId = null)
+    {
+        var q = _db.Expenses.Include(e => e.Category).AsQueryable();
+        if (from.HasValue)       q = q.Where(e => e.ExpenseDate >= from.Value);
+        if (to.HasValue)         q = q.Where(e => e.ExpenseDate <  to.Value);
+        if (categoryId.HasValue) q = q.Where(e => e.ExpenseCategoryId == categoryId.Value);
+        return q.OrderByDescending(e => e.ExpenseDate).ThenByDescending(e => e.CreatedAt).ToListAsync();
+    }
+
+    public Task<Expense?> GetByIdAsync(Guid id) =>
+        _db.Expenses.Include(e => e.Category).FirstOrDefaultAsync(e => e.Id == id);
+
+    public async Task AddAsync(Expense e) => await _db.Expenses.AddAsync(e);
+    public void Update(Expense e) => _db.Expenses.Update(e);
+    public void Remove(Expense e) => _db.Expenses.Remove(e);
+
+    public async Task<List<ExpenseCategoryTotal>> GetCategoryTotalsAsync(DateTime from, DateTime to)
+    {
+        // Grouped by the FK alone. Grouping by the joined category columns and
+        // projecting straight into the record is not translatable — EF can't turn a
+        // custom constructor over a joined GroupBy key into SQL, and silently
+        // falls back to throwing rather than evaluating client-side.
+        var rows = await _db.Expenses
+            .Where(e => e.ExpenseDate >= from && e.ExpenseDate < to)
+            .GroupBy(e => e.ExpenseCategoryId)
+            .Select(g => new {
+                CategoryId = g.Key,
+                Count      = g.Count(),
+                Amount     = g.Sum(e => e.Amount)
+            })
+            .ToListAsync();
+
+        if (rows.Count == 0) return new List<ExpenseCategoryTotal>();
+
+        // One extra round-trip to resolve names — still set-based, not per-row.
+        var ids  = rows.Select(r => r.CategoryId).ToList();
+        var cats = await _db.ExpenseCategories
+            .Where(c => ids.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id);
+
+        return rows
+            .Where(r => cats.ContainsKey(r.CategoryId))
+            .Select(r => new ExpenseCategoryTotal(
+                r.CategoryId, cats[r.CategoryId].Name,
+                cats[r.CategoryId].IsTaxDeductible, r.Count, r.Amount))
+            .OrderBy(t => cats[t.CategoryId].SortOrder).ThenBy(t => t.CategoryName)
+            .ToList();
+    }
+}
+
 public class PaymentTermRepository : IPaymentTermRepository
 {
     private readonly AppDbContext _db;

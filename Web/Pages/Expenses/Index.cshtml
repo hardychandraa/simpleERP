@@ -1,0 +1,95 @@
+@page "/Expenses"
+@model SimpleERP.Web.Pages.Expenses.IndexModel
+@{ ViewData["Title"] = "Expenses"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+    <form method="get" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="margin:0">
+            <label>From</label>
+            <input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")"/>
+        </div>
+        <div class="fg" style="margin:0">
+            <label>To</label>
+            <input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")"/>
+        </div>
+        <div class="fg" style="margin:0;min-width:170px">
+            <label>Category</label>
+            <select name="categoryId">
+                <option value="">All categories</option>
+                @foreach (var c in Model.Categories)
+                {
+                    <option value="@c.Id" selected="@(Model.CategoryId == c.Id)">@c.Name</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+    <a href="/Expenses/Create" class="btn btn-primary">➕ Record Expense</a>
+    <a href="/Expenses/Categories" class="btn btn-outline btn-sm">Manage Categories</a>
+</div>
+
+<div class="stats" style="grid-template-columns:repeat(2,1fr)">
+    <div class="stat red">
+        <div class="stat-lbl">Total for period</div>
+        <div class="stat-val" style="font-size:18px">@Model.Total.ToString("N0")</div>
+    </div>
+    <div class="stat blue">
+        <div class="stat-lbl">Entries</div>
+        <div class="stat-val">@Model.Expenses.Count</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">
+        Expenses — @Model.From.ToString("dd MMM yyyy") to @Model.To.ToString("dd MMM yyyy")
+    </div>
+    @if (Model.Expenses.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">
+            No expenses recorded in this period.
+        </p>
+    }
+    else
+    {
+        <table style="width:100%">
+            <thead>
+                <tr>
+                    <th style="width:110px">Date</th>
+                    <th style="width:170px">Category</th>
+                    <th>Description</th>
+                    <th style="width:120px">Reference</th>
+                    <th style="width:130px;text-align:right">Amount</th>
+                    <th style="width:150px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var e in Model.Expenses)
+            {
+                <tr>
+                    <td>@e.ExpenseDate.ToString("dd MMM yyyy")</td>
+                    <td style="font-weight:600">@e.CategoryName</td>
+                    <td style="color:#6b7280">@(string.IsNullOrWhiteSpace(e.Description) ? "—" : e.Description)</td>
+                    <td style="color:#9ca3af;font-size:12px">@(string.IsNullOrWhiteSpace(e.ReferenceNo) ? "—" : e.ReferenceNo)</td>
+                    <td style="text-align:right;font-weight:600">@e.Amount.ToString("N0")</td>
+                    <td style="white-space:nowrap">
+                        <a href="/Expenses/Edit?id=@e.Id" class="btn btn-outline btn-sm">Edit</a>
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@e.Id"
+                              asp-route-from="@Model.From.ToString("yyyy-MM-dd")"
+                              asp-route-to="@Model.To.ToString("yyyy-MM-dd")"
+                              style="display:inline"
+                              onsubmit="return confirm('Delete this @e.CategoryName expense of @e.Amount.ToString("N0")?');">
+                            <button type="submit" class="btn btn-outline btn-sm"
+                                    style="color:#dc2626;border-color:#fecaca">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>

@@ -93,6 +93,36 @@ public class StockLevelDto {
     public bool    IsOut             => CurrentStock <= 0;
 }
 
+// ── Expenses ──────────────────────────────────────────────────────────────────
+public class ExpenseCategoryDto {
+    public Guid   Id              { get; set; }
+    public string Name            { get; set; } = "";
+    public bool   IsActive        { get; set; } = true;
+    public bool   IsTaxDeductible { get; set; } = true;
+    public int    SortOrder       { get; set; }
+    public bool   InUse           { get; set; }
+}
+public class ExpenseDto {
+    public Guid     Id           { get; set; }
+    public DateTime ExpenseDate  { get; set; }
+    public Guid     CategoryId   { get; set; }
+    public string   CategoryName { get; set; } = "";
+    public decimal  Amount       { get; set; }
+    public string?  Description  { get; set; }
+    public string?  ReferenceNo  { get; set; }
+    public string   CreatedBy    { get; set; } = "";
+}
+public class CreateExpenseDto {
+    public DateTime ExpenseDate { get; set; }
+    public Guid     CategoryId  { get; set; }
+    public decimal  Amount      { get; set; }
+    public string?  Description { get; set; }
+    public string?  ReferenceNo { get; set; }
+}
+public class UpdateExpenseDto : CreateExpenseDto {
+    public Guid Id { get; set; }
+}
+
 // ── Payment terms ─────────────────────────────────────────────────────────────
 public class PaymentTermDto {
     public Guid   Id        { get; set; }
@@ -268,6 +298,17 @@ public class ProfitAndLossDto {
     public decimal  GrossProfit   => Revenue - Cogs;
     public decimal  GrossMarginPct=> Revenue == 0 ? 0 : GrossProfit / Revenue * 100m;
 
+    /// <summary>Biaya Usaha, broken down by category.</summary>
+    public List<ProfitAndLossExpenseLineDto> ExpenseLines { get; set; } = new();
+    public decimal  OperatingExpenses => ExpenseLines.Sum(l => l.Amount);
+    /// <summary>Laba Usaha — gross profit less operating expenses.</summary>
+    public decimal  OperatingProfit   => GrossProfit - OperatingExpenses;
+    /// <summary>
+    /// Expenses in categories the consultant adds back as a fiscal correction.
+    /// Memo only — SimpleERP reports commercial profit, not fiscal profit.
+    /// </summary>
+    public decimal  NonDeductibleExpenses => ExpenseLines.Where(l => !l.IsTaxDeductible).Sum(l => l.Amount);
+
     /// <summary>PPN collected. A memo line: a liability owed on, not income.</summary>
     public decimal  TaxCollected  { get; set; }
     /// <summary>Tax-inclusive invoiced total, for tying back to cash and AR.</summary>
@@ -277,6 +318,12 @@ public class ProfitAndLossDto {
     /// in the report rather than silently omitted.</summary>
     public List<string> PendingSections { get; set; } = new();
     public bool     IsComplete    => PendingSections.Count == 0;
+}
+public class ProfitAndLossExpenseLineDto {
+    public string  CategoryName    { get; set; } = "";
+    public bool    IsTaxDeductible { get; set; } = true;
+    public int     EntryCount      { get; set; }
+    public decimal Amount          { get; set; }
 }
 
 // ── Audit ─────────────────────────────────────────────────────────────────────
