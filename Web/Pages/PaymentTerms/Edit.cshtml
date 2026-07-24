@@ -1,0 +1,58 @@
+@page "/PaymentTerms/Edit"
+@model SimpleERP.Web.Pages.PaymentTerms.EditModel
+@{ ViewData["Title"] = "Edit Payment Term"; }
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" style="max-width:520px">
+    <input type="hidden" asp-for="Input.Id" />
+
+    <div class="card">
+        <div class="card-title">✏️ Edit Payment Term</div>
+
+        <div class="fg">
+            <label>Name *</label>
+            <input type="text" asp-for="Input.Name" required maxlength="50" />
+        </div>
+
+        <div style="display:flex;gap:12px">
+            <div class="fg" style="flex:1">
+                <label>Due Days *</label>
+                <input type="number" asp-for="Input.DueDays" required min="0" max="365" />
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                    0 = due same day (COD).
+                </div>
+            </div>
+            <div class="fg" style="flex:1">
+                <label>Sort Order</label>
+                <input type="number" asp-for="Input.SortOrder" min="0" />
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                    Controls dropdown position.
+                </div>
+            </div>
+        </div>
+
+        <div class="fg" style="display:flex;align-items:center;gap:10px">
+            <input type="checkbox" asp-for="Input.IsActive" style="width:18px;height:18px;margin:0" />
+            <label style="margin:0">Active — available when creating new sales</label>
+        </div>
+
+        @if (Model.InUse)
+        {
+            <div class="alert alert-warning" style="font-size:12px;line-height:1.6;margin-top:6px">
+                This term is used by existing sales. Changing the due days affects
+                <strong>future sales only</strong> — each invoice stores its own due date
+                at the time it was created, so posted invoices are unaffected.
+                It cannot be deleted; untick Active to retire it.
+            </div>
+        }
+    </div>
+
+    <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary" style="padding:10px 32px">💾 Save</button>
+        <a href="/PaymentTerms" class="btn btn-outline">Cancel</a>
+    </div>
+</form>

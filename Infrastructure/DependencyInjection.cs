@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IStockAdjustmentRepository,  StockAdjustmentRepository>();
         services.AddScoped<IAuditLogRepository,         AuditLogRepository>();
         services.AddScoped<IAppSettingsRepository,      AppSettingsRepository>();
+        services.AddScoped<IPaymentTermRepository,      PaymentTermRepository>();
         services.AddScoped<IUnitOfWork,                 UnitOfWork>();
 
         // Services
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<ISaleService,        SaleService>();
         services.AddScoped<IReportService,      ReportService>();
         services.AddScoped<IFinancialReportService, FinancialReportService>();
+        services.AddScoped<IPaymentTermService,  PaymentTermService>();
         services.AddScoped<IAppSettingsService, AppSettingsService>();
         services.AddScoped<SimpleERP.Application.Services.AuditService>();
         services.AddScoped<IAuditService>(

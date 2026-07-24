@@ -10,12 +10,14 @@ namespace SimpleERP.Web.Pages.Sales;
 
 public class CreateModel : PageModel
 {
-    private readonly ISaleService     _sales;
-    private readonly ICustomerService _customers;
-    private readonly IProductService  _products;
+    private readonly ISaleService        _sales;
+    private readonly ICustomerService    _customers;
+    private readonly IProductService     _products;
+    private readonly IPaymentTermService _terms;
 
-    public CreateModel(ISaleService sales, ICustomerService customers, IProductService products)
-    { _sales=sales; _customers=customers; _products=products; }
+    public CreateModel(ISaleService sales, ICustomerService customers,
+                       IProductService products, IPaymentTermService terms)
+    { _sales=sales; _customers=customers; _products=products; _terms=terms; }
 
     [BindProperty] public Guid        CustomerId  { get; set; }
     [BindProperty] public PaymentType PaymentType { get; set; } = PaymentType.Cash;
@@ -23,6 +25,10 @@ public class CreateModel : PageModel
     [BindProperty] public string      ItemsJson   { get; set; } = "[]";
     /// <summary>True if the entered prices already include PPN. Default: PPN added on top.</summary>
     [BindProperty] public bool        IsTaxInclusive { get; set; }
+    /// <summary>Selected credit term. Empty = open credit with no agreed due date.</summary>
+    [BindProperty] public Guid?       PaymentTermId  { get; set; }
+
+    public List<PaymentTermDto> TermOptions { get; set; } = new();
 
     public List<SelectListItem> CustomerOptions   { get; set; } = new();
     public List<ProductDto>     AvailableProducts { get; set; } = new();
@@ -53,6 +59,7 @@ public class CreateModel : PageModel
         var result = await _sales.CreateAsync(new CreateSaleDto {
             CustomerId     = CustomerId,
             PaymentType    = PaymentType,
+            PaymentTermId  = PaymentTermId,
             Notes          = notes,
             IsTaxInclusive = IsTaxInclusive,
             Items          = items
@@ -69,5 +76,6 @@ public class CreateModel : PageModel
             $"{c.Name}{(string.IsNullOrEmpty(c.Phone) ? "" : $"  ({c.Phone})")}",
             c.Id.ToString())).ToList();
         AvailableProducts = await _products.GetAllActiveAsync();
+        TermOptions = await _terms.GetAllAsync(activeOnly: true);
     }
 }

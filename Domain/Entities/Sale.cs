@@ -11,8 +11,13 @@ public class Sale
     public Guid        BranchId      { get; set; }
     public PaymentType PaymentType   { get; set; }
     /// <summary>
-    /// Populated only for TOP30/45/60/90 terms. Null for Cash/Due.
-    /// Formula: SaleDate + X days where X is the term number.
+    /// Credit term for this sale. Null for Cash, and for legacy rows that used the
+    /// PaymentType.TOP30–TOP90 enum members before terms became master data.
+    /// </summary>
+    public Guid?       PaymentTermId { get; set; }
+    /// <summary>
+    /// When payment falls due. Null for Cash, and for open credit with no agreed term.
+    /// Formula: SaleDate + PaymentTerm.DueDays (legacy rows: SaleDate + the enum's days).
     /// </summary>
     public DateTime?   DueDate       { get; set; }
     public decimal     SubTotal      { get; set; }
@@ -39,6 +44,7 @@ public class Sale
 
     public Customer?                  Customer       { get; set; }
     public Branch?                    Branch         { get; set; }
+    public PaymentTerm?               PaymentTerm    { get; set; }
     public ICollection<SaleItem>      SaleItems      { get; set; } = new List<SaleItem>();
     public ICollection<PaymentRecord> PaymentRecords { get; set; } = new List<PaymentRecord>();
 }

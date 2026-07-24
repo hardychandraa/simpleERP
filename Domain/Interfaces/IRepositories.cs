@@ -60,6 +60,17 @@ public record SalesPeriodTotals(
     decimal TaxCollected,
     decimal GrossSales);
 
+public interface IPaymentTermRepository {
+    Task<List<PaymentTerm>> GetAllAsync(bool activeOnly = false);
+    Task<PaymentTerm?> GetByIdAsync(Guid id);
+    Task<bool> NameExistsAsync(string name, Guid? excludeId = null);
+    /// <summary>True if any posted sale references this term — blocks deletion.</summary>
+    Task<bool> IsInUseAsync(Guid id);
+    Task AddAsync(PaymentTerm term);
+    void Update(PaymentTerm term);
+    void Remove(PaymentTerm term);
+}
+
 public interface IPaymentRecordRepository {
     Task AddAsync(PaymentRecord record);
     Task<List<PaymentRecord>> GetBySaleAsync(Guid saleId);

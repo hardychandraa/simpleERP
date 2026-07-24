@@ -31,6 +31,21 @@
                     <option value="6">TOP 90 days</option>
                 </select>
             </div>
+            <div class="fg" id="paymentTermRow" style="display:none">
+                <label>Credit Term</label>
+                <select asp-for="PaymentTermId" id="paymentTermSelect" onchange="updateDueDatePreview()">
+                    <option value="">— open credit (no fixed due date) —</option>
+                    @foreach (var t in Model.TermOptions)
+                    {
+                        <option value="@t.Id" data-days="@t.DueDays">
+                            @t.Name (@(t.DueDays == 0 ? "same day" : $"{t.DueDays} days"))
+                        </option>
+                    }
+                </select>
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                    Manage these under <a href="/PaymentTerms">Payment Terms</a>.
+                </div>
+            </div>
             <div id="dueDatePreview" style="display:none;margin-top:6px">
                 <span style="font-size:13px;color:#6b7280">Estimated due date: </span>
                 <span id="dueDateText" style="font-weight:600;color:#d97706"></span>
@@ -178,10 +193,29 @@ let items = [];  // { productId, name, masterPrice, qty, price, disc, warranty, 
 const TOP_DAYS = { '3': 30, '4': 45, '5': 60, '6': 90 };
 
 function onPaymentTypeChange() {
-    const val = document.getElementById('paymentTypeSelect').value;
-    const days = TOP_DAYS[val];
+    const val    = document.getElementById('paymentTypeSelect').value;
+    const isCash = val === '1';
+
+    // Credit term only applies to non-cash sales.
+    const termRow = document.getElementById('paymentTermRow');
+    termRow.style.display = isCash ? 'none' : 'block';
+    if (isCash) document.getElementById('paymentTermSelect').value = '';
+
+    updateDueDatePreview();
+}
+
+// Due date comes from the selected PaymentTerm; the legacy TOP_DAYS map is only
+// a fallback for the TOP* payment types, which new sales no longer need.
+function updateDueDatePreview() {
+    const typeVal  = document.getElementById('paymentTypeSelect').value;
+    const termSel  = document.getElementById('paymentTermSelect');
+    const termOpt  = termSel.options[termSel.selectedIndex];
+    const termDays = termOpt && termOpt.value ? parseInt(termOpt.dataset.days, 10) : null;
+
+    const days  = (termDays !== null && !isNaN(termDays)) ? termDays : TOP_DAYS[typeVal];
     const block = document.getElementById('dueDatePreview');
-    if (days) {
+
+    if (typeVal !== '1' && days !== undefined && days !== null) {
         const d = new Date();
         d.setDate(d.getDate() + days);
         document.getElementById('dueDateText').textContent = d.toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'});

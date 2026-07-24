@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<StockAdjustment> StockAdjustments  => Set<StockAdjustment>();
     public DbSet<AuditLog>        AuditLogs         => Set<AuditLog>();
     public DbSet<AppSettings>     AppSettings       => Set<AppSettings>();
+    public DbSet<PaymentTerm>     PaymentTerms      => Set<PaymentTerm>();
 
     protected override void OnModelCreating(ModelBuilder m)
     {
@@ -63,12 +64,16 @@ public class AppDbContext : DbContext
             e.Property(s => s.AmountPaid).HasColumnType("decimal(18,4)");
             e.Property(s => s.CreatedBy).HasMaxLength(100);
             e.Property(s => s.Notes).HasMaxLength(500);
-            // DueDate: populated for TOP30/45/60/90 terms; null for Cash/Due
+            // DueDate: from PaymentTerm.DueDays; null for Cash and open credit
             e.Property(s => s.DueDate).IsRequired(false);
             e.HasOne(s => s.Customer).WithMany(c => c.Sales)
                 .HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Branch).WithMany()
                 .HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);
+            // Restrict: a term that has been used on a posted sale must not be
+            // deletable — deactivate it instead, so history stays readable.
+            e.HasOne(s => s.PaymentTerm).WithMany()
+                .HasForeignKey(s => s.PaymentTermId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(s => s.InvoiceNumber).IsUnique();
             e.HasIndex(s => s.SaleDate);
             e.HasIndex(s => s.DueDate);  // for aging queries
@@ -120,6 +125,12 @@ public class AppDbContext : DbContext
             e.HasIndex(l => l.Timestamp);
         });
 
+        m.Entity<PaymentTerm>(e => {
+            e.HasKey(t => t.Id);
+            e.Property(t => t.Name).IsRequired().HasMaxLength(50);
+            e.HasIndex(t => t.Name).IsUnique();
+        });
+
         m.Entity<AppSettings>(e => {
             e.HasKey(a => a.Id);
             e.Property(a => a.AppName).HasMaxLength(100);
@@ -137,6 +148,15 @@ public class AppDbContext : DbContext
             Name = "Main Branch", IsDefault = true,
             CreatedAt = new DateTime(2024,1,1,0,0,0,DateTimeKind.Utc)
         });
+        // Seeded to mirror the existing PaymentType.TOP* options so the switch to
+        // master data is invisible to staff, plus COD which the enum never had.
+        m.Entity<PaymentTerm>().HasData(
+            new PaymentTerm { Id = new Guid("00000000-0000-0000-0000-000000000101"), Name = "COD",    DueDays =  0, IsActive = true, SortOrder = 1 },
+            new PaymentTerm { Id = new Guid("00000000-0000-0000-0000-000000000102"), Name = "TOP 30", DueDays = 30, IsActive = true, SortOrder = 2 },
+            new PaymentTerm { Id = new Guid("00000000-0000-0000-0000-000000000103"), Name = "TOP 45", DueDays = 45, IsActive = true, SortOrder = 3 },
+            new PaymentTerm { Id = new Guid("00000000-0000-0000-0000-000000000104"), Name = "TOP 60", DueDays = 60, IsActive = true, SortOrder = 4 },
+            new PaymentTerm { Id = new Guid("00000000-0000-0000-0000-000000000105"), Name = "TOP 90", DueDays = 90, IsActive = true, SortOrder = 5 });
+
         m.Entity<AppSettings>().HasData(new AppSettings {
             Id = "default", AppName = "SimpleERP", StoreName = "My Store",
             StoreAddress = "", StorePhone = "",

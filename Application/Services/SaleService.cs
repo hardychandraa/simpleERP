@@ -15,16 +15,22 @@ public class SaleService : ISaleService
     private readonly IAuditLogRepository        _audit;
     private readonly InventoryService           _inventory;
     private readonly IAppSettingsRepository     _settings;
+    private readonly IPaymentTermRepository     _terms;
     private readonly IUnitOfWork                _uow;
 
     public SaleService(ISaleRepository sales, IProductRepository products,
         IBranchRepository branches, IPaymentRecordRepository payments,
         IAuditLogRepository audit, InventoryService inventory,
-        IAppSettingsRepository settings, IUnitOfWork uow)
+        IAppSettingsRepository settings, IPaymentTermRepository terms, IUnitOfWork uow)
     { _sales=sales; _products=products; _branches=branches; _payments=payments;
-      _audit=audit; _inventory=inventory; _settings=settings; _uow=uow; }
+      _audit=audit; _inventory=inventory; _settings=settings; _terms=terms; _uow=uow; }
 
-    /// <summary>Returns the credit days for TOP payment types, or null for Cash/Due.</summary>
+    /// <summary>
+    /// Credit days for the legacy TOP payment types, or null for Cash/Due.
+    /// Retained only to interpret sales posted before terms became master data —
+    /// new sales carry a PaymentTermId instead. Do not extend this switch; add a
+    /// PaymentTerm row instead.
+    /// </summary>
     private static int? GetTopDays(PaymentType pt) => pt switch {
         PaymentType.TOP30 => 30,
         PaymentType.TOP45 => 45,
@@ -131,10 +137,33 @@ public class SaleService : ISaleService
             grandTotal = taxBase + taxAmount;
         }
 
-        var topDays    = GetTopDays(dto.PaymentType);
-        var dueDate    = topDays.HasValue
-                            ? DateTime.UtcNow.Date.AddDays(topDays.Value)
-                            : (DateTime?)null;
+        // ── Credit term ────────────────────────────────────────────────────────────
+        // Due date comes from the selected PaymentTerm. The legacy GetTopDays switch
+        // is only a fallback for the TOP* enum members, which new sales no longer use.
+        Guid?     termId  = null;
+        DateTime? dueDate = null;
+
+        if (dto.PaymentType != PaymentType.Cash)
+        {
+            if (dto.PaymentTermId.HasValue)
+            {
+                var term = await _terms.GetByIdAsync(dto.PaymentTermId.Value);
+                if (term == null)
+                    return ServiceResult<SaleDto>.Fail("Selected payment term not found.");
+                if (!term.IsActive)
+                    return ServiceResult<SaleDto>.Fail($"Payment term '{term.Name}' is no longer active.");
+
+                termId  = term.Id;
+                dueDate = DateTime.UtcNow.Date.AddDays(term.DueDays);
+            }
+            else
+            {
+                // No term chosen: open credit. Fall back to the legacy enum days so
+                // an existing TOP* selection still produces the same due date.
+                var topDays = GetTopDays(dto.PaymentType);
+                if (topDays.HasValue) dueDate = DateTime.UtcNow.Date.AddDays(topDays.Value);
+            }
+        }
 
         // Build audit detail — note any price overrides
         var overrides = saleItems
@@ -149,6 +178,7 @@ public class SaleService : ISaleService
             CustomerId    = dto.CustomerId,
             BranchId      = branch.Id,
             PaymentType   = dto.PaymentType,
+            PaymentTermId = termId,
             DueDate       = dueDate,
             SubTotal      = saleItems.Sum(i => i.UnitPrice * i.Qty),
             DiscountTotal = saleItems.Sum(i => i.DiscountAmount * i.Qty),
@@ -342,6 +372,7 @@ public class SaleService : ISaleService
         CustomerName  = s.Customer?.Name  ?? "",
         CustomerPhone = s.Customer?.Phone,
         PaymentType   = s.PaymentType.ToString(),
+        PaymentTermName = s.PaymentTerm?.Name ?? "",
         DueDate       = s.DueDate,
         SubTotal      = s.SubTotal,
         DiscountTotal = s.DiscountTotal,

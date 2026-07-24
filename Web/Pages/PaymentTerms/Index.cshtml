@@ -1,0 +1,100 @@
+@page "/PaymentTerms"
+@model SimpleERP.Web.Pages.PaymentTerms.IndexModel
+@{ ViewData["Title"] = "Payment Terms"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div class="card">
+    <div class="card-title">➕ Add Payment Term</div>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:14px;line-height:1.6">
+        Credit terms available when creating a sale. Due date is calculated as
+        sale date + due days and stored on the invoice — so editing a term here
+        never changes invoices that are already posted.
+    </p>
+    <form method="post" asp-page-handler="Create">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="fg" style="margin:0;flex:1;min-width:150px">
+                <label>Name *</label>
+                <input type="text" asp-for="Input.Name" required maxlength="50" placeholder="e.g. TOP 14" />
+            </div>
+            <div class="fg" style="margin:0;width:120px">
+                <label>Due Days *</label>
+                <input type="number" asp-for="Input.DueDays" required min="0" max="365" />
+            </div>
+            <div class="fg" style="margin:0;width:110px">
+                <label>Sort Order</label>
+                <input type="number" asp-for="Input.SortOrder" min="0" />
+            </div>
+            <div class="fg" style="margin:0;display:flex;align-items:center;gap:8px;padding-bottom:9px">
+                <input type="checkbox" asp-for="Input.IsActive" style="width:18px;height:18px;margin:0" />
+                <label style="margin:0;white-space:nowrap">Active</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-title">Payment Terms (@Model.Terms.Count)</div>
+    @if (Model.Terms.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">No payment terms yet. Add one above.</p>
+    }
+    else
+    {
+        <table style="width:100%">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th style="width:110px;text-align:right">Due Days</th>
+                    <th style="width:90px;text-align:center">Sort</th>
+                    <th style="width:110px;text-align:center">Status</th>
+                    <th style="width:150px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var t in Model.Terms)
+            {
+                <tr>
+                    <td style="font-weight:600">@t.Name</td>
+                    <td style="text-align:right">@(t.DueDays == 0 ? "same day" : $"{t.DueDays} days")</td>
+                    <td style="text-align:center;color:#9ca3af">@t.SortOrder</td>
+                    <td style="text-align:center">
+                        @if (t.IsActive)
+                        {
+                            <span style="color:#059669;font-weight:600;font-size:12px">Active</span>
+                        }
+                        else
+                        {
+                            <span style="color:#9ca3af;font-size:12px">Inactive</span>
+                        }
+                    </td>
+                    <td style="white-space:nowrap">
+                        <a href="/PaymentTerms/Edit?id=@t.Id" class="btn btn-outline btn-sm">Edit</a>
+                        @if (t.InUse)
+                        {
+                            <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="Used by existing sales">in use</span>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@t.Id"
+                                  style="display:inline"
+                                  onsubmit="return confirm('Delete payment term @t.Name?');">
+                                <button type="submit" class="btn btn-outline btn-sm"
+                                        style="color:#dc2626;border-color:#fecaca">Delete</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p style="font-size:11px;color:#9ca3af;margin-top:12px;line-height:1.6">
+            Terms already used by a sale can't be deleted — set them inactive instead,
+            so they stop appearing on new sales while existing invoices still show them.
+        </p>
+    }
+</div>

@@ -21,6 +21,32 @@ public class BranchRepository : IBranchRepository
     public Task<Branch?> GetByIdAsync(Guid id) => _db.Branches.FindAsync(id).AsTask();
 }
 
+public class PaymentTermRepository : IPaymentTermRepository
+{
+    private readonly AppDbContext _db;
+    public PaymentTermRepository(AppDbContext db) => _db = db;
+
+    public Task<List<PaymentTerm>> GetAllAsync(bool activeOnly = false)
+    {
+        var q = _db.PaymentTerms.AsQueryable();
+        if (activeOnly) q = q.Where(t => t.IsActive);
+        return q.OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToListAsync();
+    }
+
+    public Task<PaymentTerm?> GetByIdAsync(Guid id) => _db.PaymentTerms.FindAsync(id).AsTask();
+
+    public Task<bool> NameExistsAsync(string name, Guid? excludeId = null) =>
+        _db.PaymentTerms.AnyAsync(t => t.Name.ToLower() == name.ToLower()
+                                    && (excludeId == null || t.Id != excludeId));
+
+    public Task<bool> IsInUseAsync(Guid id) =>
+        _db.Sales.AnyAsync(s => s.PaymentTermId == id);
+
+    public async Task AddAsync(PaymentTerm term) => await _db.PaymentTerms.AddAsync(term);
+    public void Update(PaymentTerm term) => _db.PaymentTerms.Update(term);
+    public void Remove(PaymentTerm term) => _db.PaymentTerms.Remove(term);
+}
+
 public class ProductRepository : IProductRepository
 {
     private readonly AppDbContext _db;
@@ -83,6 +109,7 @@ public class SaleRepository : ISaleRepository
         _db.Sales
            .Include(s => s.Customer)
            .Include(s => s.Branch)
+           .Include(s => s.PaymentTerm)
            .Include(s => s.SaleItems).ThenInclude(i => i.Product)
            .Include(s => s.PaymentRecords)
            .FirstOrDefaultAsync(s => s.Id == id);

@@ -93,10 +93,23 @@ public class StockLevelDto {
     public bool    IsOut             => CurrentStock <= 0;
 }
 
+// ── Payment terms ─────────────────────────────────────────────────────────────
+public class PaymentTermDto {
+    public Guid   Id        { get; set; }
+    public string Name      { get; set; } = "";
+    public int    DueDays   { get; set; }
+    public bool   IsActive  { get; set; } = true;
+    public int    SortOrder { get; set; }
+    /// <summary>True when a posted sale references it — the UI hides Delete.</summary>
+    public bool   InUse     { get; set; }
+}
+
 // ── Sales ─────────────────────────────────────────────────────────────────────
 public class CreateSaleDto {
     public Guid        CustomerId   { get; set; }
     public PaymentType PaymentType  { get; set; }
+    /// <summary>Credit term. Null = open credit with no agreed due date. Ignored for Cash.</summary>
+    public Guid?       PaymentTermId { get; set; }
     public string?     Notes        { get; set; }
     /// <summary>True if the entered prices already include PPN; false to add PPN on top.</summary>
     public bool        IsTaxInclusive { get; set; }
@@ -120,6 +133,8 @@ public class SaleDto {
     public string    CustomerName  { get; set; } = "";
     public string?   CustomerPhone { get; set; }
     public string    PaymentType   { get; set; } = "";
+    /// <summary>Term name, e.g. "TOP 30". Empty for Cash or open credit.</summary>
+    public string    PaymentTermName { get; set; } = "";
     public DateTime? DueDate       { get; set; }
     public decimal   SubTotal      { get; set; }
     public decimal   DiscountTotal { get; set; }
