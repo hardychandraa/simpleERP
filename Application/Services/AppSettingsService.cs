@@ -19,7 +19,8 @@ public class AppSettingsService : IAppSettingsService
             PrinterName = s.PrinterName, PaperColumns = s.PaperColumns,
             PrinterEnabled = s.PrinterEnabled,
             // Stored as a fraction, surfaced to the UI as a percentage.
-            VatRatePercent = s.VatRate * 100m };
+            VatRatePercent = s.VatRate * 100m,
+            RebateWithholdingPercent = s.RebateWithholdingRate * 100m };
     }
 
     public async Task<ServiceResult> SaveAsync(AppSettingsDto dto)
@@ -27,6 +28,8 @@ public class AppSettingsService : IAppSettingsService
         if (string.IsNullOrWhiteSpace(dto.StoreName)) return ServiceResult.Fail("Store name is required.");
         if (dto.VatRatePercent < 0m || dto.VatRatePercent > 100m)
             return ServiceResult.Fail("PPN rate must be between 0 and 100 percent.");
+        if (dto.RebateWithholdingPercent < 0m || dto.RebateWithholdingPercent > 100m)
+            return ServiceResult.Fail("Rebate withholding rate must be between 0 and 100 percent.");
         var s = await _repo.GetAsync();
         s.AppName      = string.IsNullOrWhiteSpace(dto.AppName) ? "SimpleERP" : dto.AppName.Trim();
         s.StoreName    = dto.StoreName.Trim();
@@ -37,6 +40,7 @@ public class AppSettingsService : IAppSettingsService
         s.PaperColumns = dto.PaperColumns == 132 ? 132 : 80;
         s.PrinterEnabled = dto.PrinterEnabled;
         s.VatRate      = dto.VatRatePercent / 100m;
+        s.RebateWithholdingRate = dto.RebateWithholdingPercent / 100m;
         await _repo.SaveAsync(s);
         return ServiceResult.Ok();
     }

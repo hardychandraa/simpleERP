@@ -29,6 +29,9 @@ public static class DependencyInjection
         services.AddScoped<ISupplierRepository,         SupplierRepository>();
         services.AddScoped<IPurchaseRepository,         PurchaseRepository>();
         services.AddScoped<ISupplierPaymentRepository,  SupplierPaymentRepository>();
+        services.AddScoped<IRebateRuleRepository,        RebateRuleRepository>();
+        services.AddScoped<IRebateAccrualRepository,     RebateAccrualRepository>();
+        services.AddScoped<IRebateRealizationRepository, RebateRealizationRepository>();
         services.AddScoped<IExpenseCategoryRepository,  ExpenseCategoryRepository>();
         services.AddScoped<IExpenseRepository,          ExpenseRepository>();
         services.AddScoped<IUnitOfWork,                 UnitOfWork>();
@@ -44,8 +47,14 @@ public static class DependencyInjection
         services.AddScoped<IPaymentTermService,  PaymentTermService>();
         services.AddScoped<ISalesPersonService,  SalesPersonService>();
         services.AddScoped<ISupplierService,     SupplierService>();
-        // PurchaseService chains a write into InventoryService inside one transaction,
-        // so it depends on the concrete class — same pattern as SaleService above.
+        // RebateService chains writes into InventoryService (in-kind stock) within one
+        // transaction, and PurchaseService chains into RebateService, so both are
+        // registered by concrete type as well — same dual-registration pattern as
+        // InventoryService above.
+        services.AddScoped<RebateService>();
+        services.AddScoped<IRebateService>(sp => sp.GetRequiredService<RebateService>());
+        // PurchaseService chains writes into InventoryService and RebateService inside
+        // one transaction, so it depends on those concrete classes.
         services.AddScoped<IPurchaseService,     PurchaseService>();
         services.AddScoped<IExpenseService,      ExpenseService>();
         services.AddScoped<IAppSettingsService, AppSettingsService>();

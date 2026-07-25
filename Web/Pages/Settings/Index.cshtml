@@ -50,13 +50,24 @@
             Official Faktur Pajak is issued separately by your tax consultant via Coretax —
             SimpleERP only calculates and reports the amounts.
         </p>
-        <div class="fg" style="max-width:220px">
-            <label>PPN Rate (%)</label>
-            <input type="number" asp-for="Input.VatRatePercent"
-                   step="0.01" min="0" max="100" />
-            <div style="font-size:11px;color:#9ca3af;margin-top:4px">
-                Confirm the current effective rate with your tax consultant — this is a
-                configurable default, not tax advice.
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <div class="fg" style="max-width:220px">
+                <label>PPN Rate (%)</label>
+                <input type="number" asp-for="Input.VatRatePercent"
+                       step="0.01" min="0" max="100" />
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                    Confirm the current effective rate with your tax consultant — this is a
+                    configurable default, not tax advice.
+                </div>
+            </div>
+            <div class="fg" style="max-width:240px">
+                <label>Rebate Withholding (%)</label>
+                <input type="number" asp-for="Input.RebateWithholdingPercent"
+                       step="0.01" min="0" max="100" />
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                    Deducted from a rebate settlement before it offsets the payable. The
+                    supplier sheet shows 15%; confirm the legal basis with your consultant.
+                </div>
             </div>
         </div>
     </div>

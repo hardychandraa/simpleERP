@@ -8,14 +8,16 @@ namespace SimpleERP.Web.Pages.Purchases;
 public class DetailModel : PageModel
 {
     private readonly IPurchaseService    _purchases;
+    private readonly IRebateService      _rebates;
     private readonly IAppSettingsService _settings;
 
-    public DetailModel(IPurchaseService purchases, IAppSettingsService settings)
-    { _purchases = purchases; _settings = settings; }
+    public DetailModel(IPurchaseService purchases, IRebateService rebates, IAppSettingsService settings)
+    { _purchases = purchases; _rebates = rebates; _settings = settings; }
 
     public PurchaseDto    Purchase       { get; set; } = null!;
     public AppSettingsDto AppSettings    { get; set; } = null!;
     public List<SupplierPaymentDto> Payments { get; set; } = new();
+    public List<RebateAccrualDto>   Rebates  { get; set; } = new();
     public decimal        StillOwed      { get; set; }
 
     [BindProperty] public RecordSupplierPaymentDto PayInput { get; set; } = new();
@@ -31,6 +33,7 @@ public class DetailModel : PageModel
         Purchase    = purchase;
         AppSettings = await _settings.GetAsync();
         Payments    = purchase.PaymentHistory;
+        Rebates     = await _rebates.GetAccrualsForPurchaseAsync(id);
         StillOwed   = Math.Max(0, purchase.GrandTotal - purchase.AmountPaid);
         PayInput.PurchaseId = id;
         Msg = msg; IsErr = err;
@@ -39,6 +42,8 @@ public class DetailModel : PageModel
 
     public async Task<IActionResult> OnPostPaymentAsync(Guid id)
     {
+        // The form only posts Amount/Notes; the purchase comes from the route.
+        PayInput.PurchaseId = id;
         var result = await _purchases.RecordPaymentAsync(PayInput, User.Identity?.Name ?? "staff");
         return RedirectToPage(new {
             id,

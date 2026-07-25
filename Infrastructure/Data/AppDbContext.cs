@@ -23,6 +23,9 @@ public class AppDbContext : DbContext
     public DbSet<Purchase>        Purchases         => Set<Purchase>();
     public DbSet<PurchaseItem>    PurchaseItems     => Set<PurchaseItem>();
     public DbSet<SupplierPayment> SupplierPayments  => Set<SupplierPayment>();
+    public DbSet<RebateRule>        RebateRules        => Set<RebateRule>();
+    public DbSet<RebateAccrual>     RebateAccruals     => Set<RebateAccrual>();
+    public DbSet<RebateRealization> RebateRealizations => Set<RebateRealization>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense>         Expenses          => Set<Expense>();
 
@@ -216,6 +219,62 @@ public class AppDbContext : DbContext
             e.HasIndex(p => p.PurchaseId);
         });
 
+        m.Entity<RebateRule>(e => {
+            e.HasKey(r => r.Id);
+            e.Property(r => r.Name).IsRequired().HasMaxLength(200);
+            e.Property(r => r.ThresholdQty).HasColumnType("decimal(18,4)");
+            e.Property(r => r.ThresholdValue).HasColumnType("decimal(18,4)");
+            e.Property(r => r.ReferenceCost).HasColumnType("decimal(18,4)");
+            e.Property(r => r.RewardRate).HasColumnType("decimal(18,4)");
+            e.Property(r => r.RewardAmount).HasColumnType("decimal(18,4)");
+            e.Property(r => r.RewardQty).HasColumnType("decimal(18,4)");
+            e.HasIndex(r => r.Name).IsUnique();
+            e.HasOne(r => r.Supplier).WithMany()
+                .HasForeignKey(r => r.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.Product).WithMany()
+                .HasForeignKey(r => r.ProductId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.RewardProduct).WithMany()
+                .HasForeignKey(r => r.RewardProductId).OnDelete(DeleteBehavior.Restrict);
+            // Evaluation loads active rules per supplier on every purchase post.
+            e.HasIndex(r => new { r.SupplierId, r.IsActive });
+        });
+
+        m.Entity<RebateAccrual>(e => {
+            e.HasKey(a => a.Id);
+            e.Property(a => a.Qty).HasColumnType("decimal(18,4)");
+            e.Property(a => a.Amount).HasColumnType("decimal(18,4)");
+            e.HasOne(a => a.Rule).WithMany()
+                .HasForeignKey(a => a.RebateRuleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.Supplier).WithMany()
+                .HasForeignKey(a => a.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            // A cancelled purchase voids its accruals (never deletes), so keep this
+            // Restrict — the accrual outlives nothing silently.
+            e.HasOne(a => a.Purchase).WithMany()
+                .HasForeignKey(a => a.PurchaseId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.Realization).WithMany(r => r.Accruals)
+                .HasForeignKey(a => a.RebateRealizationId).OnDelete(DeleteBehavior.SetNull);
+            // The two hot queries: outstanding-by-supplier (claim worklist) and by-purchase (void/detail).
+            e.HasIndex(a => new { a.SupplierId, a.RebateRealizationId, a.IsVoided });
+            e.HasIndex(a => a.PurchaseId);
+        });
+
+        m.Entity<RebateRealization>(e => {
+            e.HasKey(r => r.Id);
+            e.Property(r => r.GrossAmount).HasColumnType("decimal(18,4)");
+            e.Property(r => r.WithholdingRate).HasColumnType("decimal(18,4)");
+            e.Property(r => r.WithholdingAmount).HasColumnType("decimal(18,4)");
+            e.Property(r => r.NetAmount).HasColumnType("decimal(18,4)");
+            e.Property(r => r.InKindQty).HasColumnType("decimal(18,4)");
+            e.Property(r => r.ReferenceId).HasMaxLength(100);
+            e.Property(r => r.Notes).HasMaxLength(500);
+            e.Property(r => r.CreatedBy).HasMaxLength(100);
+            e.HasOne(r => r.Supplier).WithMany()
+                .HasForeignKey(r => r.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.InKindProduct).WithMany()
+                .HasForeignKey(r => r.InKindProductId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(r => new { r.SupplierId, r.RealizationDate });
+        });
+
         m.Entity<SalesPerson>(e => {
             e.HasKey(p => p.Id);
             e.Property(p => p.Name).IsRequired().HasMaxLength(200);
@@ -290,7 +349,7 @@ public class AppDbContext : DbContext
             StoreAddress = "", StorePhone = "",
             StoreFooter = "Thank you for your purchase!",
             PrinterName = "", PaperColumns = 80, PrinterEnabled = false,
-            VatRate = 0.10m
+            VatRate = 0.10m, RebateWithholdingRate = 0.15m
         });
     }
 }

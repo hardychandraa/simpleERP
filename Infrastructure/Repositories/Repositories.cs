@@ -206,6 +206,17 @@ public class PurchaseRepository : IPurchaseRepository
     public async Task AddAsync(Purchase p) => await _db.Purchases.AddAsync(p);
     public void Update(Purchase p) => _db.Purchases.Update(p);
 
+    public async Task<decimal> GetPurchasedQtyAsync(Guid supplierId, Guid productId, DateTime? from, DateTime? to)
+    {
+        var q = _db.PurchaseItems
+            .Where(i => i.ProductId == productId
+                     && i.Purchase!.SupplierId == supplierId
+                     && i.Purchase.Status == PurchaseStatus.Active);
+        if (from.HasValue) q = q.Where(i => i.Purchase!.PurchaseDate >= from.Value);
+        if (to.HasValue)   q = q.Where(i => i.Purchase!.PurchaseDate <= to.Value);
+        return await q.SumAsync(i => (decimal?)i.Qty) ?? 0m;
+    }
+
     public async Task<PurchasePeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to)
     {
         // decimal? casts so EF emits a SUM() that yields NULL rather than throwing
@@ -245,6 +256,127 @@ public class SupplierPaymentRepository : ISupplierPaymentRepository
         _db.SupplierPayments.Include(p => p.Purchase!).ThenInclude(x => x.Supplier)
                             .Where(p => p.PaymentDate >= from && p.PaymentDate < to)
                             .OrderByDescending(p => p.PaymentDate).ToListAsync();
+}
+
+public class RebateRuleRepository : IRebateRuleRepository
+{
+    private readonly AppDbContext _db;
+    public RebateRuleRepository(AppDbContext db) => _db = db;
+
+    public Task<RebateRule?> GetByIdAsync(Guid id) =>
+        _db.RebateRules.Include(r => r.Supplier).Include(r => r.Product).Include(r => r.RewardProduct)
+                       .FirstOrDefaultAsync(r => r.Id == id);
+
+    public Task<List<RebateRule>> GetAllAsync(bool activeOnly = false)
+    {
+        var q = _db.RebateRules.Include(r => r.Supplier).Include(r => r.Product).Include(r => r.RewardProduct).AsQueryable();
+        if (activeOnly) q = q.Where(r => r.IsActive);
+        return q.OrderBy(r => r.Supplier!.Name).ThenBy(r => r.Name).ToListAsync();
+    }
+
+    public Task<List<RebateRule>> GetActiveForSupplierAsync(Guid supplierId) =>
+        _db.RebateRules.Include(r => r.RewardProduct)
+                       .Where(r => r.IsActive && r.SupplierId == supplierId)
+                       .ToListAsync();
+
+    public Task<bool> NameExistsAsync(string name, Guid? excludeId = null) =>
+        _db.RebateRules.AnyAsync(r => r.Name.ToLower() == name.ToLower()
+                                   && (excludeId == null || r.Id != excludeId));
+
+    public Task<bool> IsInUseAsync(Guid id) => _db.RebateAccruals.AnyAsync(a => a.RebateRuleId == id);
+
+    public async Task AddAsync(RebateRule rule) => await _db.RebateRules.AddAsync(rule);
+    public void Update(RebateRule rule) => _db.RebateRules.Update(rule);
+    public void Remove(RebateRule rule) => _db.RebateRules.Remove(rule);
+}
+
+public class RebateAccrualRepository : IRebateAccrualRepository
+{
+    private readonly AppDbContext _db;
+    public RebateAccrualRepository(AppDbContext db) => _db = db;
+
+    public async Task AddAsync(RebateAccrual accrual) => await _db.RebateAccruals.AddAsync(accrual);
+    public void Update(RebateAccrual accrual) => _db.RebateAccruals.Update(accrual);
+
+    private IQueryable<RebateAccrual> WithNav => _db.RebateAccruals
+        .Include(a => a.Rule).Include(a => a.Supplier).Include(a => a.Purchase);
+
+    public Task<RebateAccrual?> GetByIdAsync(Guid id) =>
+        WithNav.FirstOrDefaultAsync(a => a.Id == id);
+
+    public Task<List<RebateAccrual>> GetByPurchaseAsync(Guid purchaseId) =>
+        WithNav.Where(a => a.PurchaseId == purchaseId)
+               .OrderBy(a => a.AccrualDate).ToListAsync();
+
+    public Task<List<RebateAccrual>> GetOutstandingBySupplierAsync(Guid supplierId) =>
+        WithNav.Where(a => a.SupplierId == supplierId && a.RebateRealizationId == null && !a.IsVoided)
+               .OrderBy(a => a.AccrualDate).ToListAsync();
+
+    public Task<List<RebateAccrual>> GetAllAsync(Guid? supplierId = null, bool? outstandingOnly = null)
+    {
+        var q = WithNav.Where(a => !a.IsVoided);
+        if (supplierId.HasValue)  q = q.Where(a => a.SupplierId == supplierId.Value);
+        if (outstandingOnly == true)  q = q.Where(a => a.RebateRealizationId == null);
+        if (outstandingOnly == false) q = q.Where(a => a.RebateRealizationId != null);
+        return q.OrderByDescending(a => a.AccrualDate).ToListAsync();
+    }
+
+    public async Task<List<RebateOutstandingBySupplier>> GetOutstandingSummaryAsync()
+    {
+        // Grouped in SQL by supplier; the reward-type buckets are counted with
+        // conditional sums so cash, in-kind and lucky-draw are separated in one pass.
+        var rows = await _db.RebateAccruals
+            .Where(a => a.RebateRealizationId == null && !a.IsVoided)
+            .GroupBy(a => a.SupplierId)
+            .Select(g => new {
+                SupplierId = g.Key,
+                CashCount  = g.Count(a => a.RewardType != RebateRewardType.InKindGoods
+                                       && a.RewardType != RebateRewardType.LuckyDraw),
+                CashAmount = g.Where(a => a.RewardType != RebateRewardType.InKindGoods
+                                       && a.RewardType != RebateRewardType.LuckyDraw)
+                              .Sum(a => (decimal?)a.Amount) ?? 0m,
+                InKindCount   = g.Count(a => a.RewardType == RebateRewardType.InKindGoods),
+                LuckyDrawCount= g.Count(a => a.RewardType == RebateRewardType.LuckyDraw)
+            })
+            .ToListAsync();
+
+        if (rows.Count == 0) return new List<RebateOutstandingBySupplier>();
+
+        var ids   = rows.Select(r => r.SupplierId).ToList();
+        var names = await _db.Suppliers.Where(s => ids.Contains(s.Id))
+                                       .ToDictionaryAsync(s => s.Id, s => s.Name);
+
+        return rows.Select(r => new RebateOutstandingBySupplier(
+                r.SupplierId, names.GetValueOrDefault(r.SupplierId, "?"),
+                r.CashCount, r.CashAmount, r.InKindCount, r.LuckyDrawCount))
+            .OrderByDescending(r => r.CashAmount)
+            .ThenBy(r => r.SupplierName)
+            .ToList();
+    }
+}
+
+public class RebateRealizationRepository : IRebateRealizationRepository
+{
+    private readonly AppDbContext _db;
+    public RebateRealizationRepository(AppDbContext db) => _db = db;
+
+    public async Task AddAsync(RebateRealization realization) => await _db.RebateRealizations.AddAsync(realization);
+
+    public Task<RebateRealization?> GetByIdAsync(Guid id) =>
+        _db.RebateRealizations
+           .Include(r => r.Supplier)
+           .Include(r => r.InKindProduct)
+           .Include(r => r.Accruals)
+           .FirstOrDefaultAsync(r => r.Id == id);
+
+    public Task<List<RebateRealization>> GetAllAsync(Guid? supplierId = null, DateTime? from = null, DateTime? to = null)
+    {
+        var q = _db.RebateRealizations.Include(r => r.Supplier).Include(r => r.InKindProduct).AsQueryable();
+        if (supplierId.HasValue) q = q.Where(r => r.SupplierId == supplierId.Value);
+        if (from.HasValue)       q = q.Where(r => r.RealizationDate >= from.Value);
+        if (to.HasValue)         q = q.Where(r => r.RealizationDate <= to.Value);
+        return q.OrderByDescending(r => r.RealizationDate).ToListAsync();
+    }
 }
 
 public class SalesPersonRepository : ISalesPersonRepository

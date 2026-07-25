@@ -1,0 +1,213 @@
+@page "/Rebates"
+@model SimpleERP.Web.Pages.Rebates.IndexModel
+@{ ViewData["Title"] = "Rebates"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="card-title" style="margin:0">💰 Rebate Claims</div>
+        <a href="/RebateRules" class="btn btn-outline btn-sm">⚙ Manage Rules</a>
+    </div>
+    <p style="font-size:12px;color:#6b7280;margin-top:10px;line-height:1.6">
+        Rebates accrue automatically as purchases are posted and paid. Settle them here
+        when the supplier reconciles. Cash settlements net through a
+        <strong>@Model.WithholdingPercent.ToString("0.##")% withholding</strong>
+        (editable in <a href="/Settings">Settings</a>) before offsetting the payable.
+    </p>
+</div>
+
+<!-- ── Outstanding cash by supplier ─────────────────────────────────────────── -->
+<div class="card">
+    <div class="card-title">Outstanding — Cash / Credit</div>
+    @{ var cashSuppliers = Model.Outstanding.Where(o => o.CashAccrualCount > 0).ToList(); }
+    @if (cashSuppliers.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">No outstanding cash rebates.</p>
+    }
+    else
+    {
+        <table style="width:100%">
+            <thead>
+                <tr>
+                    <th>Supplier</th>
+                    <th style="text-align:center">Accruals</th>
+                    <th style="text-align:right">Accrued Total</th>
+                    <th style="width:340px">Settle (gross agreed with supplier)</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var o in cashSuppliers)
+            {
+                <tr>
+                    <td style="font-weight:600">@o.SupplierName</td>
+                    <td style="text-align:center">@o.CashAccrualCount</td>
+                    <td style="text-align:right">@o.CashAmount.ToString("N0")</td>
+                    <td>
+                        <form method="post" asp-page-handler="RealizeCash"
+                              style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                            <input type="hidden" name="input.SupplierId" value="@o.SupplierId" />
+                            <input type="number" name="input.GrossAmount" min="0.01" step="0.01"
+                                   value="@o.CashAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                   class="rebate-gross" data-net="net-@o.SupplierId"
+                                   style="width:120px" required />
+                            <input type="text" name="input.ReferenceId" placeholder="Ref"
+                                   style="width:90px" maxlength="100" />
+                            <button type="submit" class="btn btn-success btn-sm">Settle</button>
+                            <span id="net-@o.SupplierId" style="font-size:11px;color:#059669;white-space:nowrap"></span>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p style="font-size:11px;color:#9ca3af;margin-top:10px">
+            Settling records the whole outstanding cash balance for that supplier as one
+            settlement, matching how the supplier reconciliation sheet batches them.
+        </p>
+    }
+</div>
+
+<!-- ── Outstanding in-kind ──────────────────────────────────────────────────── -->
+@if (Model.InKindAccruals.Count > 0)
+{
+    <div class="card">
+        <div class="card-title">Outstanding — In-Kind Goods</div>
+        <table style="width:100%">
+            <thead>
+                <tr>
+                    <th>Rule</th><th>Supplier</th><th>From Purchase</th>
+                    <th style="text-align:right">Free Qty</th><th style="width:120px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var a in Model.InKindAccruals)
+            {
+                <tr>
+                    <td>@a.RuleName</td>
+                    <td>@a.SupplierName</td>
+                    <td style="font-size:12px">@a.PurchaseNumber</td>
+                    <td style="text-align:right">@a.Qty.ToString("N0")</td>
+                    <td>
+                        <form method="post" asp-page-handler="RealizeInKind"
+                              onsubmit="return confirm('Receive these free goods into stock now?');">
+                            <input type="hidden" name="input.AccrualId" value="@a.Id" />
+                            <button type="submit" class="btn btn-success btn-sm">Receive Goods</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p style="font-size:11px;color:#9ca3af;margin-top:10px">
+            Receiving stocks the goods in at zero cost, pulling the product's moving-average cost down.
+        </p>
+    </div>
+}
+
+<!-- ── Outstanding lucky draw ───────────────────────────────────────────────── -->
+@if (Model.LuckyAccruals.Count > 0)
+{
+    <div class="card">
+        <div class="card-title">Outstanding — Lucky Draw</div>
+        <table style="width:100%">
+            <thead>
+                <tr>
+                    <th>Rule</th><th>Supplier</th><th>From Purchase</th>
+                    <th style="width:320px">Settled amount (from supplier)</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var a in Model.LuckyAccruals)
+            {
+                <tr>
+                    <td>@a.RuleName</td>
+                    <td>@a.SupplierName</td>
+                    <td style="font-size:12px">@a.PurchaseNumber</td>
+                    <td>
+                        <form method="post" asp-page-handler="RealizeLuckyDraw"
+                              style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                            <input type="hidden" name="input.AccrualId" value="@a.Id" />
+                            <input type="number" name="input.GrossAmount" min="0.01" step="0.01"
+                                   placeholder="Gross" class="rebate-gross" data-net="lnet-@a.Id"
+                                   style="width:120px" required />
+                            <input type="text" name="input.ReferenceId" placeholder="Ref" style="width:90px" maxlength="100" />
+                            <button type="submit" class="btn btn-success btn-sm">Settle</button>
+                            <span id="lnet-@a.Id" style="font-size:11px;color:#059669;white-space:nowrap"></span>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+<!-- ── History ──────────────────────────────────────────────────────────────── -->
+<div class="card">
+    <div class="card-title">Settlement History (@Model.History.Count)</div>
+    @if (Model.History.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">No settlements recorded yet.</p>
+    }
+    else
+    {
+        <table style="width:100%">
+            <thead>
+                <tr>
+                    <th>Date</th><th>Supplier</th><th>Type</th>
+                    <th style="text-align:right">Gross</th>
+                    <th style="text-align:right">Withholding</th>
+                    <th style="text-align:right">Net</th>
+                    <th>In-Kind</th><th>Ref</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var h in Model.History)
+            {
+                <tr>
+                    <td style="font-size:12px">@h.RealizationDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+                    <td>@h.SupplierName</td>
+                    <td style="font-size:12px">@h.RewardType</td>
+                    <td style="text-align:right">@(h.GrossAmount?.ToString("N0") ?? "—")</td>
+                    <td style="text-align:right;color:#dc2626">
+                        @(h.WithholdingAmount.HasValue ? $"-{h.WithholdingAmount:N0}" : "—")
+                        @if (h.WithholdingRate.HasValue && h.WithholdingAmount.HasValue)
+                        {
+                            <br /><small style="color:#9ca3af">(@((h.WithholdingRate.Value*100).ToString("0.##"))%)</small>
+                        }
+                    </td>
+                    <td style="text-align:right;font-weight:600;color:#059669">@(h.NetAmount?.ToString("N0") ?? "—")</td>
+                    <td style="font-size:12px">
+                        @(string.IsNullOrEmpty(h.InKindProductName) ? "—" : $"{h.InKindQty:N0} × {h.InKindProductName}")
+                    </td>
+                    <td style="font-size:12px;color:#9ca3af">@(h.ReferenceId ?? "—")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+@section Scripts {
+<script>
+// Live net-of-withholding preview as the gross is typed.
+const WHT = @Model.WithholdingPercent.ToString(System.Globalization.CultureInfo.InvariantCulture) / 100;
+function wireNet(el) {
+    const out = document.getElementById(el.dataset.net);
+    if (!out) return;
+    const g = parseFloat(el.value) || 0;
+    if (g > 0) {
+        const wht = Math.round(g * WHT * 100) / 100;
+        out.textContent = '→ net ' + Math.round(g - wht).toLocaleString();
+    } else out.textContent = '';
+}
+document.querySelectorAll('.rebate-gross').forEach(el => {
+    wireNet(el);
+    el.addEventListener('input', () => wireNet(el));
+});
+</script>
+}

@@ -1,0 +1,106 @@
+@page "/RebateRules"
+@model SimpleERP.Web.Pages.RebateRules.IndexModel
+@using SimpleERP.Domain.Enums
+@{ ViewData["Title"] = "Rebate Rules"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="card-title" style="margin:0">Rebate Rules (@Model.Rules.Count)</div>
+        <a href="/RebateRules/Edit" class="btn btn-success">＋ New Rule</a>
+    </div>
+    <p style="font-size:12px;color:#6b7280;margin-top:10px;line-height:1.6">
+        Standing agreements that earn a rebate from a supplier. Volume and price-drop
+        rules accrue when a purchase is posted; on-time-payment rules accrue when a
+        purchase is paid on time. Outstanding accruals are settled on the
+        <a href="/Rebates">Rebates</a> page.
+    </p>
+</div>
+
+<div class="card">
+    @if (Model.Rules.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">No rebate rules yet. <a href="/RebateRules/Edit">Add one →</a></p>
+    }
+    else
+    {
+        <table style="width:100%">
+            <thead>
+                <tr>
+                    <th>Rule</th>
+                    <th>Supplier</th>
+                    <th>Applies to</th>
+                    <th>Condition</th>
+                    <th>Reward</th>
+                    <th style="text-align:center">Status</th>
+                    <th style="width:140px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.Rules)
+            {
+                <tr>
+                    <td style="font-weight:600">@r.Name</td>
+                    <td>@r.SupplierName</td>
+                    <td style="font-size:12px;color:@(string.IsNullOrEmpty(r.ProductName)?"#9ca3af":"inherit")">
+                        @(string.IsNullOrEmpty(r.ProductName) ? "All products" : r.ProductName)
+                    </td>
+                    <td style="font-size:12px">
+                        @switch (r.ConditionType)
+                        {
+                            case RebateConditionType.Volume:
+                                <text>Volume@(r.ThresholdQty.HasValue ? $" ≥ {r.ThresholdQty:N0}" : "")@(r.ThresholdValue.HasValue ? $" / ≥ {r.ThresholdValue:N0} value" : "")</text>
+                                break;
+                            case RebateConditionType.PriceDrop:
+                                <text>Price drop below @r.ReferenceCost?.ToString("N0")</text>
+                                break;
+                            case RebateConditionType.OnTimePayment:
+                                <text>On-time payment@(r.OnTimePaymentDays > 0 ? $" (+{r.OnTimePaymentDays}d grace)" : "")</text>
+                                break;
+                        }
+                    </td>
+                    <td style="font-size:12px">
+                        @switch (r.RewardType)
+                        {
+                            case RebateRewardType.PercentDiscount: <text>@r.RewardRate?.ToString("0.##")% discount</text> break;
+                            case RebateRewardType.FixedCash:       <text>@r.RewardAmount?.ToString("N0") cash</text> break;
+                            case RebateRewardType.CreditNote:      <text>@r.RewardAmount?.ToString("N0") credit note</text> break;
+                            case RebateRewardType.InKindGoods:     <text>@r.RewardQty?.ToString("N0") × @r.RewardProductName</text> break;
+                            case RebateRewardType.LuckyDraw:       <text>Lucky draw</text> break;
+                        }
+                    </td>
+                    <td style="text-align:center">
+                        @if (r.IsActive)
+                        {
+                            <span style="color:#059669;font-weight:600;font-size:12px">Active</span>
+                        }
+                        else
+                        {
+                            <span style="color:#9ca3af;font-size:12px">Inactive</span>
+                        }
+                    </td>
+                    <td style="white-space:nowrap">
+                        <a href="/RebateRules/Edit?id=@r.Id" class="btn btn-outline btn-sm">Edit</a>
+                        @if (r.InUse)
+                        {
+                            <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="Has accrued rebates">in use</span>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@r.Id"
+                                  style="display:inline" onsubmit="return confirm('Delete rule @r.Name?');">
+                                <button type="submit" class="btn btn-outline btn-sm"
+                                        style="color:#dc2626;border-color:#fecaca">Delete</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>

@@ -34,6 +34,7 @@ public interface IInventoryService {
     Task StockInForCancelAsync(Guid productId, decimal qty, decimal unitCost, Guid referenceId, Guid branchId);
     Task StockInForPurchaseAsync(IEnumerable<PurchaseReceiptLine> lines, Guid purchaseId, Guid branchId);
     Task<ServiceResult> StockOutForPurchaseCancelAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId);
+    Task StockInForRebateAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId);
     Task<ServiceResult> AdjustStockAsync(StockAdjustmentDto dto, string user);
     Task<decimal> GetCurrentStockAsync(Guid productId);
     Task<decimal> GetCurrentAvgCostAsync(Guid productId);
@@ -94,6 +95,25 @@ public interface ISalesPersonService {
     Task<ServiceResult> CreateAsync(SalesPersonDto dto, string user);
     Task<ServiceResult> UpdateAsync(SalesPersonDto dto, string user);
     Task<ServiceResult> DeleteAsync(Guid id, string user);
+}
+public interface IRebateService {
+    // Rules
+    Task<List<RebateRuleDto>> GetRulesAsync(bool activeOnly = false);
+    Task<RebateRuleDto?> GetRuleAsync(Guid id);
+    Task<ServiceResult> CreateRuleAsync(RebateRuleDto dto, string user);
+    Task<ServiceResult> UpdateRuleAsync(RebateRuleDto dto, string user);
+    Task<ServiceResult> DeleteRuleAsync(Guid id, string user);
+
+    // Accruals / claims
+    Task<List<RebateAccrualDto>> GetAccrualsAsync(Guid? supplierId = null, bool? outstandingOnly = null);
+    Task<List<RebateAccrualDto>> GetAccrualsForPurchaseAsync(Guid purchaseId);
+    Task<List<RebateOutstandingDto>> GetOutstandingSummaryAsync();
+
+    // Realizations
+    Task<List<RebateRealizationDto>> GetRealizationsAsync(Guid? supplierId = null);
+    Task<ServiceResult> RealizeCashAsync(RealizeCashDto dto, string user);
+    Task<ServiceResult> RealizeLuckyDrawAsync(RealizeLuckyDrawDto dto, string user);
+    Task<ServiceResult> RealizeInKindAsync(RealizeInKindDto dto, string user);
 }
 public interface IFinancialReportService {
     /// <summary>Commercial P&amp;L over an inclusive date range.</summary>

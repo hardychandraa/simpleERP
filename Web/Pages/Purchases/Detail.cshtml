@@ -197,6 +197,49 @@
         </div>
     }
 
+    @if (Model.Rebates.Any())
+    {
+        <div class="card">
+            <div class="card-title">💰 Rebates Accrued</div>
+            <table>
+                <thead><tr><th>Rule</th><th style="text-align:right">Amount</th><th style="text-align:center">Status</th></tr></thead>
+                <tbody>
+                @foreach (var rb in Model.Rebates)
+                {
+                    <tr>
+                        <td style="font-size:12px">
+                            @rb.RuleName
+                            <div style="color:#9ca3af;font-size:11px">@rb.RewardType</div>
+                        </td>
+                        <td style="text-align:right;font-weight:600">
+                            @(rb.RewardType == "InKindGoods" ? $"{rb.Qty:N0} units"
+                              : rb.RewardType == "LuckyDraw" && rb.Amount == 0 ? "TBD"
+                              : rb.Amount.ToString("N0"))
+                        </td>
+                        <td style="text-align:center;font-size:11px">
+                            @if (rb.IsVoided)
+                            {
+                                <span style="color:#9ca3af;font-weight:600;text-decoration:line-through">Voided</span>
+                            }
+                            else if (rb.IsSettled)
+                            {
+                                <span style="color:#059669;font-weight:600">Settled</span>
+                            }
+                            else
+                            {
+                                <span style="color:#d97706;font-weight:600">Outstanding</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+            <p style="font-size:11px;color:#9ca3af;margin-top:8px">
+                Settle outstanding rebates on the <a href="/Rebates">Rebates</a> page.
+            </p>
+        </div>
+    }
+
     @if (Model.Payments.Any())
     {
         <div class="card">

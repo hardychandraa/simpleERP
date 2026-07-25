@@ -27,16 +27,17 @@ public class PurchaseService : IPurchaseService
     private readonly IAppSettingsRepository     _settings;
     private readonly IAuditLogRepository        _audit;
     private readonly InventoryService           _inventory;
+    private readonly RebateService              _rebates;
     private readonly IUnitOfWork                _uow;
 
     public PurchaseService(IPurchaseRepository purchases, ISupplierRepository suppliers,
         IProductRepository products, IBranchRepository branches,
         ISupplierPaymentRepository payments, IPaymentTermRepository terms,
         IAppSettingsRepository settings, IAuditLogRepository audit,
-        InventoryService inventory, IUnitOfWork uow)
+        InventoryService inventory, RebateService rebates, IUnitOfWork uow)
     { _purchases=purchases; _suppliers=suppliers; _products=products; _branches=branches;
       _payments=payments; _terms=terms; _settings=settings; _audit=audit;
-      _inventory=inventory; _uow=uow; }
+      _inventory=inventory; _rebates=rebates; _uow=uow; }
 
     public async Task<ServiceResult<PurchaseDto>> CreateAsync(CreatePurchaseDto dto, string user)
     {
@@ -213,6 +214,11 @@ public class PurchaseService : IPurchaseService
         };
 
         await _purchases.AddAsync(purchase);
+
+        // Accrue Volume/PriceDrop rebates in the same transaction — the purchase and any
+        // rebate it earns commit together or not at all.
+        await _rebates.EvaluateOnPurchaseAsync(purchase, purchaseItems);
+
         await _audit.LogAsync(user, "Purchase.Create",
             $"{purchase.PurchaseNumber} | {supplier.Name}" +
             (supplierDoc != null ? $" | doc {supplierDoc}" : "") +
@@ -251,6 +257,11 @@ public class PurchaseService : IPurchaseService
 
         purchase.Status = PurchaseStatus.Cancelled;
         _purchases.Update(purchase);
+
+        // Void (never delete) any rebate this purchase accrued — a settled one is left
+        // alone, since that money already changed hands.
+        await _rebates.VoidAccrualsForPurchaseAsync(purchaseId, user);
+
         await _audit.LogAsync(user, "Purchase.Cancel", purchase.PurchaseNumber);
         await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
@@ -286,6 +297,10 @@ public class PurchaseService : IPurchaseService
         await _payments.AddAsync(record);
         purchase.AmountPaid += dto.Amount;
         _purchases.Update(purchase);
+
+        // Self-executing OnTimePayment rebate: if this payment clears the balance on or
+        // before the due date, it accrues and settles in the same transaction.
+        await _rebates.EvaluateOnPaymentAsync(purchase, record.PaymentDate, user);
 
         await _audit.LogAsync(user, "SupplierPayment.Record",
             $"{purchase.PurchaseNumber} -{dto.Amount:N0}");

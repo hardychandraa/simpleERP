@@ -82,6 +82,7 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
     <div class="sb-sec">Purchasing</div>
     <a href="/Purchases/Create" class="@(page=="/Purchases/Create"?"active":"")">📥 New Purchase</a>
     <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Create"?"active":"")">📦 Purchases</a>
+    <a href="/Rebates"          class="@(page.StartsWith("/Rebates")?"active":"")">💰 Rebates</a>
 
     <div class="sb-sec">Inventory</div>
     <a href="/Inventory/StockIn"  class="@(page=="/Inventory/StockIn" ?"active":"")">📥 Stock In</a>
@@ -99,6 +100,7 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
 
     <div class="sb-sec">Master Data</div>
     <a href="/Suppliers"         class="@(page.StartsWith("/Suppliers")   ?"active":"")">🏭 Suppliers</a>
+    <a href="/RebateRules"       class="@(page.StartsWith("/RebateRules") ?"active":"")">🎁 Rebate Rules</a>
     <a href="/PaymentTerms"      class="@(page.StartsWith("/PaymentTerms")?"active":"")">📆 Payment Terms</a>
     <a href="/SalesPersons"      class="@(page.StartsWith("/SalesPersons")?"active":"")">👤 Sales People</a>
 

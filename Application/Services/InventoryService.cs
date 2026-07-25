@@ -101,6 +101,28 @@ public class InventoryService : IInventoryService
     /// Refusing here forces the correct answer — a supplier return (Step 8), which is a
     /// real business event — rather than silently rewriting history.
     /// </summary>
+    /// <summary>
+    /// Receives free rebate goods at zero cost, through the normal moving-average path.
+    /// Called inside the RebateService transaction — does NOT SaveChanges.
+    ///
+    /// Zero cost is the point: blending in free units at 0 correctly pulls the product's
+    /// moving-average cost down, which is the real economic effect of a rebate paid in
+    /// goods — no special-casing needed anywhere downstream. Tagged RebateInKind so the
+    /// units never count as purchase volume.
+    /// </summary>
+    public async Task StockInForRebateAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId)
+    {
+        var curStock = await _ledger.GetCurrentStockAsync(productId, branchId);
+        // Free goods: total value unchanged, quantity up → new average = oldValue / newQty.
+        var curCost = await _ledger.GetCurrentAvgCostAsync(productId, branchId);
+        var newCost = curStock + qty <= 0 ? 0m : (curStock * curCost) / (curStock + qty);
+        await _ledger.AddAsync(new InventoryLedger {
+            Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
+            BranchId = branchId, ProductId = productId,
+            ReferenceType = ReferenceType.RebateInKind, ReferenceId = referenceId,
+            QtyIn = qty, QtyOut = 0, UnitCost = newCost, TotalCost = qty * newCost });
+    }
+
     public async Task<ServiceResult> StockOutForPurchaseCancelAsync(
         Guid productId, decimal qty, Guid referenceId, Guid branchId)
     {

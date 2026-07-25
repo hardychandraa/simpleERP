@@ -132,6 +132,13 @@ public interface IPurchaseRepository {
     /// a period can span a full year, which GetAllAsync would materialise.
     /// </summary>
     Task<PurchasePeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to);
+    /// <summary>
+    /// Total active-purchase quantity of a product from a supplier within [from, to].
+    /// Backs the Volume rebate threshold — the "have we bought enough this period?"
+    /// check. Excludes the purchase currently being posted (not yet saved), so the
+    /// caller adds the current line's qty itself.
+    /// </summary>
+    Task<decimal> GetPurchasedQtyAsync(Guid supplierId, Guid productId, DateTime? from, DateTime? to);
 }
 
 /// <summary>
@@ -150,6 +157,48 @@ public interface ISupplierPaymentRepository {
     Task AddAsync(SupplierPayment payment);
     Task<List<SupplierPayment>> GetByPurchaseAsync(Guid purchaseId);
     Task<List<SupplierPayment>> GetByDateRangeAsync(DateTime from, DateTime to);
+}
+
+public interface IRebateRuleRepository {
+    Task<RebateRule?> GetByIdAsync(Guid id);
+    Task<List<RebateRule>> GetAllAsync(bool activeOnly = false);
+    /// <summary>Active rules for a supplier, both supplier-wide and product-scoped — the evaluation set.</summary>
+    Task<List<RebateRule>> GetActiveForSupplierAsync(Guid supplierId);
+    Task<bool> NameExistsAsync(string name, Guid? excludeId = null);
+    /// <summary>True if any accrual references this rule — blocks deletion.</summary>
+    Task<bool> IsInUseAsync(Guid id);
+    Task AddAsync(RebateRule rule);
+    void Update(RebateRule rule);
+    void Remove(RebateRule rule);
+}
+
+public interface IRebateAccrualRepository {
+    Task AddAsync(RebateAccrual accrual);
+    void Update(RebateAccrual accrual);
+    Task<RebateAccrual?> GetByIdAsync(Guid id);
+    /// <summary>Accruals triggered by a purchase — used to void them when it's cancelled and to show them on its detail.</summary>
+    Task<List<RebateAccrual>> GetByPurchaseAsync(Guid purchaseId);
+    /// <summary>Outstanding (unsettled, not voided) accruals for a supplier — the claim worklist.</summary>
+    Task<List<RebateAccrual>> GetOutstandingBySupplierAsync(Guid supplierId);
+    /// <summary>All accruals in a window, optionally filtered by supplier/settled-state, for the list UI.</summary>
+    Task<List<RebateAccrual>> GetAllAsync(Guid? supplierId = null, bool? outstandingOnly = null);
+    /// <summary>Suppliers that currently have any outstanding accrual, with counts — the claim landing page.</summary>
+    Task<List<RebateOutstandingBySupplier>> GetOutstandingSummaryAsync();
+}
+
+/// <summary>One supplier's outstanding-rebate rollup.</summary>
+public record RebateOutstandingBySupplier(
+    Guid    SupplierId,
+    string  SupplierName,
+    int     CashAccrualCount,
+    decimal CashAmount,
+    int     InKindAccrualCount,
+    int     LuckyDrawCount);
+
+public interface IRebateRealizationRepository {
+    Task AddAsync(RebateRealization realization);
+    Task<RebateRealization?> GetByIdAsync(Guid id);
+    Task<List<RebateRealization>> GetAllAsync(Guid? supplierId = null, DateTime? from = null, DateTime? to = null);
 }
 
 public interface ISalesPersonRepository {

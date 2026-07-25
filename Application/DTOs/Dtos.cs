@@ -261,6 +261,93 @@ public class DueSupplierDto {
     public bool    HasOverdue    { get; set; }
 }
 
+// ── Rebates ───────────────────────────────────────────────────────────────────
+public class RebateRuleDto {
+    public Guid   Id         { get; set; }
+    public string Name       { get; set; } = "";
+    public Guid   SupplierId { get; set; }
+    public string SupplierName { get; set; } = "";
+    public Guid?  ProductId  { get; set; }
+    /// <summary>Empty = applies to all of the supplier's products.</summary>
+    public string ProductName { get; set; } = "";
+
+    public RebateConditionType ConditionType { get; set; }
+    public decimal? ThresholdQty      { get; set; }
+    public decimal? ThresholdValue    { get; set; }
+    public decimal? ReferenceCost     { get; set; }
+    public int?     OnTimePaymentDays { get; set; }
+    public DateTime? PeriodStart      { get; set; }
+    public DateTime? PeriodEnd        { get; set; }
+
+    public RebateRewardType RewardType { get; set; }
+    public decimal? RewardRate      { get; set; }
+    public decimal? RewardAmount    { get; set; }
+    public Guid?    RewardProductId { get; set; }
+    public string   RewardProductName { get; set; } = "";
+    public decimal? RewardQty       { get; set; }
+
+    public bool IsActive { get; set; } = true;
+    public bool InUse    { get; set; }
+}
+public class RebateAccrualDto {
+    public Guid     Id             { get; set; }
+    public DateTime AccrualDate    { get; set; }
+    public string   RuleName       { get; set; } = "";
+    public string   SupplierName   { get; set; } = "";
+    public Guid     SupplierId     { get; set; }
+    public string   RewardType     { get; set; } = "";
+    public string   PurchaseNumber { get; set; } = "";
+    public Guid?    PurchaseId     { get; set; }
+    public decimal  Qty            { get; set; }
+    public decimal  Amount         { get; set; }
+    public bool     IsSettled      { get; set; }
+    public bool     IsVoided       { get; set; }
+}
+/// <summary>A supplier row on the rebate-claim landing page.</summary>
+public class RebateOutstandingDto {
+    public Guid    SupplierId       { get; set; }
+    public string  SupplierName     { get; set; } = "";
+    public int     CashAccrualCount { get; set; }
+    public decimal CashAmount       { get; set; }
+    public int     InKindAccrualCount { get; set; }
+    public int     LuckyDrawCount   { get; set; }
+}
+/// <summary>Cash settlement of the outstanding cash accruals for one supplier.</summary>
+public class RealizeCashDto {
+    public Guid   SupplierId  { get; set; }
+    /// <summary>Gross settled amount agreed with the supplier, before withholding.</summary>
+    public decimal GrossAmount { get; set; }
+    public string? ReferenceId { get; set; }
+    public string? Notes       { get; set; }
+}
+/// <summary>Settlement of a single LuckyDraw accrual, whose value is only now known.</summary>
+public class RealizeLuckyDrawDto {
+    public Guid    AccrualId   { get; set; }
+    public decimal GrossAmount { get; set; }
+    public string? ReferenceId { get; set; }
+    public string? Notes       { get; set; }
+}
+public class RealizeInKindDto {
+    public Guid    AccrualId { get; set; }
+    public string? ReferenceId { get; set; }
+    public string? Notes     { get; set; }
+}
+public class RebateRealizationDto {
+    public Guid     Id              { get; set; }
+    public DateTime RealizationDate { get; set; }
+    public string   SupplierName    { get; set; } = "";
+    public string   RewardType      { get; set; } = "";
+    public decimal? GrossAmount     { get; set; }
+    public decimal? WithholdingRate { get; set; }
+    public decimal? WithholdingAmount { get; set; }
+    public decimal? NetAmount       { get; set; }
+    public string   InKindProductName { get; set; } = "";
+    public decimal? InKindQty       { get; set; }
+    public string?  ReferenceId     { get; set; }
+    public string?  Notes           { get; set; }
+    public int      AccrualCount    { get; set; }
+}
+
 // ── Sales people ──────────────────────────────────────────────────────────────
 public class SalesPersonDto {
     public Guid    Id       { get; set; }
@@ -504,6 +591,8 @@ public class AppSettingsDto {
     public bool    PrinterEnabled{ get; set; } = false;
     /// <summary>PPN rate entered as a percentage (10 = 10%). Stored as a fraction on the entity.</summary>
     public decimal VatRatePercent{ get; set; } = 10m;
+    /// <summary>Rebate withholding rate as a percentage (15 = 15%). Stored as a fraction on the entity.</summary>
+    public decimal RebateWithholdingPercent { get; set; } = 15m;
 }
 
 // ── Result wrappers ───────────────────────────────────────────────────────────

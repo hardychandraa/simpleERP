@@ -41,6 +41,9 @@ public class DetailModel : PageModel
 
     public async Task<IActionResult> OnPostPaymentAsync(Guid id)
     {
+        // The form posts only Amount/Notes; the sale comes from the route. Without this
+        // PayInput.SaleId is Guid.Empty on POST and the service rejects it as not found.
+        PayInput.SaleId = id;
         var user   = User.Identity?.Name ?? "staff";
         var result = await _sales.RecordPaymentAsync(PayInput, user);
         return RedirectToPage(new {
