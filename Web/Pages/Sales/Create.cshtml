@@ -21,6 +21,19 @@
                 </select>
             </div>
             <div class="fg">
+                <label>Sales Person</label>
+                <select asp-for="SalesPersonId">
+                    <option value="">— none (unattributed) —</option>
+                    @foreach (var p in Model.SalesPersonOptions)
+                    {
+                        <option value="@p.Id">@p.Name</option>
+                    }
+                </select>
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                    Optional. Manage under <a href="/SalesPersons">Sales People</a>.
+                </div>
+            </div>
+            <div class="fg">
                 <label>Payment Type</label>
                 <select asp-for="PaymentType" id="paymentTypeSelect" onchange="onPaymentTypeChange()">
                     <option value="1">Cash — paid now</option>

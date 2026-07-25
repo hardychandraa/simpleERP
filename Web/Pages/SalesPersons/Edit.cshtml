@@ -1,0 +1,45 @@
+@page "/SalesPersons/Edit"
+@model SimpleERP.Web.Pages.SalesPersons.EditModel
+@{ ViewData["Title"] = "Edit Sales Person"; }
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" style="max-width:520px">
+    <input type="hidden" asp-for="Input.Id" />
+
+    <div class="card">
+        <div class="card-title">✏️ Edit Sales Person</div>
+
+        <div class="fg">
+            <label>Name *</label>
+            <input type="text" asp-for="Input.Name" required maxlength="200" />
+        </div>
+
+        <div class="fg">
+            <label>Phone</label>
+            <input type="text" asp-for="Input.Phone" maxlength="50" placeholder="Optional" />
+        </div>
+
+        <div class="fg" style="display:flex;align-items:center;gap:10px">
+            <input type="checkbox" asp-for="Input.IsActive" style="width:18px;height:18px;margin:0" />
+            <label style="margin:0">Active — available when creating new sales</label>
+        </div>
+
+        @if (Model.InUse)
+        {
+            <div class="alert alert-warning" style="font-size:12px;line-height:1.6;margin-top:6px">
+                This person is credited with existing sales, so they can't be deleted —
+                untick Active to retire them. Renaming here updates every invoice that
+                shows their name, since attribution is stored as a link, not a copy.
+            </div>
+        }
+    </div>
+
+    <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary" style="padding:10px 32px">💾 Save</button>
+        <a href="/SalesPersons" class="btn btn-outline">Cancel</a>
+    </div>
+</form>

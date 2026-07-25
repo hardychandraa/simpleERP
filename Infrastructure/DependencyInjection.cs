@@ -25,6 +25,10 @@ public static class DependencyInjection
         services.AddScoped<IAuditLogRepository,         AuditLogRepository>();
         services.AddScoped<IAppSettingsRepository,      AppSettingsRepository>();
         services.AddScoped<IPaymentTermRepository,      PaymentTermRepository>();
+        services.AddScoped<ISalesPersonRepository,      SalesPersonRepository>();
+        services.AddScoped<ISupplierRepository,         SupplierRepository>();
+        services.AddScoped<IPurchaseRepository,         PurchaseRepository>();
+        services.AddScoped<ISupplierPaymentRepository,  SupplierPaymentRepository>();
         services.AddScoped<IExpenseCategoryRepository,  ExpenseCategoryRepository>();
         services.AddScoped<IExpenseRepository,          ExpenseRepository>();
         services.AddScoped<IUnitOfWork,                 UnitOfWork>();
@@ -38,6 +42,11 @@ public static class DependencyInjection
         services.AddScoped<IReportService,      ReportService>();
         services.AddScoped<IFinancialReportService, FinancialReportService>();
         services.AddScoped<IPaymentTermService,  PaymentTermService>();
+        services.AddScoped<ISalesPersonService,  SalesPersonService>();
+        services.AddScoped<ISupplierService,     SupplierService>();
+        // PurchaseService chains a write into InventoryService inside one transaction,
+        // so it depends on the concrete class — same pattern as SaleService above.
+        services.AddScoped<IPurchaseService,     PurchaseService>();
         services.AddScoped<IExpenseService,      ExpenseService>();
         services.AddScoped<IAppSettingsService, AppSettingsService>();
         services.AddScoped<SimpleERP.Application.Services.AuditService>();

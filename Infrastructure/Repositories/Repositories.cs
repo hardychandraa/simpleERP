@@ -127,6 +127,152 @@ public class PaymentTermRepository : IPaymentTermRepository
     public void Remove(PaymentTerm term) => _db.PaymentTerms.Remove(term);
 }
 
+public class SupplierRepository : ISupplierRepository
+{
+    private readonly AppDbContext _db;
+    public SupplierRepository(AppDbContext db) => _db = db;
+
+    public Task<Supplier?> GetByIdAsync(Guid id) =>
+        _db.Suppliers.Include(s => s.PaymentTerm).FirstOrDefaultAsync(s => s.Id == id);
+
+    public Task<List<Supplier>> GetAllAsync(bool activeOnly = false)
+    {
+        var q = _db.Suppliers.Include(s => s.PaymentTerm).AsQueryable();
+        if (activeOnly) q = q.Where(s => s.IsActive);
+        return q.OrderBy(s => s.Name).ToListAsync();
+    }
+
+    public Task<bool> NameExistsAsync(string name, Guid? excludeId = null) =>
+        _db.Suppliers.AnyAsync(s => s.Name.ToLower() == name.ToLower()
+                                 && (excludeId == null || s.Id != excludeId));
+
+    public Task<bool> IsInUseAsync(Guid id) => _db.Purchases.AnyAsync(p => p.SupplierId == id);
+
+    public async Task AddAsync(Supplier s) => await _db.Suppliers.AddAsync(s);
+    public void Update(Supplier s) => _db.Suppliers.Update(s);
+    public void Remove(Supplier s) => _db.Suppliers.Remove(s);
+}
+
+public class PurchaseRepository : IPurchaseRepository
+{
+    private readonly AppDbContext _db;
+    public PurchaseRepository(AppDbContext db) => _db = db;
+
+    public Task<Purchase?> GetByIdWithItemsAsync(Guid id) =>
+        _db.Purchases
+           .Include(p => p.Supplier)
+           .Include(p => p.Branch)
+           .Include(p => p.PaymentTerm)
+           .Include(p => p.PurchaseItems).ThenInclude(i => i.Product)
+           .Include(p => p.SupplierPayments)
+           .FirstOrDefaultAsync(p => p.Id == id);
+
+    public Task<List<Purchase>> GetAllAsync(DateTime? from = null, DateTime? to = null)
+    {
+        var q = _db.Purchases.Include(p => p.Supplier).AsQueryable();
+        if (from.HasValue) q = q.Where(p => p.PurchaseDate >= from.Value);
+        if (to.HasValue)   q = q.Where(p => p.PurchaseDate <= to.Value);
+        return q.OrderByDescending(p => p.PurchaseDate).ToListAsync();
+    }
+
+    public Task<List<Purchase>> GetDuePurchasesAsync() =>
+        _db.Purchases
+           .Include(p => p.Supplier)
+           .Where(p => p.Status == PurchaseStatus.Active
+                    && p.PaymentType != PaymentType.Cash
+                    && p.AmountPaid < p.GrandTotal)
+           .OrderBy(p => p.DueDate)
+           .ThenBy(p => p.PurchaseDate)
+           .ToListAsync();
+
+    public async Task<string> GeneratePurchaseNumberAsync()
+    {
+        // Same count-then-append shape as GenerateInvoiceNumberAsync, and the same
+        // caveat: two documents posted in the same instant could collide. The unique
+        // index on PurchaseNumber turns that into a failed save rather than a
+        // duplicate, which on a two-person system is the right trade.
+        var prefix = $"PO-{DateTime.UtcNow:yyyyMM}";
+        var count  = await _db.Purchases.CountAsync(p => p.PurchaseNumber.StartsWith(prefix));
+        return $"{prefix}-{count + 1:D4}";
+    }
+
+    public Task<bool> SupplierDocumentExistsAsync(Guid supplierId, string documentNumber, Guid? excludeId = null) =>
+        _db.Purchases.AnyAsync(p => p.SupplierId == supplierId
+                                 && p.SupplierDocumentNumber != null
+                                 && p.SupplierDocumentNumber.ToLower() == documentNumber.ToLower()
+                                 && p.Status == PurchaseStatus.Active
+                                 && (excludeId == null || p.Id != excludeId));
+
+    public async Task AddAsync(Purchase p) => await _db.Purchases.AddAsync(p);
+    public void Update(Purchase p) => _db.Purchases.Update(p);
+
+    public async Task<PurchasePeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to)
+    {
+        // decimal? casts so EF emits a SUM() that yields NULL rather than throwing
+        // when no rows match — an empty period returns zeroes.
+        var head = await _db.Purchases
+            .Where(p => p.PurchaseDate >= from && p.PurchaseDate < to
+                     && p.Status == PurchaseStatus.Active)
+            .GroupBy(_ => 1)
+            .Select(g => new {
+                Count = g.Count(),
+                Net   = g.Sum(p => (decimal?)p.TaxBase)    ?? 0m,
+                Tax   = g.Sum(p => (decimal?)p.TaxAmount)  ?? 0m,
+                Gross = g.Sum(p => (decimal?)p.GrandTotal) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        return new PurchasePeriodTotals(
+            PurchaseCount:  head?.Count ?? 0,
+            NetPurchases:   head?.Net   ?? 0m,
+            TaxPaid:        head?.Tax   ?? 0m,
+            GrossPurchases: head?.Gross ?? 0m);
+    }
+}
+
+public class SupplierPaymentRepository : ISupplierPaymentRepository
+{
+    private readonly AppDbContext _db;
+    public SupplierPaymentRepository(AppDbContext db) => _db = db;
+
+    public async Task AddAsync(SupplierPayment p) => await _db.SupplierPayments.AddAsync(p);
+
+    public Task<List<SupplierPayment>> GetByPurchaseAsync(Guid purchaseId) =>
+        _db.SupplierPayments.Where(p => p.PurchaseId == purchaseId)
+                            .OrderByDescending(p => p.PaymentDate).ToListAsync();
+
+    public Task<List<SupplierPayment>> GetByDateRangeAsync(DateTime from, DateTime to) =>
+        _db.SupplierPayments.Include(p => p.Purchase!).ThenInclude(x => x.Supplier)
+                            .Where(p => p.PaymentDate >= from && p.PaymentDate < to)
+                            .OrderByDescending(p => p.PaymentDate).ToListAsync();
+}
+
+public class SalesPersonRepository : ISalesPersonRepository
+{
+    private readonly AppDbContext _db;
+    public SalesPersonRepository(AppDbContext db) => _db = db;
+
+    public Task<List<SalesPerson>> GetAllAsync(bool activeOnly = false)
+    {
+        var q = _db.SalesPersons.AsQueryable();
+        if (activeOnly) q = q.Where(p => p.IsActive);
+        return q.OrderBy(p => p.Name).ToListAsync();
+    }
+
+    public Task<SalesPerson?> GetByIdAsync(Guid id) => _db.SalesPersons.FindAsync(id).AsTask();
+
+    public Task<bool> NameExistsAsync(string name, Guid? excludeId = null) =>
+        _db.SalesPersons.AnyAsync(p => p.Name.ToLower() == name.ToLower()
+                                    && (excludeId == null || p.Id != excludeId));
+
+    public Task<bool> IsInUseAsync(Guid id) =>
+        _db.Sales.AnyAsync(s => s.SalesPersonId == id);
+
+    public async Task AddAsync(SalesPerson person) => await _db.SalesPersons.AddAsync(person);
+    public void Update(SalesPerson person) => _db.SalesPersons.Update(person);
+    public void Remove(SalesPerson person) => _db.SalesPersons.Remove(person);
+}
+
 public class ProductRepository : IProductRepository
 {
     private readonly AppDbContext _db;
@@ -190,13 +336,14 @@ public class SaleRepository : ISaleRepository
            .Include(s => s.Customer)
            .Include(s => s.Branch)
            .Include(s => s.PaymentTerm)
+           .Include(s => s.SalesPerson)
            .Include(s => s.SaleItems).ThenInclude(i => i.Product)
            .Include(s => s.PaymentRecords)
            .FirstOrDefaultAsync(s => s.Id == id);
 
     public Task<List<Sale>> GetAllAsync(DateTime? from = null, DateTime? to = null)
     {
-        var q = _db.Sales.Include(s => s.Customer).AsQueryable();
+        var q = _db.Sales.Include(s => s.Customer).Include(s => s.SalesPerson).AsQueryable();
         if (from.HasValue) q = q.Where(s => s.SaleDate >= from.Value);
         if (to.HasValue)   q = q.Where(s => s.SaleDate <= to.Value);
         return q.OrderByDescending(s => s.SaleDate).ToListAsync();

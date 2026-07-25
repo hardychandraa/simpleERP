@@ -16,14 +16,17 @@ public class SaleService : ISaleService
     private readonly InventoryService           _inventory;
     private readonly IAppSettingsRepository     _settings;
     private readonly IPaymentTermRepository     _terms;
+    private readonly ISalesPersonRepository     _people;
     private readonly IUnitOfWork                _uow;
 
     public SaleService(ISaleRepository sales, IProductRepository products,
         IBranchRepository branches, IPaymentRecordRepository payments,
         IAuditLogRepository audit, InventoryService inventory,
-        IAppSettingsRepository settings, IPaymentTermRepository terms, IUnitOfWork uow)
+        IAppSettingsRepository settings, IPaymentTermRepository terms,
+        ISalesPersonRepository people, IUnitOfWork uow)
     { _sales=sales; _products=products; _branches=branches; _payments=payments;
-      _audit=audit; _inventory=inventory; _settings=settings; _terms=terms; _uow=uow; }
+      _audit=audit; _inventory=inventory; _settings=settings; _terms=terms;
+      _people=people; _uow=uow; }
 
     /// <summary>
     /// Credit days for the legacy TOP payment types, or null for Cash/Due.
@@ -52,6 +55,19 @@ public class SaleService : ISaleService
 
         var branch = await _branches.GetDefaultAsync();
         if (branch == null) return ServiceResult<SaleDto>.Fail("Default branch not found.");
+
+        // Attribution is optional, but a supplied one must be real and still active —
+        // checked up front, before the ledger is touched.
+        Guid? salesPersonId = null;
+        if (dto.SalesPersonId.HasValue)
+        {
+            var person = await _people.GetByIdAsync(dto.SalesPersonId.Value);
+            if (person == null)
+                return ServiceResult<SaleDto>.Fail("Selected sales person not found.");
+            if (!person.IsActive)
+                return ServiceResult<SaleDto>.Fail($"Sales person '{person.Name}' is no longer active.");
+            salesPersonId = person.Id;
+        }
 
         // Validate all items BEFORE touching ledger
         foreach (var item in dto.Items)
@@ -213,6 +229,7 @@ public class SaleService : ISaleService
             BranchId      = branch.Id,
             PaymentType   = dto.PaymentType,
             PaymentTermId = termId,
+            SalesPersonId = salesPersonId,
             DueDate       = dueDate,
             SubTotal      = saleItems.Sum(i => i.UnitPrice * i.Qty),
             DiscountTotal = saleItems.Sum(i => i.DiscountAmount * i.Qty),
@@ -324,6 +341,7 @@ public class SaleService : ISaleService
             InvoiceNumber = s.InvoiceNumber,
             SaleDate      = s.SaleDate,
             CustomerName  = s.Customer?.Name ?? "",
+            SalesPersonName = s.SalesPerson?.Name ?? "",
             PaymentType   = s.PaymentType.ToString(),
             DueDate       = s.DueDate,
             GrandTotal    = s.GrandTotal,
@@ -440,6 +458,7 @@ public class SaleService : ISaleService
         CustomerPhone = s.Customer?.Phone,
         PaymentType   = s.PaymentType.ToString(),
         PaymentTermName = s.PaymentTerm?.Name ?? "",
+        SalesPersonName = s.SalesPerson?.Name ?? "",
         DueDate       = s.DueDate,
         SubTotal      = s.SubTotal,
         DiscountTotal = s.DiscountTotal,

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SimpleERP.Infrastructure.Data;
@@ -11,9 +12,11 @@ using SimpleERP.Infrastructure.Data;
 namespace SimpleERP.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724174529_AddSalesPerson")]
+    partial class AddSalesPerson
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -524,145 +527,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.ToTable("Products");
                 });
 
-            modelBuilder.Entity("SimpleERP.Domain.Entities.Purchase", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("AmountPaid")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<Guid>("BranchId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<decimal>("DiscountTotal")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<DateTime?>("DueDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<decimal>("GrandTotal")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<decimal>("InvoiceDiscountAmount")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<decimal?>("InvoiceDiscountPercent")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<bool>("IsTaxInclusive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<Guid?>("PaymentTermId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("PaymentType")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("PurchaseDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("PurchaseNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("SubTotal")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<string>("SupplierDocumentNumber")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid>("SupplierId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("TaxAmount")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<decimal>("TaxBase")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<decimal>("TaxRate")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
-
-                    b.HasIndex("DueDate");
-
-                    b.HasIndex("PaymentTermId");
-
-                    b.HasIndex("PurchaseDate");
-
-                    b.HasIndex("PurchaseNumber")
-                        .IsUnique();
-
-                    b.HasIndex("SupplierId", "SupplierDocumentNumber");
-
-                    b.ToTable("Purchases");
-                });
-
-            modelBuilder.Entity("SimpleERP.Domain.Entities.PurchaseItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("AllocatedInvoiceDiscount")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<decimal>("DiscountAmount")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<decimal?>("DiscountPercent")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<decimal>("LineTotal")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("PurchaseId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Qty")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<decimal>("UnitCost")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("PurchaseId");
-
-                    b.ToTable("PurchaseItems");
-                });
-
             modelBuilder.Entity("SimpleERP.Domain.Entities.Sale", b =>
                 {
                     b.Property<Guid>("Id")
@@ -880,83 +744,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.ToTable("StockAdjustments");
                 });
 
-            modelBuilder.Entity("SimpleERP.Domain.Entities.Supplier", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<Guid?>("PaymentTermId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Phone")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("TaxId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.HasIndex("PaymentTermId");
-
-                    b.ToTable("Suppliers");
-                });
-
-            modelBuilder.Entity("SimpleERP.Domain.Entities.SupplierPayment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<DateTime>("PaymentDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<Guid>("PurchaseId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PurchaseId");
-
-                    b.ToTable("SupplierPayments");
-                });
-
             modelBuilder.Entity("SimpleERP.Domain.Entities.Expense", b =>
                 {
                     b.HasOne("SimpleERP.Domain.Entities.ExpenseCategory", "Category")
@@ -996,51 +783,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Sale");
-                });
-
-            modelBuilder.Entity("SimpleERP.Domain.Entities.Purchase", b =>
-                {
-                    b.HasOne("SimpleERP.Domain.Entities.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("SimpleERP.Domain.Entities.PaymentTerm", "PaymentTerm")
-                        .WithMany()
-                        .HasForeignKey("PaymentTermId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("SimpleERP.Domain.Entities.Supplier", "Supplier")
-                        .WithMany("Purchases")
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Branch");
-
-                    b.Navigation("PaymentTerm");
-
-                    b.Navigation("Supplier");
-                });
-
-            modelBuilder.Entity("SimpleERP.Domain.Entities.PurchaseItem", b =>
-                {
-                    b.HasOne("SimpleERP.Domain.Entities.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("SimpleERP.Domain.Entities.Purchase", "Purchase")
-                        .WithMany("PurchaseItems")
-                        .HasForeignKey("PurchaseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-
-                    b.Navigation("Purchase");
                 });
 
             modelBuilder.Entity("SimpleERP.Domain.Entities.Sale", b =>
@@ -1106,27 +848,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("SimpleERP.Domain.Entities.Supplier", b =>
-                {
-                    b.HasOne("SimpleERP.Domain.Entities.PaymentTerm", "PaymentTerm")
-                        .WithMany()
-                        .HasForeignKey("PaymentTermId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("PaymentTerm");
-                });
-
-            modelBuilder.Entity("SimpleERP.Domain.Entities.SupplierPayment", b =>
-                {
-                    b.HasOne("SimpleERP.Domain.Entities.Purchase", "Purchase")
-                        .WithMany("SupplierPayments")
-                        .HasForeignKey("PurchaseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Purchase");
-                });
-
             modelBuilder.Entity("SimpleERP.Domain.Entities.Customer", b =>
                 {
                     b.Navigation("Sales");
@@ -1137,23 +858,11 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Navigation("InventoryLedgers");
                 });
 
-            modelBuilder.Entity("SimpleERP.Domain.Entities.Purchase", b =>
-                {
-                    b.Navigation("PurchaseItems");
-
-                    b.Navigation("SupplierPayments");
-                });
-
             modelBuilder.Entity("SimpleERP.Domain.Entities.Sale", b =>
                 {
                     b.Navigation("PaymentRecords");
 
                     b.Navigation("SaleItems");
-                });
-
-            modelBuilder.Entity("SimpleERP.Domain.Entities.Supplier", b =>
-                {
-                    b.Navigation("Purchases");
                 });
 #pragma warning restore 612, 618
         }

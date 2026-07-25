@@ -44,7 +44,12 @@
                 <tr>
                     <td><strong>@s.InvoiceNumber</strong></td>
                     <td>@s.SaleDate.ToLocalTime().ToString("dd-MMM-yy HH:mm")</td>
-                    <td>@s.CustomerName</td>
+                    <td>
+                        @s.CustomerName
+                        @if (!string.IsNullOrEmpty(s.SalesPersonName)) {
+                            <div style="font-size:11px;color:#9ca3af">👤 @s.SalesPersonName</div>
+                        }
+                    </td>
                     <td><span class="badge @(s.PaymentType == "Cash" ? "ok" : "warn")">
                         @(s.PaymentType switch { "TOP30"=>"TOP 30","TOP45"=>"TOP 45","TOP60"=>"TOP 60","TOP90"=>"TOP 90", _=>s.PaymentType })
                     </span>

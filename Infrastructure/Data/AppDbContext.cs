@@ -18,6 +18,11 @@ public class AppDbContext : DbContext
     public DbSet<AuditLog>        AuditLogs         => Set<AuditLog>();
     public DbSet<AppSettings>     AppSettings       => Set<AppSettings>();
     public DbSet<PaymentTerm>     PaymentTerms      => Set<PaymentTerm>();
+    public DbSet<SalesPerson>     SalesPersons      => Set<SalesPerson>();
+    public DbSet<Supplier>        Suppliers         => Set<Supplier>();
+    public DbSet<Purchase>        Purchases         => Set<Purchase>();
+    public DbSet<PurchaseItem>    PurchaseItems     => Set<PurchaseItem>();
+    public DbSet<SupplierPayment> SupplierPayments  => Set<SupplierPayment>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense>         Expenses          => Set<Expense>();
 
@@ -78,7 +83,13 @@ public class AppDbContext : DbContext
             // deletable — deactivate it instead, so history stays readable.
             e.HasOne(s => s.PaymentTerm).WithMany()
                 .HasForeignKey(s => s.PaymentTermId).OnDelete(DeleteBehavior.Restrict);
+            // Restrict for the same reason: a person credited with a posted sale must
+            // stay resolvable — deactivate instead of deleting.
+            e.HasOne(s => s.SalesPerson).WithMany()
+                .HasForeignKey(s => s.SalesPersonId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(s => s.InvoiceNumber).IsUnique();
+            // Commission (Step 7) settles per salesperson over a period.
+            e.HasIndex(s => s.SalesPersonId);
             e.HasIndex(s => s.SaleDate);
             e.HasIndex(s => s.DueDate);  // for aging queries
         });
@@ -135,6 +146,81 @@ public class AppDbContext : DbContext
             e.HasKey(t => t.Id);
             e.Property(t => t.Name).IsRequired().HasMaxLength(50);
             e.HasIndex(t => t.Name).IsUnique();
+        });
+
+        m.Entity<Supplier>(e => {
+            e.HasKey(s => s.Id);
+            e.Property(s => s.Name).IsRequired().HasMaxLength(300);
+            e.Property(s => s.Phone).HasMaxLength(50);
+            e.Property(s => s.Address).HasMaxLength(500);
+            e.Property(s => s.TaxId).HasMaxLength(50);
+            e.Property(s => s.Notes).HasMaxLength(500);
+            e.HasIndex(s => s.Name).IsUnique();
+            e.HasOne(s => s.PaymentTerm).WithMany()
+                .HasForeignKey(s => s.PaymentTermId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        m.Entity<Purchase>(e => {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.PurchaseNumber).IsRequired().HasMaxLength(50);
+            e.Property(p => p.SupplierDocumentNumber).HasMaxLength(100);
+            e.Property(p => p.SubTotal).HasColumnType("decimal(18,4)");
+            e.Property(p => p.DiscountTotal).HasColumnType("decimal(18,4)");
+            e.Property(p => p.InvoiceDiscountAmount).HasColumnType("decimal(18,4)");
+            e.Property(p => p.InvoiceDiscountPercent).HasColumnType("decimal(18,4)");
+            e.Property(p => p.TaxBase).HasColumnType("decimal(18,4)");
+            e.Property(p => p.TaxRate).HasColumnType("decimal(18,4)");
+            e.Property(p => p.TaxAmount).HasColumnType("decimal(18,4)");
+            e.Property(p => p.GrandTotal).HasColumnType("decimal(18,4)");
+            e.Property(p => p.AmountPaid).HasColumnType("decimal(18,4)");
+            e.Property(p => p.CreatedBy).HasMaxLength(100);
+            e.Property(p => p.Notes).HasMaxLength(500);
+            e.HasOne(p => p.Supplier).WithMany(s => s.Purchases)
+                .HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(p => p.Branch).WithMany()
+                .HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(p => p.PaymentTerm).WithMany()
+                .HasForeignKey(p => p.PaymentTermId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(p => p.PurchaseNumber).IsUnique();
+            e.HasIndex(p => p.PurchaseDate);
+            e.HasIndex(p => p.DueDate);   // AP ageing
+            // Rebate settlements are matched back to the supplier's own document
+            // number, so that lookup needs to be indexed, not a scan.
+            e.HasIndex(p => new { p.SupplierId, p.SupplierDocumentNumber });
+        });
+
+        m.Entity<PurchaseItem>(e => {
+            e.HasKey(i => i.Id);
+            e.Property(i => i.Qty).HasColumnType("decimal(18,4)");
+            e.Property(i => i.UnitCost).HasColumnType("decimal(18,4)");
+            e.Property(i => i.DiscountAmount).HasColumnType("decimal(18,4)");
+            e.Property(i => i.DiscountPercent).HasColumnType("decimal(18,4)");
+            e.Property(i => i.AllocatedInvoiceDiscount).HasColumnType("decimal(18,4)");
+            e.Property(i => i.LineTotal).HasColumnType("decimal(18,4)");
+            e.Property(i => i.Notes).HasMaxLength(500);
+            e.HasOne(i => i.Purchase).WithMany(p => p.PurchaseItems)
+                .HasForeignKey(i => i.PurchaseId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.Product).WithMany()
+                .HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+            // Rebate rules scope by product, and volume is summed per product.
+            e.HasIndex(i => i.ProductId);
+        });
+
+        m.Entity<SupplierPayment>(e => {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Amount).HasColumnType("decimal(18,4)");
+            e.Property(p => p.Notes).HasMaxLength(300);
+            e.Property(p => p.CreatedBy).HasMaxLength(100);
+            e.HasOne(p => p.Purchase).WithMany(x => x.SupplierPayments)
+                .HasForeignKey(p => p.PurchaseId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(p => p.PurchaseId);
+        });
+
+        m.Entity<SalesPerson>(e => {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Name).IsRequired().HasMaxLength(200);
+            e.Property(p => p.Phone).HasMaxLength(50);
+            e.HasIndex(p => p.Name).IsUnique();
         });
 
         m.Entity<ExpenseCategory>(e => {

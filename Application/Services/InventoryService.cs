@@ -50,6 +50,75 @@ public class InventoryService : IInventoryService
         Guid referenceId, Guid branchId)
         => await StockInCore(productId, qty, unitCost, referenceId, branchId, ReferenceType.Cancel);
 
+    /// <summary>
+    /// Receives every line of one purchase document. Called inside the PurchaseService
+    /// transaction — does NOT SaveChanges.
+    ///
+    /// Takes the whole document at once rather than being called per line because the
+    /// moving-average cost has to compound across lines: the current stock/cost helpers
+    /// read the database, and nothing in this transaction is written yet, so a
+    /// per-line call would compute every line's average from the same pre-purchase
+    /// figures. A supplier invoice listing the same product twice — two batches, two
+    /// prices, which is normal — would then land the wrong cost. The running tally
+    /// here is what makes the second line see the first.
+    ///
+    /// Tagged PurchaseOrder, deliberately distinct from the Purchase tag used by the
+    /// manual Stock In page, so rebate volume and AP reporting only sum real supplier
+    /// documents.
+    /// </summary>
+    public async Task StockInForPurchaseAsync(
+        IEnumerable<PurchaseReceiptLine> lines, Guid purchaseId, Guid branchId)
+    {
+        var running = new Dictionary<Guid, (decimal Stock, decimal Cost)>();
+
+        foreach (var line in lines)
+        {
+            if (!running.TryGetValue(line.ProductId, out var state))
+                state = (await _ledger.GetCurrentStockAsync(line.ProductId, branchId),
+                         await _ledger.GetCurrentAvgCostAsync(line.ProductId, branchId));
+
+            var newCost = state.Stock <= 0
+                ? line.UnitCost
+                : (state.Stock * state.Cost + line.Qty * line.UnitCost) / (state.Stock + line.Qty);
+
+            await _ledger.AddAsync(new InventoryLedger {
+                Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
+                BranchId = branchId, ProductId = line.ProductId,
+                ReferenceType = ReferenceType.PurchaseOrder, ReferenceId = purchaseId,
+                QtyIn = line.Qty, QtyOut = 0,
+                UnitCost = newCost, TotalCost = line.Qty * newCost });
+
+            running[line.ProductId] = (state.Stock + line.Qty, newCost);
+        }
+    }
+
+    /// <summary>
+    /// Reverses a purchase receipt on cancellation. Called inside the PurchaseService
+    /// transaction — does NOT SaveChanges.
+    ///
+    /// Guarded: stock received on a purchase may already have been sold, and taking it
+    /// back out would drive the ledger negative and corrupt every cost derived from it.
+    /// Refusing here forces the correct answer — a supplier return (Step 8), which is a
+    /// real business event — rather than silently rewriting history.
+    /// </summary>
+    public async Task<ServiceResult> StockOutForPurchaseCancelAsync(
+        Guid productId, decimal qty, Guid referenceId, Guid branchId)
+    {
+        var stock = await _ledger.GetCurrentStockAsync(productId, branchId);
+        if (stock < qty)
+            return ServiceResult.Fail(
+                $"Cannot cancel: only {stock:N2} of {qty:N2} received units are still in stock — " +
+                "the rest has already been sold or issued. Record a supplier return instead.");
+
+        var cost = await _ledger.GetCurrentAvgCostAsync(productId, branchId);
+        await _ledger.AddAsync(new InventoryLedger {
+            Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
+            BranchId = branchId, ProductId = productId,
+            ReferenceType = ReferenceType.Cancel, ReferenceId = referenceId,
+            QtyIn = 0, QtyOut = qty, UnitCost = cost, TotalCost = cost * qty });
+        return ServiceResult.Ok();
+    }
+
     public async Task<ServiceResult> AdjustStockAsync(StockAdjustmentDto dto, string user)
     {
         if (string.IsNullOrWhiteSpace(dto.Reason)) return ServiceResult.Fail("Reason is required.");

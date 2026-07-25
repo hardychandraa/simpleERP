@@ -76,8 +76,12 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
 
     <div class="sb-sec">Transactions</div>
     <a href="/Sales/Create" class="@(page=="/Sales/Create"?"active":"")">🧾 New Sale</a>
-    <a href="/Sales"        class="@(page.StartsWith("/Sales")&&page!="/Sales/Create"?"active":"")">📋 Sales History</a>
+    <a href="/Sales"        class="@(page.StartsWith("/Sales/")&&page!="/Sales/Create"?"active":"")">📋 Sales History</a>
     <a href="/Payments"     class="@(page.StartsWith("/Payments")?"active":"")">💳 Due Payments</a>
+
+    <div class="sb-sec">Purchasing</div>
+    <a href="/Purchases/Create" class="@(page=="/Purchases/Create"?"active":"")">📥 New Purchase</a>
+    <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Create"?"active":"")">📦 Purchases</a>
 
     <div class="sb-sec">Inventory</div>
     <a href="/Inventory/StockIn"  class="@(page=="/Inventory/StockIn" ?"active":"")">📥 Stock In</a>
@@ -94,7 +98,9 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
     <a href="/Expenses"          class="@(page.StartsWith("/Expenses")    ?"active":"")">💸 Expenses</a>
 
     <div class="sb-sec">Master Data</div>
+    <a href="/Suppliers"         class="@(page.StartsWith("/Suppliers")   ?"active":"")">🏭 Suppliers</a>
     <a href="/PaymentTerms"      class="@(page.StartsWith("/PaymentTerms")?"active":"")">📆 Payment Terms</a>
+    <a href="/SalesPersons"      class="@(page.StartsWith("/SalesPersons")?"active":"")">👤 Sales People</a>
 
     <div class="sb-sec">System</div>
     <a href="/Settings" class="@(page.StartsWith("/Settings")?"active":"")">⚙️ Settings</a>

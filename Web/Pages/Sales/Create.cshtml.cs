@@ -14,12 +14,14 @@ public class CreateModel : PageModel
     private readonly ICustomerService    _customers;
     private readonly IProductService     _products;
     private readonly IPaymentTermService _terms;
+    private readonly ISalesPersonService _people;
     private readonly IAppSettingsService _settings;
 
     public CreateModel(ISaleService sales, ICustomerService customers,
                        IProductService products, IPaymentTermService terms,
-                       IAppSettingsService settings)
-    { _sales=sales; _customers=customers; _products=products; _terms=terms; _settings=settings; }
+                       ISalesPersonService people, IAppSettingsService settings)
+    { _sales=sales; _customers=customers; _products=products; _terms=terms;
+      _people=people; _settings=settings; }
 
     [BindProperty] public Guid        CustomerId  { get; set; }
     [BindProperty] public PaymentType PaymentType { get; set; } = PaymentType.Cash;
@@ -29,12 +31,15 @@ public class CreateModel : PageModel
     [BindProperty] public bool        IsTaxInclusive { get; set; }
     /// <summary>Selected credit term. Empty = open credit with no agreed due date.</summary>
     [BindProperty] public Guid?       PaymentTermId  { get; set; }
+    /// <summary>Who to credit. Empty = unattributed; the service treats that as valid.</summary>
+    [BindProperty] public Guid?       SalesPersonId  { get; set; }
 
     /// <summary>Flat whole-invoice discount, or a percent when InvoiceDiscountIsPercent.</summary>
     [BindProperty] public decimal InvoiceDiscountInput { get; set; }
     [BindProperty] public bool    InvoiceDiscountIsPercent { get; set; }
 
     public List<PaymentTermDto> TermOptions { get; set; } = new();
+    public List<SalesPersonDto> SalesPersonOptions { get; set; } = new();
     /// <summary>PPN rate as a fraction, so the summary can preview tax the same way the server computes it.</summary>
     public decimal VatRate { get; set; }
 
@@ -68,6 +73,7 @@ public class CreateModel : PageModel
             CustomerId     = CustomerId,
             PaymentType    = PaymentType,
             PaymentTermId  = PaymentTermId,
+            SalesPersonId  = SalesPersonId,
             Notes          = notes,
             IsTaxInclusive = IsTaxInclusive,
             // Only one of the two is sent; the service resolves a percent into an
@@ -89,6 +95,7 @@ public class CreateModel : PageModel
             c.Id.ToString())).ToList();
         AvailableProducts = await _products.GetAllActiveAsync();
         TermOptions = await _terms.GetAllAsync(activeOnly: true);
+        SalesPersonOptions = await _people.GetAllAsync(activeOnly: true);
         VatRate     = (await _settings.GetAsync()).VatRatePercent / 100m;
     }
 }

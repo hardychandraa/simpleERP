@@ -56,6 +56,9 @@
       @if (!string.IsNullOrEmpty(Model.Sale.CustomerPhone)) {
         <div style="color:#6b7280;font-size:12px">📞 @Model.Sale.CustomerPhone</div>
       }
+      @if (!string.IsNullOrEmpty(Model.Sale.SalesPersonName)) {
+        <div style="color:#6b7280;font-size:12px;margin-top:4px">👤 Sold by @Model.Sale.SalesPersonName</div>
+      }
     </div>
     <div>
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">Payment</div>

@@ -134,12 +134,151 @@ public class PaymentTermDto {
     public bool   InUse     { get; set; }
 }
 
+// ── Suppliers ─────────────────────────────────────────────────────────────────
+public class SupplierDto {
+    public Guid    Id            { get; set; }
+    public string  Name          { get; set; } = "";
+    public string? Phone         { get; set; }
+    public string? Address       { get; set; }
+    /// <summary>NPWP.</summary>
+    public string? TaxId         { get; set; }
+    public Guid?   PaymentTermId { get; set; }
+    /// <summary>Resolved term name for display. Empty when no default term is set.</summary>
+    public string  PaymentTermName { get; set; } = "";
+    public bool    IsActive      { get; set; } = true;
+    public string? Notes         { get; set; }
+    /// <summary>True when a posted purchase references it — the UI hides Delete.</summary>
+    public bool    InUse         { get; set; }
+}
+
+// ── Purchases ─────────────────────────────────────────────────────────────────
+public class CreatePurchaseDto {
+    public Guid        SupplierId  { get; set; }
+    /// <summary>The supplier's own invoice/PO number, as printed on their paperwork.</summary>
+    public string?     SupplierDocumentNumber { get; set; }
+    /// <summary>Date on the supplier's invoice, which is often not today.</summary>
+    public DateTime?   PurchaseDate { get; set; }
+    public PaymentType PaymentType { get; set; }
+    public Guid?       PaymentTermId { get; set; }
+    /// <summary>Flat whole-document discount. Ignored when InvoiceDiscountPercent is supplied.</summary>
+    public decimal     InvoiceDiscountAmount  { get; set; }
+    /// <summary>Whole-document discount as a percentage of the post-line-discount total (0–100).</summary>
+    public decimal?    InvoiceDiscountPercent { get; set; }
+    public string?     Notes       { get; set; }
+    /// <summary>True if the supplier's costs already include PPN; false to add it on top.</summary>
+    public bool        IsTaxInclusive { get; set; }
+    public List<CreatePurchaseItemDto> Items { get; set; } = new();
+}
+public class CreatePurchaseItemDto {
+    public Guid    ProductId      { get; set; }
+    public decimal Qty            { get; set; }
+    public decimal UnitCost       { get; set; }
+    /// <summary>Flat discount per unit. Ignored when DiscountPercent is supplied.</summary>
+    public decimal DiscountAmount { get; set; }
+    /// <summary>Discount as a percentage of unit cost (0–100). Takes precedence over DiscountAmount.</summary>
+    public decimal? DiscountPercent { get; set; }
+    public string? Notes          { get; set; }
+}
+public class PurchaseDto {
+    public Guid      Id             { get; set; }
+    public string    PurchaseNumber { get; set; } = "";
+    public string?   SupplierDocumentNumber { get; set; }
+    public DateTime  PurchaseDate   { get; set; }
+    public Guid      SupplierId     { get; set; }
+    public string    SupplierName   { get; set; } = "";
+    public string?   SupplierPhone  { get; set; }
+    public string    PaymentType    { get; set; } = "";
+    public string    PaymentTermName{ get; set; } = "";
+    public DateTime? DueDate        { get; set; }
+    public decimal   SubTotal       { get; set; }
+    public decimal   DiscountTotal  { get; set; }
+    public decimal   InvoiceDiscountAmount  { get; set; }
+    public decimal?  InvoiceDiscountPercent { get; set; }
+    public decimal   TaxBase        { get; set; }
+    public decimal   TaxRate        { get; set; }
+    public decimal   TaxAmount      { get; set; }
+    public bool      IsTaxInclusive { get; set; }
+    public decimal   GrandTotal     { get; set; }
+    public decimal   AmountPaid     { get; set; }
+    public decimal   BalanceDue     => GrandTotal - AmountPaid;
+    public string    Status         { get; set; } = "";
+    public string?   Notes          { get; set; }
+    public string    CreatedBy      { get; set; } = "";
+    public List<PurchaseItemDto>     Items          { get; set; } = new();
+    public List<SupplierPaymentDto>  PaymentHistory { get; set; } = new();
+}
+public class PurchaseItemDto {
+    public Guid     Id             { get; set; }
+    public Guid     ProductId      { get; set; }
+    public string   ProductName    { get; set; } = "";
+    public string   SKU            { get; set; } = "";
+    public decimal  Qty            { get; set; }
+    public decimal  UnitCost       { get; set; }
+    public decimal  DiscountAmount { get; set; }
+    public decimal? DiscountPercent{ get; set; }
+    public decimal  LineTotal      { get; set; }
+    public decimal  AllocatedInvoiceDiscount { get; set; }
+    /// <summary>
+    /// LineTotal net of the allocated document discount — the real cost of this line.
+    /// Any future rebate or margin calculation must read this, never LineTotal alone.
+    /// </summary>
+    public decimal  NetLineTotal   => LineTotal - AllocatedInvoiceDiscount;
+    public string?  Notes          { get; set; }
+}
+public class PurchaseListDto {
+    public Guid     Id             { get; set; }
+    public string   PurchaseNumber { get; set; } = "";
+    public string?  SupplierDocumentNumber { get; set; }
+    public DateTime PurchaseDate   { get; set; }
+    public string   SupplierName   { get; set; } = "";
+    public string   PaymentType    { get; set; } = "";
+    public DateTime? DueDate       { get; set; }
+    public decimal  GrandTotal     { get; set; }
+    public decimal  AmountPaid     { get; set; }
+    public decimal  BalanceDue     => GrandTotal - AmountPaid;
+    public string   Status         { get; set; } = "";
+    public bool     IsOverdue      => DueDate.HasValue && DueDate.Value.Date < DateTime.UtcNow.Date && BalanceDue > 0;
+}
+public class RecordSupplierPaymentDto {
+    public Guid    PurchaseId { get; set; }
+    public decimal Amount     { get; set; }
+    public string? Notes      { get; set; }
+}
+public class SupplierPaymentDto {
+    public Guid     Id          { get; set; }
+    public DateTime PaymentDate { get; set; }
+    public decimal  Amount      { get; set; }
+    public string?  Notes       { get; set; }
+    public string   CreatedBy   { get; set; } = "";
+}
+/// <summary>One supplier's outstanding AP, for the payables summary.</summary>
+public class DueSupplierDto {
+    public Guid    SupplierId    { get; set; }
+    public string  SupplierName  { get; set; } = "";
+    public string? Phone         { get; set; }
+    public int     OpenPurchases { get; set; }
+    public decimal TotalDue      { get; set; }
+    public bool    HasOverdue    { get; set; }
+}
+
+// ── Sales people ──────────────────────────────────────────────────────────────
+public class SalesPersonDto {
+    public Guid    Id       { get; set; }
+    public string  Name     { get; set; } = "";
+    public string? Phone    { get; set; }
+    public bool    IsActive { get; set; } = true;
+    /// <summary>True when a posted sale credits them — the UI hides Delete.</summary>
+    public bool    InUse    { get; set; }
+}
+
 // ── Sales ─────────────────────────────────────────────────────────────────────
 public class CreateSaleDto {
     public Guid        CustomerId   { get; set; }
     public PaymentType PaymentType  { get; set; }
     /// <summary>Credit term. Null = open credit with no agreed due date. Ignored for Cash.</summary>
     public Guid?       PaymentTermId { get; set; }
+    /// <summary>Who to credit with the sale. Null = unattributed (walk-in).</summary>
+    public Guid?       SalesPersonId { get; set; }
     /// <summary>Flat whole-invoice discount. Ignored when InvoiceDiscountPercent is supplied.</summary>
     public decimal     InvoiceDiscountAmount  { get; set; }
     /// <summary>Whole-invoice discount as a percentage of the post-line-discount total (0–100).</summary>
@@ -172,6 +311,8 @@ public class SaleDto {
     public string    PaymentType   { get; set; } = "";
     /// <summary>Term name, e.g. "TOP 30". Empty for Cash or open credit.</summary>
     public string    PaymentTermName { get; set; } = "";
+    /// <summary>Credited salesperson. Empty when the sale is unattributed.</summary>
+    public string    SalesPersonName { get; set; } = "";
     public DateTime? DueDate       { get; set; }
     public decimal   SubTotal      { get; set; }
     public decimal   DiscountTotal { get; set; }
@@ -217,6 +358,7 @@ public class SaleListDto {
     public string   InvoiceNumber { get; set; } = "";
     public DateTime SaleDate      { get; set; }
     public string   CustomerName  { get; set; } = "";
+    public string   SalesPersonName { get; set; } = "";
     public string   PaymentType   { get; set; } = "";
     public DateTime? DueDate      { get; set; }
     public decimal  GrandTotal    { get; set; }

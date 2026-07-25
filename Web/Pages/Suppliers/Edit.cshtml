@@ -1,0 +1,76 @@
+@page "/Suppliers/Edit"
+@model SimpleERP.Web.Pages.Suppliers.EditModel
+@{ ViewData["Title"] = Model.IsNew ? "New Supplier" : "Edit Supplier"; }
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" style="max-width:620px">
+    <input type="hidden" asp-for="Input.Id" />
+
+    <div class="card">
+        <div class="card-title">@(Model.IsNew ? "➕ New Supplier" : "✏️ Edit Supplier")</div>
+
+        <div class="fg">
+            <label>Name *</label>
+            <input type="text" asp-for="Input.Name" required maxlength="300" placeholder="e.g. PT Sumber Makmur" />
+        </div>
+
+        <div style="display:flex;gap:12px">
+            <div class="fg" style="flex:1">
+                <label>Phone</label>
+                <input type="text" asp-for="Input.Phone" maxlength="50" placeholder="Optional" />
+            </div>
+            <div class="fg" style="flex:1">
+                <label>NPWP</label>
+                <input type="text" asp-for="Input.TaxId" maxlength="50" placeholder="Optional" />
+            </div>
+        </div>
+
+        <div class="fg">
+            <label>Address</label>
+            <input type="text" asp-for="Input.Address" maxlength="500" placeholder="Optional" />
+        </div>
+
+        <div class="fg">
+            <label>Default Credit Term</label>
+            <select asp-for="Input.PaymentTermId">
+                <option value="">— none —</option>
+                @foreach (var t in Model.TermOptions)
+                {
+                    <option value="@t.Id">@t.Name (@(t.DueDays == 0 ? "same day" : $"{t.DueDays} days"))</option>
+                }
+            </select>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                Pre-selected on a new purchase. Only a default — the term actually used
+                is stored on each purchase, so changing this never moves the due date of
+                a document already posted.
+            </div>
+        </div>
+
+        <div class="fg">
+            <label>Notes</label>
+            <input type="text" asp-for="Input.Notes" maxlength="500" placeholder="Optional" />
+        </div>
+
+        <div class="fg" style="display:flex;align-items:center;gap:10px">
+            <input type="checkbox" asp-for="Input.IsActive" style="width:18px;height:18px;margin:0" />
+            <label style="margin:0">Active — available when creating new purchases</label>
+        </div>
+
+        @if (Model.InUse)
+        {
+            <div class="alert alert-warning" style="font-size:12px;line-height:1.6;margin-top:6px">
+                This supplier has posted purchases, so they can't be deleted — untick
+                Active to retire them.
+            </div>
+        }
+    </div>
+
+    <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary" style="padding:10px 32px">💾 Save</button>
+        <a href="/Suppliers" class="btn btn-outline">Cancel</a>
+    </div>
+</form>

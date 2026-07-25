@@ -16,6 +16,11 @@ public class Sale
     /// </summary>
     public Guid?       PaymentTermId { get; set; }
     /// <summary>
+    /// Who gets credited with this sale. Null is legitimate — walk-in sales, and every
+    /// sale posted before salespeople existed. Commission (Step 7) reads this.
+    /// </summary>
+    public Guid?       SalesPersonId { get; set; }
+    /// <summary>
     /// When payment falls due. Null for Cash, and for open credit with no agreed term.
     /// Formula: SaleDate + PaymentTerm.DueDays (legacy rows: SaleDate + the enum's days).
     /// </summary>
@@ -55,6 +60,7 @@ public class Sale
     public Customer?                  Customer       { get; set; }
     public Branch?                    Branch         { get; set; }
     public PaymentTerm?               PaymentTerm    { get; set; }
+    public SalesPerson?               SalesPerson    { get; set; }
     public ICollection<SaleItem>      SaleItems      { get; set; } = new List<SaleItem>();
     public ICollection<PaymentRecord> PaymentRecords { get; set; } = new List<PaymentRecord>();
 }

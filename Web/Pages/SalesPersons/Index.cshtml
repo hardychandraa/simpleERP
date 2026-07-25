@@ -1,0 +1,97 @@
+@page "/SalesPersons"
+@model SimpleERP.Web.Pages.SalesPersons.IndexModel
+@{ ViewData["Title"] = "Sales People"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div class="card">
+    <div class="card-title">➕ Add Sales Person</div>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:14px;line-height:1.6">
+        Who gets credited with a sale. Selecting one on an invoice is optional —
+        walk-in sales can stay unattributed. Deliberately separate from system
+        logins: whoever closes the deal isn't always whoever types the invoice.
+    </p>
+    <form method="post" asp-page-handler="Create">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="fg" style="margin:0;flex:1;min-width:180px">
+                <label>Name *</label>
+                <input type="text" asp-for="Input.Name" required maxlength="200" placeholder="e.g. Budi" />
+            </div>
+            <div class="fg" style="margin:0;width:180px">
+                <label>Phone</label>
+                <input type="text" asp-for="Input.Phone" maxlength="50" placeholder="Optional" />
+            </div>
+            <div class="fg" style="margin:0;display:flex;align-items:center;gap:8px;padding-bottom:9px">
+                <input type="checkbox" asp-for="Input.IsActive" style="width:18px;height:18px;margin:0" />
+                <label style="margin:0;white-space:nowrap">Active</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-title">Sales People (@Model.People.Count)</div>
+    @if (Model.People.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">No sales people yet. Add one above.</p>
+    }
+    else
+    {
+        <table style="width:100%">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th style="width:180px">Phone</th>
+                    <th style="width:110px;text-align:center">Status</th>
+                    <th style="width:150px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Model.People)
+            {
+                <tr>
+                    <td style="font-weight:600">@p.Name</td>
+                    <td style="color:@(string.IsNullOrEmpty(p.Phone) ? "#9ca3af" : "inherit")">
+                        @(string.IsNullOrEmpty(p.Phone) ? "—" : p.Phone)
+                    </td>
+                    <td style="text-align:center">
+                        @if (p.IsActive)
+                        {
+                            <span style="color:#059669;font-weight:600;font-size:12px">Active</span>
+                        }
+                        else
+                        {
+                            <span style="color:#9ca3af;font-size:12px">Inactive</span>
+                        }
+                    </td>
+                    <td style="white-space:nowrap">
+                        <a href="/SalesPersons/Edit?id=@p.Id" class="btn btn-outline btn-sm">Edit</a>
+                        @if (p.InUse)
+                        {
+                            <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="Credited with existing sales">in use</span>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@p.Id"
+                                  style="display:inline"
+                                  onsubmit="return confirm('Delete sales person @p.Name?');">
+                                <button type="submit" class="btn btn-outline btn-sm"
+                                        style="color:#dc2626;border-color:#fecaca">Delete</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p style="font-size:11px;color:#9ca3af;margin-top:12px;line-height:1.6">
+            People already credited with a sale can't be deleted — set them inactive
+            instead, so they stop appearing on new sales while existing invoices
+            (and the commission calculated from them) keep showing their name.
+        </p>
+    }
+</div>

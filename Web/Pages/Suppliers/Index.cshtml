@@ -1,0 +1,93 @@
+@page "/Suppliers"
+@model SimpleERP.Web.Pages.Suppliers.IndexModel
+@{ ViewData["Title"] = "Suppliers"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="card-title" style="margin:0">Suppliers (@Model.Suppliers.Count)</div>
+        <a href="/Suppliers/Edit" class="btn btn-success">＋ New Supplier</a>
+    </div>
+</div>
+
+<div class="card">
+    @if (Model.Suppliers.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">
+            No suppliers yet. <a href="/Suppliers/Edit">Add one →</a>
+        </p>
+    }
+    else
+    {
+        <table style="width:100%">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th style="width:150px">Phone</th>
+                    <th style="width:170px">NPWP</th>
+                    <th style="width:120px">Default Term</th>
+                    <th style="width:100px;text-align:center">Status</th>
+                    <th style="width:150px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var s in Model.Suppliers)
+            {
+                <tr>
+                    <td>
+                        <div style="font-weight:600">@s.Name</div>
+                        @if (!string.IsNullOrEmpty(s.Address))
+                        {
+                            <div style="font-size:11px;color:#9ca3af">@s.Address</div>
+                        }
+                    </td>
+                    <td style="color:@(string.IsNullOrEmpty(s.Phone) ? "#9ca3af" : "inherit")">
+                        @(string.IsNullOrEmpty(s.Phone) ? "—" : s.Phone)
+                    </td>
+                    <td style="font-size:12px;color:@(string.IsNullOrEmpty(s.TaxId) ? "#9ca3af" : "inherit")">
+                        @(string.IsNullOrEmpty(s.TaxId) ? "—" : s.TaxId)
+                    </td>
+                    <td style="font-size:12px;color:@(string.IsNullOrEmpty(s.PaymentTermName) ? "#9ca3af" : "inherit")">
+                        @(string.IsNullOrEmpty(s.PaymentTermName) ? "—" : s.PaymentTermName)
+                    </td>
+                    <td style="text-align:center">
+                        @if (s.IsActive)
+                        {
+                            <span style="color:#059669;font-weight:600;font-size:12px">Active</span>
+                        }
+                        else
+                        {
+                            <span style="color:#9ca3af;font-size:12px">Inactive</span>
+                        }
+                    </td>
+                    <td style="white-space:nowrap">
+                        <a href="/Suppliers/Edit?id=@s.Id" class="btn btn-outline btn-sm">Edit</a>
+                        @if (s.InUse)
+                        {
+                            <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="Has posted purchases">in use</span>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@s.Id"
+                                  style="display:inline"
+                                  onsubmit="return confirm('Delete supplier @s.Name?');">
+                                <button type="submit" class="btn btn-outline btn-sm"
+                                        style="color:#dc2626;border-color:#fecaca">Delete</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p style="font-size:11px;color:#9ca3af;margin-top:12px;line-height:1.6">
+            Suppliers with posted purchases can't be deleted — set them inactive
+            instead. Their purchase history, outstanding payables and rebate records
+            all hang off them.
+        </p>
+    }
+</div>

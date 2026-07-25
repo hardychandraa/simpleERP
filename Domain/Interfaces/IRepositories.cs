@@ -102,6 +102,67 @@ public interface IPaymentTermRepository {
     void Remove(PaymentTerm term);
 }
 
+public interface ISupplierRepository {
+    Task<Supplier?> GetByIdAsync(Guid id);
+    Task<List<Supplier>> GetAllAsync(bool activeOnly = false);
+    Task<bool> NameExistsAsync(string name, Guid? excludeId = null);
+    /// <summary>True if any posted purchase references this supplier — blocks deletion.</summary>
+    Task<bool> IsInUseAsync(Guid id);
+    Task AddAsync(Supplier supplier);
+    void Update(Supplier supplier);
+    void Remove(Supplier supplier);
+}
+
+public interface IPurchaseRepository {
+    Task<Purchase?> GetByIdWithItemsAsync(Guid id);
+    Task<List<Purchase>> GetAllAsync(DateTime? from = null, DateTime? to = null);
+    /// <summary>Active purchases still owing money, oldest due first — the AP ageing list.</summary>
+    Task<List<Purchase>> GetDuePurchasesAsync();
+    Task<string> GeneratePurchaseNumberAsync();
+    /// <summary>
+    /// True if this supplier already has a purchase carrying the same document number.
+    /// Scoped per supplier deliberately: two suppliers reusing a number is normal, the
+    /// same supplier billing the same number twice is a duplicate entry.
+    /// </summary>
+    Task<bool> SupplierDocumentExistsAsync(Guid supplierId, string documentNumber, Guid? excludeId = null);
+    Task AddAsync(Purchase purchase);
+    void Update(Purchase purchase);
+    /// <summary>
+    /// Aggregated purchase figures for [from, to), active purchases only. Set-based —
+    /// a period can span a full year, which GetAllAsync would materialise.
+    /// </summary>
+    Task<PurchasePeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to);
+}
+
+/// <summary>
+/// Period totals for the purchase side. <paramref name="NetPurchases"/> is ex-PPN
+/// (the DPP): input VAT is reclaimable, not a cost, so it never belongs in a
+/// purchase or COGS figure. <paramref name="TaxPaid"/> carries it separately for the
+/// monthly PPN summary (output tax − input tax).
+/// </summary>
+public record PurchasePeriodTotals(
+    int     PurchaseCount,
+    decimal NetPurchases,
+    decimal TaxPaid,
+    decimal GrossPurchases);
+
+public interface ISupplierPaymentRepository {
+    Task AddAsync(SupplierPayment payment);
+    Task<List<SupplierPayment>> GetByPurchaseAsync(Guid purchaseId);
+    Task<List<SupplierPayment>> GetByDateRangeAsync(DateTime from, DateTime to);
+}
+
+public interface ISalesPersonRepository {
+    Task<List<SalesPerson>> GetAllAsync(bool activeOnly = false);
+    Task<SalesPerson?> GetByIdAsync(Guid id);
+    Task<bool> NameExistsAsync(string name, Guid? excludeId = null);
+    /// <summary>True if any posted sale is credited to this person — blocks deletion.</summary>
+    Task<bool> IsInUseAsync(Guid id);
+    Task AddAsync(SalesPerson person);
+    void Update(SalesPerson person);
+    void Remove(SalesPerson person);
+}
+
 public interface IPaymentRecordRepository {
     Task AddAsync(PaymentRecord record);
     Task<List<PaymentRecord>> GetBySaleAsync(Guid saleId);

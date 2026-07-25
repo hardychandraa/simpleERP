@@ -21,10 +21,19 @@ public interface ICustomerService {
     Task<ServiceResult> CreateAsync(CreateCustomerDto dto);
     Task<ServiceResult> UpdateAsync(UpdateCustomerDto dto);
 }
+/// <summary>
+/// One line of a purchase to receive into stock: the quantity, and the real ex-PPN
+/// cost per unit after every discount. Cost is passed in rather than derived here —
+/// working out what a line actually cost is PurchaseService's job.
+/// </summary>
+public record PurchaseReceiptLine(Guid ProductId, decimal Qty, decimal UnitCost);
+
 public interface IInventoryService {
     Task<ServiceResult> StockInAsync(StockInDto dto);
     Task<ServiceResult> StockOutAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId);
     Task StockInForCancelAsync(Guid productId, decimal qty, decimal unitCost, Guid referenceId, Guid branchId);
+    Task StockInForPurchaseAsync(IEnumerable<PurchaseReceiptLine> lines, Guid purchaseId, Guid branchId);
+    Task<ServiceResult> StockOutForPurchaseCancelAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId);
     Task<ServiceResult> AdjustStockAsync(StockAdjustmentDto dto, string user);
     Task<decimal> GetCurrentStockAsync(Guid productId);
     Task<decimal> GetCurrentAvgCostAsync(Guid productId);
@@ -62,6 +71,28 @@ public interface IPaymentTermService {
     Task<PaymentTermDto?> GetByIdAsync(Guid id);
     Task<ServiceResult> CreateAsync(PaymentTermDto dto, string user);
     Task<ServiceResult> UpdateAsync(PaymentTermDto dto, string user);
+    Task<ServiceResult> DeleteAsync(Guid id, string user);
+}
+public interface ISupplierService {
+    Task<List<SupplierDto>> GetAllAsync(bool activeOnly = false);
+    Task<SupplierDto?> GetByIdAsync(Guid id);
+    Task<ServiceResult> CreateAsync(SupplierDto dto, string user);
+    Task<ServiceResult> UpdateAsync(SupplierDto dto, string user);
+    Task<ServiceResult> DeleteAsync(Guid id, string user);
+}
+public interface IPurchaseService {
+    Task<ServiceResult<PurchaseDto>> CreateAsync(CreatePurchaseDto dto, string user);
+    Task<ServiceResult> CancelAsync(Guid purchaseId, string user);
+    Task<ServiceResult<SupplierPaymentDto>> RecordPaymentAsync(RecordSupplierPaymentDto dto, string user);
+    Task<PurchaseDto?> GetByIdAsync(Guid id);
+    Task<List<PurchaseListDto>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null);
+    Task<List<DueSupplierDto>> GetDueSummaryAsync();
+}
+public interface ISalesPersonService {
+    Task<List<SalesPersonDto>> GetAllAsync(bool activeOnly = false);
+    Task<SalesPersonDto?> GetByIdAsync(Guid id);
+    Task<ServiceResult> CreateAsync(SalesPersonDto dto, string user);
+    Task<ServiceResult> UpdateAsync(SalesPersonDto dto, string user);
     Task<ServiceResult> DeleteAsync(Guid id, string user);
 }
 public interface IFinancialReportService {

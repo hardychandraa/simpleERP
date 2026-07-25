@@ -1,0 +1,93 @@
+@page "/Purchases"
+@model SimpleERP.Web.Pages.Purchases.IndexModel
+@{ ViewData["Title"] = "Purchases"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div class="card" style="margin-bottom:14px">
+    <form method="get" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="margin:0;flex:1;min-width:130px">
+            <label>From</label>
+            <input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="fg" style="margin:0;flex:1;min-width:130px">
+            <label>To</label>
+            <input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="fg" style="margin:0;flex:1.5;min-width:160px">
+            <label>Search</label>
+            <input type="text" name="search" value="@Model.Search" placeholder="PO no., supplier doc, supplier..." />
+        </div>
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="/Purchases" class="btn btn-outline">Reset</a>
+        <a href="/Purchases/Create" class="btn btn-success" style="margin-left:auto">＋ New Purchase</a>
+    </form>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>PO Number</th>
+                <th>Supplier Doc</th>
+                <th>Date</th>
+                <th>Supplier</th>
+                <th>Payment</th>
+                <th style="text-align:right">Total</th>
+                <th style="text-align:right">Paid</th>
+                <th style="text-align:right">Balance</th>
+                <th style="text-align:center">Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.Purchases)
+            {
+                <tr>
+                    <td><strong>@p.PurchaseNumber</strong></td>
+                    <td style="color:@(string.IsNullOrEmpty(p.SupplierDocumentNumber) ? "#9ca3af" : "inherit")">
+                        @(string.IsNullOrEmpty(p.SupplierDocumentNumber) ? "—" : p.SupplierDocumentNumber)
+                    </td>
+                    <td>@p.PurchaseDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+                    <td>@p.SupplierName</td>
+                    <td>
+                        <span class="badge @(p.PaymentType == "Cash" ? "ok" : "warn")">
+                            @(p.PaymentType == "Cash" ? "Cash" : "Credit")
+                        </span>
+                        @if (p.DueDate.HasValue && p.BalanceDue > 0)
+                        {
+                            <div style="font-size:11px;color:@(p.IsOverdue?"#dc2626":"#d97706");font-weight:600">
+                                @(p.IsOverdue ? "⚠ OVERDUE" : "") @p.DueDate.Value.ToString("dd-MMM-yy")
+                            </div>
+                        }
+                    </td>
+                    <td style="text-align:right">@p.GrandTotal.ToString("N0")</td>
+                    <td style="text-align:right">@p.AmountPaid.ToString("N0")</td>
+                    <td style="text-align:right">
+                        @if (p.BalanceDue > 0 && p.Status == "Active")
+                        {
+                            <span style="color:#dc2626;font-weight:700">@p.BalanceDue.ToString("N0")</span>
+                        }
+                        else
+                        {
+                            <span style="color:#9ca3af">—</span>
+                        }
+                    </td>
+                    <td style="text-align:center"><span class="badge @(p.Status == "Active" ? "ok" : "err")">@p.Status</span></td>
+                    <td><a href="/Purchases/@p.Id" class="btn btn-outline btn-sm">View</a></td>
+                </tr>
+            }
+            @if (!Model.Purchases.Any())
+            {
+                <tr>
+                    <td colspan="10" style="text-align:center;color:#9ca3af;padding:30px">
+                        No purchases found. <a href="/Purchases/Create">Create one →</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
