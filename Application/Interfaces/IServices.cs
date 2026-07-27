@@ -96,6 +96,21 @@ public interface ISalesPersonService {
     Task<ServiceResult> UpdateAsync(SalesPersonDto dto, string user);
     Task<ServiceResult> DeleteAsync(Guid id, string user);
 }
+public interface ICommissionService {
+    // Rules
+    Task<List<CommissionRuleDto>> GetRulesAsync(bool activeOnly = false);
+    Task<CommissionRuleDto?> GetRuleAsync(Guid id);
+    Task<ServiceResult> CreateRuleAsync(CommissionRuleDto dto, string user);
+    Task<ServiceResult> UpdateRuleAsync(CommissionRuleDto dto, string user);
+    Task<ServiceResult> DeleteRuleAsync(Guid id, string user);
+
+    // Accruals / payouts
+    Task<List<CommissionAccrualDto>> GetAccrualsAsync(Guid? salesPersonId = null, bool? unpaidOnly = null);
+    Task<List<CommissionAccrualDto>> GetAccrualsForSaleAsync(Guid saleId);
+    Task<List<CommissionUnpaidDto>> GetUnpaidSummaryAsync();
+    Task<List<CommissionPayoutDto>> GetPayoutsAsync(Guid? salesPersonId = null);
+    Task<ServiceResult> PayoutAsync(PayoutCommissionDto dto, string user);
+}
 public interface IRebateService {
     // Rules
     Task<List<RebateRuleDto>> GetRulesAsync(bool activeOnly = false);

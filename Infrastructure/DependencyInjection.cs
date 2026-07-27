@@ -32,6 +32,9 @@ public static class DependencyInjection
         services.AddScoped<IRebateRuleRepository,        RebateRuleRepository>();
         services.AddScoped<IRebateAccrualRepository,     RebateAccrualRepository>();
         services.AddScoped<IRebateRealizationRepository, RebateRealizationRepository>();
+        services.AddScoped<ICommissionRuleRepository,    CommissionRuleRepository>();
+        services.AddScoped<ICommissionAccrualRepository, CommissionAccrualRepository>();
+        services.AddScoped<ICommissionPayoutRepository,  CommissionPayoutRepository>();
         services.AddScoped<IExpenseCategoryRepository,  ExpenseCategoryRepository>();
         services.AddScoped<IExpenseRepository,          ExpenseRepository>();
         services.AddScoped<IUnitOfWork,                 UnitOfWork>();
@@ -41,6 +44,10 @@ public static class DependencyInjection
         services.AddScoped<IInventoryService>(sp => sp.GetRequiredService<InventoryService>());
         services.AddScoped<IProductService,     ProductService>();
         services.AddScoped<ICustomerService,    CustomerService>();
+        // SaleService chains commission accrual into CommissionService within one
+        // transaction, so it depends on the concrete class — dual-registered.
+        services.AddScoped<CommissionService>();
+        services.AddScoped<ICommissionService>(sp => sp.GetRequiredService<CommissionService>());
         services.AddScoped<ISaleService,        SaleService>();
         services.AddScoped<IReportService,      ReportService>();
         services.AddScoped<IFinancialReportService, FinancialReportService>();

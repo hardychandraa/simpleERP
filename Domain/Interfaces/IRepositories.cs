@@ -201,6 +201,43 @@ public interface IRebateRealizationRepository {
     Task<List<RebateRealization>> GetAllAsync(Guid? supplierId = null, DateTime? from = null, DateTime? to = null);
 }
 
+public interface ICommissionRuleRepository {
+    Task<CommissionRule?> GetByIdAsync(Guid id);
+    Task<List<CommissionRule>> GetAllAsync(bool activeOnly = false);
+    /// <summary>Active rules that could apply to a salesperson (their own + the all-salesperson ones).</summary>
+    Task<List<CommissionRule>> GetActiveForSalesPersonAsync(Guid salesPersonId);
+    Task<bool> NameExistsAsync(string name, Guid? excludeId = null);
+    Task<bool> IsInUseAsync(Guid id);
+    Task AddAsync(CommissionRule rule);
+    void Update(CommissionRule rule);
+    void Remove(CommissionRule rule);
+}
+
+public interface ICommissionAccrualRepository {
+    Task AddAsync(CommissionAccrual accrual);
+    void Update(CommissionAccrual accrual);
+    /// <summary>Accruals a sale generated — voided when the sale is cancelled, shown on its detail.</summary>
+    Task<List<CommissionAccrual>> GetBySaleAsync(Guid saleId);
+    /// <summary>Unpaid, not-voided accruals for a salesperson — the payout worklist.</summary>
+    Task<List<CommissionAccrual>> GetUnpaidBySalesPersonAsync(Guid salesPersonId);
+    Task<List<CommissionAccrual>> GetAllAsync(Guid? salesPersonId = null, bool? unpaidOnly = null);
+    /// <summary>Salespeople with any unpaid accrual, with counts and totals — the payout landing page.</summary>
+    Task<List<CommissionUnpaidBySalesPerson>> GetUnpaidSummaryAsync();
+}
+
+/// <summary>One salesperson's unpaid-commission rollup.</summary>
+public record CommissionUnpaidBySalesPerson(
+    Guid    SalesPersonId,
+    string  SalesPersonName,
+    int     AccrualCount,
+    decimal Amount);
+
+public interface ICommissionPayoutRepository {
+    Task AddAsync(CommissionPayout payout);
+    Task<CommissionPayout?> GetByIdAsync(Guid id);
+    Task<List<CommissionPayout>> GetAllAsync(Guid? salesPersonId = null);
+}
+
 public interface ISalesPersonRepository {
     Task<List<SalesPerson>> GetAllAsync(bool activeOnly = false);
     Task<SalesPerson?> GetByIdAsync(Guid id);

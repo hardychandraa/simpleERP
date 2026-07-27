@@ -204,6 +204,39 @@
     </div>
   }
 
+  <!-- Commission -->
+  @if (Model.Commissions.Any()) {
+    <div class="card">
+      <div class="card-title">🧾 Commission Accrued</div>
+      <table>
+        <thead><tr><th>Sales Person</th><th style="text-align:right">Amount</th><th style="text-align:center">Status</th></tr></thead>
+        <tbody>
+        @foreach (var c in Model.Commissions) {
+          <tr>
+            <td style="font-size:12px">
+              @c.SalesPersonName
+              <div style="color:#9ca3af;font-size:11px">@c.RuleName · @c.Rate.ToString("0.##")%</div>
+            </td>
+            <td style="text-align:right;font-weight:600">@c.Amount.ToString("N0")</td>
+            <td style="text-align:center;font-size:11px">
+              @if (c.IsVoided) {
+                <span style="color:#9ca3af;font-weight:600;text-decoration:line-through">Voided</span>
+              } else if (c.IsPaid) {
+                <span style="color:#059669;font-weight:600">Paid</span>
+              } else {
+                <span style="color:#d97706;font-weight:600">Unpaid</span>
+              }
+            </td>
+          </tr>
+        }
+        </tbody>
+      </table>
+      <p style="font-size:11px;color:#9ca3af;margin-top:8px">
+        Pay salespeople out on the <a href="/Commissions">Commissions</a> page.
+      </p>
+    </div>
+  }
+
   <!-- Payment History -->
   @if (Model.Payments.Any()) {
     <div class="card">

@@ -261,6 +261,59 @@ public class DueSupplierDto {
     public bool    HasOverdue    { get; set; }
 }
 
+// ── Commission ────────────────────────────────────────────────────────────────
+public class CommissionRuleDto {
+    public Guid    Id            { get; set; }
+    public string  Name          { get; set; } = "";
+    public Guid?   SalesPersonId { get; set; }
+    /// <summary>Empty = all salespeople.</summary>
+    public string  SalesPersonName { get; set; } = "";
+    public Guid?   ProductId     { get; set; }
+    public string  ProductName   { get; set; } = "";
+    public string? Category      { get; set; }
+    public decimal Rate          { get; set; }
+    public int     Priority      { get; set; }
+    public DateTime? EffectiveFrom { get; set; }
+    public DateTime? EffectiveTo   { get; set; }
+    public bool    IsActive      { get; set; } = true;
+    public bool    InUse         { get; set; }
+}
+public class CommissionAccrualDto {
+    public Guid     Id            { get; set; }
+    public DateTime AccrualDate   { get; set; }
+    public string   SalesPersonName { get; set; } = "";
+    public Guid     SalesPersonId { get; set; }
+    public string   RuleName      { get; set; } = "";
+    public string   InvoiceNumber { get; set; } = "";
+    public Guid     SaleId        { get; set; }
+    public string   ProductName   { get; set; } = "";
+    public decimal  BaseAmount    { get; set; }
+    public decimal  Rate          { get; set; }
+    public decimal  Amount        { get; set; }
+    public bool     IsPaid        { get; set; }
+    public bool     IsVoided      { get; set; }
+}
+/// <summary>A salesperson row on the payout landing page.</summary>
+public class CommissionUnpaidDto {
+    public Guid    SalesPersonId   { get; set; }
+    public string  SalesPersonName { get; set; } = "";
+    public int     AccrualCount    { get; set; }
+    public decimal Amount          { get; set; }
+}
+public class PayoutCommissionDto {
+    public Guid    SalesPersonId { get; set; }
+    public string? Notes         { get; set; }
+}
+public class CommissionPayoutDto {
+    public Guid     Id            { get; set; }
+    public DateTime PayoutDate    { get; set; }
+    public string   SalesPersonName { get; set; } = "";
+    public decimal  Amount        { get; set; }
+    public string?  Notes         { get; set; }
+    public int      AccrualCount  { get; set; }
+    public string   CreatedBy     { get; set; } = "";
+}
+
 // ── Rebates ───────────────────────────────────────────────────────────────────
 public class RebateRuleDto {
     public Guid   Id         { get; set; }

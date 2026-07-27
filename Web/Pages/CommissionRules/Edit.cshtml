@@ -1,0 +1,99 @@
+@page "/CommissionRules/Edit"
+@model SimpleERP.Web.Pages.CommissionRules.EditModel
+@{ ViewData["Title"] = Model.IsNew ? "New Commission Rule" : "Edit Commission Rule"; }
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" style="max-width:640px">
+    <input type="hidden" asp-for="Input.Id" />
+
+    <div class="card">
+        <div class="card-title">@(Model.IsNew ? "➕ New Commission Rule" : "✏️ Edit Commission Rule")</div>
+
+        <div class="fg">
+            <label>Rule Name *</label>
+            <input type="text" asp-for="Input.Name" required maxlength="200" placeholder="e.g. Budi — 2.5% all sales" />
+        </div>
+
+        <div style="display:flex;gap:12px">
+            <div class="fg" style="flex:1">
+                <label>Rate (%) *</label>
+                <input type="number" asp-for="Input.Rate" min="0.01" max="99.99" step="0.01" required placeholder="0" />
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">Percent of revenue (ex-PPN).</div>
+            </div>
+            <div class="fg" style="flex:1">
+                <label>Priority</label>
+                <input type="number" asp-for="Input.Priority" placeholder="0" />
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">Higher wins when rules overlap.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Scope — leave a field blank for "all"</div>
+        <div class="fg">
+            <label>Sales Person</label>
+            <select asp-for="Input.SalesPersonId" asp-items="Model.SalesPersonOptions">
+                <option value="">— All salespeople —</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:12px">
+            <div class="fg" style="flex:1">
+                <label>Product</label>
+                <select asp-for="Input.ProductId" asp-items="Model.ProductOptions">
+                    <option value="">— All products —</option>
+                </select>
+            </div>
+            <div class="fg" style="flex:1">
+                <label>Category</label>
+                <input type="text" asp-for="Input.Category" maxlength="100" list="catList" placeholder="— All categories —" />
+                <datalist id="catList">
+                    @foreach (var c in Model.CategoryOptions) { <option value="@c"></option> }
+                </datalist>
+            </div>
+        </div>
+        <div style="font-size:11px;color:#9ca3af">
+            A rule scoped to a product beats one scoped to a category beats an all-products
+            rule at the same priority.
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Effective Window (optional)</div>
+        <div style="display:flex;gap:12px">
+            <div class="fg" style="flex:1;margin-bottom:0">
+                <label>From</label>
+                <input type="date" asp-for="Input.EffectiveFrom" />
+            </div>
+            <div class="fg" style="flex:1;margin-bottom:0">
+                <label>To</label>
+                <input type="date" asp-for="Input.EffectiveTo" />
+            </div>
+        </div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:6px">
+            Matched against the sale date. Leave blank for an open-ended rule.
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="fg" style="display:flex;align-items:center;gap:10px;margin-bottom:0">
+            <input type="checkbox" asp-for="Input.IsActive" style="width:18px;height:18px;margin:0" />
+            <label style="margin:0">Active — applies to new collections</label>
+        </div>
+        @if (Model.InUse)
+        {
+            <div class="alert alert-warning" style="font-size:12px;line-height:1.6;margin-top:10px">
+                This rule has already accrued commission, so it can't be deleted — untick
+                Active to retire it. Existing accruals keep their link to it.
+            </div>
+        }
+    </div>
+
+    <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary" style="padding:10px 32px">💾 Save</button>
+        <a href="/CommissionRules" class="btn btn-outline">Cancel</a>
+    </div>
+</form>

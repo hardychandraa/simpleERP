@@ -17,16 +17,17 @@ public class SaleService : ISaleService
     private readonly IAppSettingsRepository     _settings;
     private readonly IPaymentTermRepository     _terms;
     private readonly ISalesPersonRepository     _people;
+    private readonly CommissionService          _commissions;
     private readonly IUnitOfWork                _uow;
 
     public SaleService(ISaleRepository sales, IProductRepository products,
         IBranchRepository branches, IPaymentRecordRepository payments,
         IAuditLogRepository audit, InventoryService inventory,
         IAppSettingsRepository settings, IPaymentTermRepository terms,
-        ISalesPersonRepository people, IUnitOfWork uow)
+        ISalesPersonRepository people, CommissionService commissions, IUnitOfWork uow)
     { _sales=sales; _products=products; _branches=branches; _payments=payments;
       _audit=audit; _inventory=inventory; _settings=settings; _terms=terms;
-      _people=people; _uow=uow; }
+      _people=people; _commissions=commissions; _uow=uow; }
 
     /// <summary>
     /// Credit days for the legacy TOP payment types, or null for Cash/Due.
@@ -250,6 +251,11 @@ public class SaleService : ISaleService
 
         await _sales.AddAsync(sale);
 
+        // A cash sale is collected in full at creation, so commission accrues now.
+        // Credit sales accrue later, per payment, in RecordPaymentAsync.
+        if (sale.PaymentType == PaymentType.Cash)
+            await _commissions.AccrueForCashSaleAsync(sale, saleItems);
+
         // Audit
         var auditDetail = sale.InvoiceNumber +
             (overrides.Any() ? " | PriceOverrides: " + string.Join("; ", overrides) : "");
@@ -275,6 +281,10 @@ public class SaleService : ISaleService
 
         sale.Status = SaleStatus.Cancelled;
         _sales.Update(sale);
+
+        // Void (never delete) any unpaid commission this sale accrued.
+        await _commissions.VoidForSaleAsync(saleId);
+
         await _audit.LogAsync(user, "Sale.Cancel", sale.InvoiceNumber);
         await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
@@ -311,6 +321,9 @@ public class SaleService : ISaleService
         await _payments.AddAsync(record);
         sale.AmountPaid += dto.Amount;
         _sales.Update(sale);
+
+        // Commission accrues on collection, prorated to this payment's share of the invoice.
+        await _commissions.AccrueForPaymentAsync(sale, record);
 
         await _audit.LogAsync(user, "Payment.Record", $"{sale.InvoiceNumber} +{dto.Amount:N0}");
         await _uow.SaveChangesAsync();

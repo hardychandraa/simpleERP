@@ -379,6 +379,108 @@ public class RebateRealizationRepository : IRebateRealizationRepository
     }
 }
 
+public class CommissionRuleRepository : ICommissionRuleRepository
+{
+    private readonly AppDbContext _db;
+    public CommissionRuleRepository(AppDbContext db) => _db = db;
+
+    public Task<CommissionRule?> GetByIdAsync(Guid id) =>
+        _db.CommissionRules.Include(r => r.SalesPerson).Include(r => r.Product)
+                           .FirstOrDefaultAsync(r => r.Id == id);
+
+    public Task<List<CommissionRule>> GetAllAsync(bool activeOnly = false)
+    {
+        var q = _db.CommissionRules.Include(r => r.SalesPerson).Include(r => r.Product).AsQueryable();
+        if (activeOnly) q = q.Where(r => r.IsActive);
+        return q.OrderByDescending(r => r.Priority).ThenBy(r => r.Name).ToListAsync();
+    }
+
+    public Task<List<CommissionRule>> GetActiveForSalesPersonAsync(Guid salesPersonId) =>
+        _db.CommissionRules
+           .Where(r => r.IsActive && (r.SalesPersonId == null || r.SalesPersonId == salesPersonId))
+           .ToListAsync();
+
+    public Task<bool> NameExistsAsync(string name, Guid? excludeId = null) =>
+        _db.CommissionRules.AnyAsync(r => r.Name.ToLower() == name.ToLower()
+                                       && (excludeId == null || r.Id != excludeId));
+
+    public Task<bool> IsInUseAsync(Guid id) => _db.CommissionAccruals.AnyAsync(a => a.CommissionRuleId == id);
+
+    public async Task AddAsync(CommissionRule rule) => await _db.CommissionRules.AddAsync(rule);
+    public void Update(CommissionRule rule) => _db.CommissionRules.Update(rule);
+    public void Remove(CommissionRule rule) => _db.CommissionRules.Remove(rule);
+}
+
+public class CommissionAccrualRepository : ICommissionAccrualRepository
+{
+    private readonly AppDbContext _db;
+    public CommissionAccrualRepository(AppDbContext db) => _db = db;
+
+    public async Task AddAsync(CommissionAccrual accrual) => await _db.CommissionAccruals.AddAsync(accrual);
+    public void Update(CommissionAccrual accrual) => _db.CommissionAccruals.Update(accrual);
+
+    private IQueryable<CommissionAccrual> WithNav => _db.CommissionAccruals
+        .Include(a => a.Rule).Include(a => a.SalesPerson)
+        .Include(a => a.Sale).Include(a => a.SaleItem).ThenInclude(i => i!.Product);
+
+    public Task<List<CommissionAccrual>> GetBySaleAsync(Guid saleId) =>
+        WithNav.Where(a => a.SaleId == saleId).OrderBy(a => a.AccrualDate).ToListAsync();
+
+    public Task<List<CommissionAccrual>> GetUnpaidBySalesPersonAsync(Guid salesPersonId) =>
+        WithNav.Where(a => a.SalesPersonId == salesPersonId && a.CommissionPayoutId == null && !a.IsVoided)
+               .OrderBy(a => a.AccrualDate).ToListAsync();
+
+    public Task<List<CommissionAccrual>> GetAllAsync(Guid? salesPersonId = null, bool? unpaidOnly = null)
+    {
+        var q = WithNav.Where(a => !a.IsVoided);
+        if (salesPersonId.HasValue) q = q.Where(a => a.SalesPersonId == salesPersonId.Value);
+        if (unpaidOnly == true)  q = q.Where(a => a.CommissionPayoutId == null);
+        if (unpaidOnly == false) q = q.Where(a => a.CommissionPayoutId != null);
+        return q.OrderByDescending(a => a.AccrualDate).ToListAsync();
+    }
+
+    public async Task<List<CommissionUnpaidBySalesPerson>> GetUnpaidSummaryAsync()
+    {
+        var rows = await _db.CommissionAccruals
+            .Where(a => a.CommissionPayoutId == null && !a.IsVoided)
+            .GroupBy(a => a.SalesPersonId)
+            .Select(g => new { SalesPersonId = g.Key, Count = g.Count(), Amount = g.Sum(a => (decimal?)a.Amount) ?? 0m })
+            .ToListAsync();
+
+        if (rows.Count == 0) return new List<CommissionUnpaidBySalesPerson>();
+
+        var ids   = rows.Select(r => r.SalesPersonId).ToList();
+        var names = await _db.SalesPersons.Where(p => ids.Contains(p.Id))
+                                          .ToDictionaryAsync(p => p.Id, p => p.Name);
+
+        return rows.Select(r => new CommissionUnpaidBySalesPerson(
+                r.SalesPersonId, names.GetValueOrDefault(r.SalesPersonId, "?"), r.Count, r.Amount))
+            .OrderByDescending(r => r.Amount).ThenBy(r => r.SalesPersonName)
+            .ToList();
+    }
+}
+
+public class CommissionPayoutRepository : ICommissionPayoutRepository
+{
+    private readonly AppDbContext _db;
+    public CommissionPayoutRepository(AppDbContext db) => _db = db;
+
+    public async Task AddAsync(CommissionPayout payout) => await _db.CommissionPayouts.AddAsync(payout);
+
+    public Task<CommissionPayout?> GetByIdAsync(Guid id) =>
+        _db.CommissionPayouts.Include(p => p.SalesPerson).Include(p => p.Accruals)
+                             .FirstOrDefaultAsync(p => p.Id == id);
+
+    public Task<List<CommissionPayout>> GetAllAsync(Guid? salesPersonId = null)
+    {
+        // Accruals included so the list can show how many each payout settled. Bounded
+        // by payout volume, which is low (one per salesperson per pay run).
+        var q = _db.CommissionPayouts.Include(p => p.SalesPerson).Include(p => p.Accruals).AsQueryable();
+        if (salesPersonId.HasValue) q = q.Where(p => p.SalesPersonId == salesPersonId.Value);
+        return q.OrderByDescending(p => p.PayoutDate).ToListAsync();
+    }
+}
+
 public class SalesPersonRepository : ISalesPersonRepository
 {
     private readonly AppDbContext _db;

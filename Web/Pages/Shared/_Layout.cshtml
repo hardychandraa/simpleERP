@@ -78,6 +78,7 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
     <a href="/Sales/Create" class="@(page=="/Sales/Create"?"active":"")">🧾 New Sale</a>
     <a href="/Sales"        class="@(page.StartsWith("/Sales/")&&page!="/Sales/Create"?"active":"")">📋 Sales History</a>
     <a href="/Payments"     class="@(page.StartsWith("/Payments")?"active":"")">💳 Due Payments</a>
+    <a href="/Commissions"  class="@(page.StartsWith("/Commissions")?"active":"")">🧾 Commissions</a>
 
     <div class="sb-sec">Purchasing</div>
     <a href="/Purchases/Create" class="@(page=="/Purchases/Create"?"active":"")">📥 New Purchase</a>
@@ -103,6 +104,7 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
     <a href="/RebateRules"       class="@(page.StartsWith("/RebateRules") ?"active":"")">🎁 Rebate Rules</a>
     <a href="/PaymentTerms"      class="@(page.StartsWith("/PaymentTerms")?"active":"")">📆 Payment Terms</a>
     <a href="/SalesPersons"      class="@(page.StartsWith("/SalesPersons")?"active":"")">👤 Sales People</a>
+    <a href="/CommissionRules"   class="@(page.StartsWith("/CommissionRules")?"active":"")">🎯 Commission Rules</a>
 
     <div class="sb-sec">System</div>
     <a href="/Settings" class="@(page.StartsWith("/Settings")?"active":"")">⚙️ Settings</a>

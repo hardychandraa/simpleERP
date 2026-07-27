@@ -26,6 +26,9 @@ public class AppDbContext : DbContext
     public DbSet<RebateRule>        RebateRules        => Set<RebateRule>();
     public DbSet<RebateAccrual>     RebateAccruals     => Set<RebateAccrual>();
     public DbSet<RebateRealization> RebateRealizations => Set<RebateRealization>();
+    public DbSet<CommissionRule>    CommissionRules    => Set<CommissionRule>();
+    public DbSet<CommissionAccrual> CommissionAccruals => Set<CommissionAccrual>();
+    public DbSet<CommissionPayout>  CommissionPayouts  => Set<CommissionPayout>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense>         Expenses          => Set<Expense>();
 
@@ -280,6 +283,50 @@ public class AppDbContext : DbContext
             e.Property(p => p.Name).IsRequired().HasMaxLength(200);
             e.Property(p => p.Phone).HasMaxLength(50);
             e.HasIndex(p => p.Name).IsUnique();
+        });
+
+        m.Entity<CommissionRule>(e => {
+            e.HasKey(r => r.Id);
+            e.Property(r => r.Name).IsRequired().HasMaxLength(200);
+            e.Property(r => r.Category).HasMaxLength(100);
+            e.Property(r => r.Rate).HasColumnType("decimal(18,4)");
+            e.HasIndex(r => r.Name).IsUnique();
+            e.HasOne(r => r.SalesPerson).WithMany()
+                .HasForeignKey(r => r.SalesPersonId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.Product).WithMany()
+                .HasForeignKey(r => r.ProductId).OnDelete(DeleteBehavior.Restrict);
+            // Rule resolution loads a salesperson's active rules on every collection.
+            e.HasIndex(r => new { r.SalesPersonId, r.IsActive });
+        });
+
+        m.Entity<CommissionAccrual>(e => {
+            e.HasKey(a => a.Id);
+            e.Property(a => a.BaseAmount).HasColumnType("decimal(18,4)");
+            e.Property(a => a.Rate).HasColumnType("decimal(18,4)");
+            e.Property(a => a.Amount).HasColumnType("decimal(18,4)");
+            e.HasOne(a => a.Sale).WithMany()
+                .HasForeignKey(a => a.SaleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.SaleItem).WithMany()
+                .HasForeignKey(a => a.SaleItemId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.SalesPerson).WithMany()
+                .HasForeignKey(a => a.SalesPersonId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.Rule).WithMany()
+                .HasForeignKey(a => a.CommissionRuleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.Payout).WithMany(p => p.Accruals)
+                .HasForeignKey(a => a.CommissionPayoutId).OnDelete(DeleteBehavior.SetNull);
+            // Payout worklist: unpaid, not-voided, per salesperson.
+            e.HasIndex(a => new { a.SalesPersonId, a.CommissionPayoutId, a.IsVoided });
+            e.HasIndex(a => a.SaleId);
+        });
+
+        m.Entity<CommissionPayout>(e => {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Amount).HasColumnType("decimal(18,4)");
+            e.Property(p => p.Notes).HasMaxLength(500);
+            e.Property(p => p.CreatedBy).HasMaxLength(100);
+            e.HasOne(p => p.SalesPerson).WithMany()
+                .HasForeignKey(p => p.SalesPersonId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(p => new { p.SalesPersonId, p.PayoutDate });
         });
 
         m.Entity<ExpenseCategory>(e => {
