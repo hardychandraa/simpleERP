@@ -1,5 +1,6 @@
+@using System.Globalization
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
@@ -63,64 +64,81 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
 <nav class="sb">
   <div class="sb-brand">
     <h1>⚡ SimpleERP</h1>
-    <small>Store Management System</small>
+    <small>@Localizer["Store Management System"]</small>
   </div>
   <div class="sb-nav">
     @{ var page = ViewContext.RouteData.Values["page"]?.ToString() ?? ""; }
-    <div class="sb-sec">Main</div>
-    <a href="/" class="@(page=="/Index"?"active":"")">🏠 Dashboard</a>
+    <div class="sb-sec">@Localizer["Main"]</div>
+    <a href="/" class="@(page=="/Index"?"active":"")">🏠 @Localizer["Dashboard"]</a>
 
-    <div class="sb-sec">Records</div>
-    <a href="/Products"  class="@(page.StartsWith("/Products") ?"active":"")">📦 Products</a>
-    <a href="/Customers" class="@(page.StartsWith("/Customers")?"active":"")">👥 Customers</a>
+    <div class="sb-sec">@Localizer["Records"]</div>
+    <a href="/Products"  class="@(page.StartsWith("/Products") ?"active":"")">📦 @Localizer["Products"]</a>
+    <a href="/Customers" class="@(page.StartsWith("/Customers")?"active":"")">👥 @Localizer["Customers"]</a>
 
-    <div class="sb-sec">Transactions</div>
-    <a href="/Sales/Create" class="@(page=="/Sales/Create"?"active":"")">🧾 New Sale</a>
-    <a href="/Sales"        class="@(page.StartsWith("/Sales/")&&page!="/Sales/Create"?"active":"")">📋 Sales History</a>
-    <a href="/Payments"     class="@(page.StartsWith("/Payments")?"active":"")">💳 Due Payments</a>
-    <a href="/Commissions"  class="@(page.StartsWith("/Commissions")?"active":"")">🧾 Commissions</a>
+    <div class="sb-sec">@Localizer["Transactions"]</div>
+    <a href="/Sales/Create" class="@(page=="/Sales/Create"?"active":"")">🧾 @Localizer["New Sale"]</a>
+    <a href="/Sales"        class="@(page.StartsWith("/Sales/")&&page!="/Sales/Create"?"active":"")">📋 @Localizer["Sales History"]</a>
+    <a href="/Payments"     class="@(page.StartsWith("/Payments")?"active":"")">💳 @Localizer["Due Payments"]</a>
+    <a href="/Commissions"  class="@(page.StartsWith("/Commissions")?"active":"")">🧾 @Localizer["Commissions"]</a>
 
-    <div class="sb-sec">Purchasing</div>
-    <a href="/Purchases/Create" class="@(page=="/Purchases/Create"?"active":"")">📥 New Purchase</a>
-    <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Create"&&page!="/Purchases/Due"&&page!="/Purchases/Statement"?"active":"")">📦 Purchases</a>
-    <a href="/Purchases/Due"    class="@(page=="/Purchases/Due"||page=="/Purchases/Statement"?"active":"")">💰 Payables</a>
-    <a href="/Rebates"          class="@(page.StartsWith("/Rebates")?"active":"")">💰 Rebates</a>
+    <div class="sb-sec">@Localizer["Purchasing"]</div>
+    <a href="/Purchases/Create" class="@(page=="/Purchases/Create"?"active":"")">📥 @Localizer["New Purchase"]</a>
+    <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Create"&&page!="/Purchases/Due"&&page!="/Purchases/Statement"?"active":"")">📦 @Localizer["Purchases"]</a>
+    <a href="/Purchases/Due"    class="@(page=="/Purchases/Due"||page=="/Purchases/Statement"?"active":"")">💰 @Localizer["Payables"]</a>
+    <a href="/Rebates"          class="@(page.StartsWith("/Rebates")?"active":"")">💰 @Localizer["Rebates"]</a>
 
-    <div class="sb-sec">Adjustments</div>
-    <a href="/Returns"     class="@(page.StartsWith("/Returns")?"active":"")">↩ Returns</a>
-    <a href="/CreditNotes" class="@(page.StartsWith("/CreditNotes")?"active":"")">📄 Credit / Debit Notes</a>
+    <div class="sb-sec">@Localizer["Adjustments"]</div>
+    <a href="/Returns"     class="@(page.StartsWith("/Returns")?"active":"")">↩ @Localizer["Returns"]</a>
+    <a href="/CreditNotes" class="@(page.StartsWith("/CreditNotes")?"active":"")">📄 @Localizer["Credit / Debit Notes"]</a>
 
-    <div class="sb-sec">Inventory</div>
-    <a href="/Inventory/StockIn"  class="@(page=="/Inventory/StockIn" ?"active":"")">📥 Stock In</a>
-    <a href="/Inventory/Adjust"   class="@(page=="/Inventory/Adjust"  ?"active":"")">⚖️ Adjust Stock</a>
-    <a href="/Inventory"          class="@(page=="/Inventory/Index"   ?"active":"")">📊 Stock Levels</a>
-    <a href="/Inventory/Ledger"   class="@(page=="/Inventory/Ledger"  ?"active":"")">📒 Ledger</a>
+    <div class="sb-sec">@Localizer["Inventory"]</div>
+    <a href="/Inventory/StockIn"  class="@(page=="/Inventory/StockIn" ?"active":"")">📥 @Localizer["Stock In"]</a>
+    <a href="/Inventory/Adjust"   class="@(page=="/Inventory/Adjust"  ?"active":"")">⚖️ @Localizer["Adjust Stock"]</a>
+    <a href="/Inventory"          class="@(page=="/Inventory/Index"   ?"active":"")">📊 @Localizer["Stock Levels"]</a>
+    <a href="/Inventory/Ledger"   class="@(page=="/Inventory/Ledger"  ?"active":"")">📒 @Localizer["Ledger"]</a>
 
-    <div class="sb-sec">Reports</div>
-    <a href="/Reports/EndOfDay"  class="@(page=="/Reports/EndOfDay" ?"active":"")">📅 End of Day</a>
-    <a href="/Reports/ProfitLoss" class="@(page=="/Reports/ProfitLoss"?"active":"")">📊 Profit &amp; Loss</a>
-    <a href="/Reports/Position"  class="@(page=="/Reports/Position" ?"active":"")">⚖️ Position Summary</a>
-    <a href="/Reports/Warranty"  class="@(page=="/Reports/Warranty" ?"active":"")">🛡 Warranty</a>
-    <a href="/Audit"             class="@(page.StartsWith("/Audit") ?"active":"")">🔍 Audit Log</a>
+    <div class="sb-sec">@Localizer["Reports"]</div>
+    <a href="/Reports/EndOfDay"  class="@(page=="/Reports/EndOfDay" ?"active":"")">📅 @Localizer["End of Day"]</a>
+    <a href="/Reports/ProfitLoss" class="@(page=="/Reports/ProfitLoss"?"active":"")">📊 @Localizer["Profit & Loss"]</a>
+    <a href="/Reports/Position"  class="@(page=="/Reports/Position" ?"active":"")">⚖️ @Localizer["Position Summary"]</a>
+    <a href="/Reports/Warranty"  class="@(page=="/Reports/Warranty" ?"active":"")">🛡 @Localizer["Warranty"]</a>
+    <a href="/Audit"             class="@(page.StartsWith("/Audit") ?"active":"")">🔍 @Localizer["Audit Log"]</a>
 
-    <a href="/Expenses"          class="@(page.StartsWith("/Expenses")    ?"active":"")">💸 Expenses</a>
+    <a href="/Expenses"          class="@(page.StartsWith("/Expenses")    ?"active":"")">💸 @Localizer["Expenses"]</a>
 
-    <div class="sb-sec">Master Data</div>
-    <a href="/Suppliers"         class="@(page.StartsWith("/Suppliers")   ?"active":"")">🏭 Suppliers</a>
-    <a href="/RebateRules"       class="@(page.StartsWith("/RebateRules") ?"active":"")">🎁 Rebate Rules</a>
-    <a href="/PaymentTerms"      class="@(page.StartsWith("/PaymentTerms")?"active":"")">📆 Payment Terms</a>
-    <a href="/SalesPersons"      class="@(page.StartsWith("/SalesPersons")?"active":"")">👤 Sales People</a>
-    <a href="/CommissionRules"   class="@(page.StartsWith("/CommissionRules")?"active":"")">🎯 Commission Rules</a>
+    <div class="sb-sec">@Localizer["Master Data"]</div>
+    <a href="/Suppliers"         class="@(page.StartsWith("/Suppliers")   ?"active":"")">🏭 @Localizer["Suppliers"]</a>
+    <a href="/RebateRules"       class="@(page.StartsWith("/RebateRules") ?"active":"")">🎁 @Localizer["Rebate Rules"]</a>
+    <a href="/PaymentTerms"      class="@(page.StartsWith("/PaymentTerms")?"active":"")">📆 @Localizer["Payment Terms"]</a>
+    <a href="/SalesPersons"      class="@(page.StartsWith("/SalesPersons")?"active":"")">👤 @Localizer["Sales People"]</a>
+    <a href="/CommissionRules"   class="@(page.StartsWith("/CommissionRules")?"active":"")">🎯 @Localizer["Commission Rules"]</a>
 
-    <div class="sb-sec">System</div>
-    <a href="/Settings" class="@(page.StartsWith("/Settings")?"active":"")">⚙️ Settings</a>
+    <div class="sb-sec">@Localizer["System"]</div>
+    <a href="/Settings" class="@(page.StartsWith("/Settings")?"active":"")">⚙️ @Localizer["Settings"]</a>
   </div>
-  <div class="sb-foot">PostgreSQL · Auto-backup daily</div>
+  <div class="sb-foot">@Localizer["PostgreSQL · Auto-backup daily"]</div>
 </nav>
 <div class="main">
   <div class="topbar">
     <h2>@ViewData["Title"]</h2>
-    <span style="font-size:12px;color:#9ca3af">@DateTime.Now.ToString("ddd, dd MMM yyyy  HH:mm")</span>
+    <div style="display:flex;align-items:center;gap:14px">
+      @{
+          // Round-trip back to the page the user is on, query string included, so switching
+          // language never loses a filter or a date range they had applied.
+          var returnUrl = ViewContext.HttpContext.Request.Path
+                        + ViewContext.HttpContext.Request.QueryString;
+          var currentLang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+      }
+      <span class="no-print" style="font-size:11px;color:#9ca3af" title="@Localizer["Language"]">
+        @foreach (var (code, label) in new[] { ("id", "ID"), ("en", "EN") })
+        {
+            var isCurrent = currentLang == code;
+            <a href="/set-language?culture=@code&amp;returnUrl=@Uri.EscapeDataString(returnUrl)"
+               style="text-decoration:none;padding:2px 6px;border-radius:4px;font-weight:@(isCurrent ? "700" : "500");color:@(isCurrent ? "#2563eb" : "#9ca3af");background:@(isCurrent ? "#eff6ff" : "transparent")">@label</a>
+        }
+      </span>
+      <span style="font-size:12px;color:#9ca3af">@DateTime.Now.ToString("ddd, dd MMM yyyy  HH:mm")</span>
+    </div>
   </div>
   <div class="content">
     @RenderBody()

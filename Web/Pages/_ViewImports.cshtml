@@ -1,4 +1,12 @@
 @using SimpleERP.Web
 @using SimpleERP.Application.DTOs
+@using SimpleERP.Web.Services
+@using Microsoft.Extensions.Localization
+@using SimpleERP.Application.Resources
 @namespace SimpleERP.Web.Pages
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@* One shared localizer for every page — this file is the only injection point that
+   reaches all of them, since no shared base PageModel exists. Note it reaches Razor
+   markup only, NOT the .cshtml.cs code-behind: those need their own constructor
+   injection (Phase B). *@
+@inject IStringLocalizer<SharedResource> Localizer

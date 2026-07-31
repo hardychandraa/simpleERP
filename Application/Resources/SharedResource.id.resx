@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Indonesian (id) resources.
+
+    Two kinds of entry live here:
+      1. Enum display names, keyed synthetically ("PaymentType_Cash") — see SharedResource.resx.
+      2. UI chrome and explanatory prose, keyed by the ENGLISH TEXT ITSELF.
+
+    Anything not listed here falls back to its key, i.e. renders as English. That is
+    deliberate and is what makes the phased rollout safe — an untranslated string is
+    readable English, never blank or a raw key.
+
+    NOT in this file, on purpose: Indonesian domain/accounting terms (PPN, DPP, HPP,
+    Laba Kotor, Laba Usaha, Laba Bersih, Piutang, Utang, Retur Penjualan, Nota Kredit…).
+    Those stay Indonesian in BOTH languages because they are the terms staff, the tax
+    consultant and the printed paperwork already use — so they are left as bare literals
+    in the markup and never routed through the localizer at all.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- ══ Enum display names ══════════════════════════════════════════════ -->
+  <data name="PaymentType_Cash" xml:space="preserve"><value>Tunai</value></data>
+  <data name="PaymentType_Due" xml:space="preserve"><value>Kredit</value></data>
+
+  <data name="SaleStatus_Active" xml:space="preserve"><value>Aktif</value></data>
+  <data name="SaleStatus_Cancelled" xml:space="preserve"><value>Dibatalkan</value></data>
+  <data name="PurchaseStatus_Active" xml:space="preserve"><value>Aktif</value></data>
+  <data name="PurchaseStatus_Cancelled" xml:space="preserve"><value>Dibatalkan</value></data>
+  <data name="ReturnStatus_Active" xml:space="preserve"><value>Aktif</value></data>
+  <data name="ReturnStatus_Cancelled" xml:space="preserve"><value>Dibatalkan</value></data>
+
+  <data name="PaymentBatchDirection_Received" xml:space="preserve"><value>Diterima</value></data>
+  <data name="PaymentBatchDirection_Paid" xml:space="preserve"><value>Dibayar</value></data>
+
+  <data name="CreditDebitType_Credit" xml:space="preserve"><value>Kredit</value></data>
+  <data name="CreditDebitType_Debit" xml:space="preserve"><value>Debit</value></data>
+
+  <data name="CreditNoteCategory_Return" xml:space="preserve"><value>Retur</value></data>
+  <data name="CreditNoteCategory_PriceDispute" xml:space="preserve"><value>Sengketa harga</value></data>
+  <data name="CreditNoteCategory_RebateSettlement" xml:space="preserve"><value>Penyelesaian rebat</value></data>
+  <data name="CreditNoteCategory_BillingError" xml:space="preserve"><value>Kesalahan penagihan</value></data>
+  <data name="CreditNoteCategory_Other" xml:space="preserve"><value>Lain-lain</value></data>
+
+  <data name="CreditNoteStatus_Open" xml:space="preserve"><value>Terbuka</value></data>
+  <data name="CreditNoteStatus_Settled" xml:space="preserve"><value>Selesai</value></data>
+  <data name="CreditNoteStatus_Cancelled" xml:space="preserve"><value>Dibatalkan</value></data>
+
+  <data name="RebateConditionType_Volume" xml:space="preserve"><value>Volume</value></data>
+  <data name="RebateConditionType_PriceDrop" xml:space="preserve"><value>Penurunan harga</value></data>
+  <data name="RebateConditionType_OnTimePayment" xml:space="preserve"><value>Pembayaran tepat waktu</value></data>
+
+  <data name="RebateRewardType_PercentDiscount" xml:space="preserve"><value>Diskon persentase</value></data>
+  <data name="RebateRewardType_FixedCash" xml:space="preserve"><value>Tunai tetap</value></data>
+  <data name="RebateRewardType_CreditNote" xml:space="preserve"><value>Nota kredit</value></data>
+  <data name="RebateRewardType_InKindGoods" xml:space="preserve"><value>Barang gratis</value></data>
+  <data name="RebateRewardType_LuckyDraw" xml:space="preserve"><value>Undian</value></data>
+
+  <data name="ReferenceType_Purchase" xml:space="preserve"><value>Stok Masuk</value></data>
+  <data name="ReferenceType_Sale" xml:space="preserve"><value>Penjualan</value></data>
+  <data name="ReferenceType_Cancel" xml:space="preserve"><value>Pembatalan</value></data>
+  <data name="ReferenceType_Adjustment" xml:space="preserve"><value>Penyesuaian</value></data>
+  <data name="ReferenceType_CustomerReturn" xml:space="preserve"><value>Retur penjualan</value></data>
+  <data name="ReferenceType_PurchaseOrder" xml:space="preserve"><value>Pembelian</value></data>
+  <data name="ReferenceType_SupplierReturn" xml:space="preserve"><value>Retur pembelian</value></data>
+  <data name="ReferenceType_RebateInKind" xml:space="preserve"><value>Rebat (barang gratis)</value></data>
+
+  <!-- ══ Navigation — section headings ═══════════════════════════════════ -->
+  <data name="Main" xml:space="preserve"><value>Utama</value></data>
+  <data name="Records" xml:space="preserve"><value>Data</value></data>
+  <data name="Transactions" xml:space="preserve"><value>Transaksi</value></data>
+  <data name="Purchasing" xml:space="preserve"><value>Pembelian</value></data>
+  <data name="Adjustments" xml:space="preserve"><value>Penyesuaian</value></data>
+  <data name="Inventory" xml:space="preserve"><value>Persediaan</value></data>
+  <data name="Reports" xml:space="preserve"><value>Laporan</value></data>
+  <data name="Master Data" xml:space="preserve"><value>Data Master</value></data>
+  <data name="System" xml:space="preserve"><value>Sistem</value></data>
+
+  <!-- ══ Navigation — links ══════════════════════════════════════════════ -->
+  <data name="Dashboard" xml:space="preserve"><value>Dasbor</value></data>
+  <data name="Products" xml:space="preserve"><value>Produk</value></data>
+  <data name="Customers" xml:space="preserve"><value>Pelanggan</value></data>
+  <data name="New Sale" xml:space="preserve"><value>Penjualan Baru</value></data>
+  <data name="Sales History" xml:space="preserve"><value>Riwayat Penjualan</value></data>
+  <data name="Due Payments" xml:space="preserve"><value>Piutang Jatuh Tempo</value></data>
+  <data name="Commissions" xml:space="preserve"><value>Komisi</value></data>
+  <data name="New Purchase" xml:space="preserve"><value>Pembelian Baru</value></data>
+  <data name="Purchases" xml:space="preserve"><value>Pembelian</value></data>
+  <data name="Payables" xml:space="preserve"><value>Utang</value></data>
+  <data name="Rebates" xml:space="preserve"><value>Rebat</value></data>
+  <data name="Returns" xml:space="preserve"><value>Retur</value></data>
+  <data name="Credit / Debit Notes" xml:space="preserve"><value>Nota Kredit / Debit</value></data>
+  <data name="Stock In" xml:space="preserve"><value>Stok Masuk</value></data>
+  <data name="Adjust Stock" xml:space="preserve"><value>Penyesuaian Stok</value></data>
+  <data name="Stock Levels" xml:space="preserve"><value>Level Stok</value></data>
+  <data name="Ledger" xml:space="preserve"><value>Buku Besar</value></data>
+  <data name="End of Day" xml:space="preserve"><value>Tutup Harian</value></data>
+  <data name="Profit &amp; Loss" xml:space="preserve"><value>Laba Rugi</value></data>
+  <data name="Position Summary" xml:space="preserve"><value>Ringkasan Posisi</value></data>
+  <data name="Warranty" xml:space="preserve"><value>Garansi</value></data>
+  <data name="Audit Log" xml:space="preserve"><value>Log Audit</value></data>
+  <data name="Expenses" xml:space="preserve"><value>Biaya</value></data>
+  <data name="Suppliers" xml:space="preserve"><value>Pemasok</value></data>
+  <data name="Rebate Rules" xml:space="preserve"><value>Aturan Rebat</value></data>
+  <data name="Payment Terms" xml:space="preserve"><value>Termin Pembayaran</value></data>
+  <data name="Sales People" xml:space="preserve"><value>Tenaga Penjual</value></data>
+  <data name="Commission Rules" xml:space="preserve"><value>Aturan Komisi</value></data>
+  <data name="Settings" xml:space="preserve"><value>Pengaturan</value></data>
+
+  <!-- ══ Layout chrome ═══════════════════════════════════════════════════ -->
+  <data name="Store Management System" xml:space="preserve"><value>Sistem Manajemen Toko</value></data>
+  <data name="PostgreSQL · Auto-backup daily" xml:space="preserve"><value>PostgreSQL · Cadangan otomatis harian</value></data>
+  <data name="Language" xml:space="preserve"><value>Bahasa</value></data>
+</root>

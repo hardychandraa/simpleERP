@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Neutral (English) resources.
+
+    This file deliberately contains ONLY enum display names. Every other string in the app
+    uses its English text as the resource key, and ASP.NET Core returns the key unchanged
+    when no entry matches, so plain English needs no entry here.
+
+    Enum display names are the exception: their keys are synthetic ("PaymentType_Cash"),
+    not natural language, so without an English entry the UI would render the raw key.
+    Keys are built by SimpleERP.Web.Services.EnumDisplay.Key(enumTypeName, rawValue) from
+    the raw enum name the Application layer already flattens onto DTOs via .ToString().
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- PaymentType -->
+  <data name="PaymentType_Cash" xml:space="preserve"><value>Cash</value></data>
+  <data name="PaymentType_Due" xml:space="preserve"><value>Due</value></data>
+
+  <!-- SaleStatus / PurchaseStatus / ReturnStatus (same members, kept separate so one can diverge later) -->
+  <data name="SaleStatus_Active" xml:space="preserve"><value>Active</value></data>
+  <data name="SaleStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="PurchaseStatus_Active" xml:space="preserve"><value>Active</value></data>
+  <data name="PurchaseStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="ReturnStatus_Active" xml:space="preserve"><value>Active</value></data>
+  <data name="ReturnStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+
+  <!-- PaymentBatchDirection -->
+  <data name="PaymentBatchDirection_Received" xml:space="preserve"><value>Received</value></data>
+  <data name="PaymentBatchDirection_Paid" xml:space="preserve"><value>Paid</value></data>
+
+  <!-- CreditDebitType -->
+  <data name="CreditDebitType_Credit" xml:space="preserve"><value>Credit</value></data>
+  <data name="CreditDebitType_Debit" xml:space="preserve"><value>Debit</value></data>
+
+  <!-- CreditNoteCategory -->
+  <data name="CreditNoteCategory_Return" xml:space="preserve"><value>Return</value></data>
+  <data name="CreditNoteCategory_PriceDispute" xml:space="preserve"><value>Price dispute</value></data>
+  <data name="CreditNoteCategory_RebateSettlement" xml:space="preserve"><value>Rebate settlement</value></data>
+  <data name="CreditNoteCategory_BillingError" xml:space="preserve"><value>Billing error</value></data>
+  <data name="CreditNoteCategory_Other" xml:space="preserve"><value>Other</value></data>
+
+  <!-- CreditNoteStatus -->
+  <data name="CreditNoteStatus_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="CreditNoteStatus_Settled" xml:space="preserve"><value>Settled</value></data>
+  <data name="CreditNoteStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+
+  <!-- RebateConditionType -->
+  <data name="RebateConditionType_Volume" xml:space="preserve"><value>Volume</value></data>
+  <data name="RebateConditionType_PriceDrop" xml:space="preserve"><value>Price drop</value></data>
+  <data name="RebateConditionType_OnTimePayment" xml:space="preserve"><value>On-time payment</value></data>
+
+  <!-- RebateRewardType -->
+  <data name="RebateRewardType_PercentDiscount" xml:space="preserve"><value>Percent discount</value></data>
+  <data name="RebateRewardType_FixedCash" xml:space="preserve"><value>Fixed cash</value></data>
+  <data name="RebateRewardType_CreditNote" xml:space="preserve"><value>Credit note</value></data>
+  <data name="RebateRewardType_InKindGoods" xml:space="preserve"><value>In-kind goods</value></data>
+  <data name="RebateRewardType_LuckyDraw" xml:space="preserve"><value>Lucky draw</value></data>
+
+  <!--
+    ReferenceType — inventory ledger reason codes. Note Purchase=1 is the manual one-product
+    Stock In page while PurchaseOrder=6 is the multi-line Purchase document; the display
+    names reflect what each actually is, not the enum member spelling.
+  -->
+  <data name="ReferenceType_Purchase" xml:space="preserve"><value>Stock In</value></data>
+  <data name="ReferenceType_Sale" xml:space="preserve"><value>Sale</value></data>
+  <data name="ReferenceType_Cancel" xml:space="preserve"><value>Cancellation</value></data>
+  <data name="ReferenceType_Adjustment" xml:space="preserve"><value>Adjustment</value></data>
+  <data name="ReferenceType_CustomerReturn" xml:space="preserve"><value>Sales return</value></data>
+  <data name="ReferenceType_PurchaseOrder" xml:space="preserve"><value>Purchase</value></data>
+  <data name="ReferenceType_SupplierReturn" xml:space="preserve"><value>Purchase return</value></data>
+  <data name="ReferenceType_RebateInKind" xml:space="preserve"><value>Rebate (free goods)</value></data>
+</root>

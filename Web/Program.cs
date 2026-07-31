@@ -1,5 +1,7 @@
 using SimpleERP.Infrastructure;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Localization;
+using System.Globalization;
 
 // Npgsql maps DateTime to `timestamp with time zone` by default and throws at runtime on
 // any DateTime whose Kind isn't Utc. This codebase mixes DateTime.UtcNow, DateTime.Now and
@@ -29,6 +31,11 @@ builder.Services.AddRazorPages(options => {
     o.ModelBinderProviders.Insert(0, new SimpleERP.Web.Services.InvariantDecimalModelBinderProvider());
 });
 builder.Services.AddControllers();
+
+// ── Localization ──────────────────────────────────────────────────────────────
+// Resources live in the Application project beside SharedResource.cs, whose full type
+// name is also the resource manifest prefix — so no ResourcesPath is set here.
+builder.Services.AddLocalization();
 
 // ── Database ─────────────────────────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("SimpleERP")
@@ -77,10 +84,61 @@ app.Use(async (ctx, next) => {
     await next();
 });
 
+// ── Language (EN/ID) ──────────────────────────────────────────────────────────
+// Must run before anything renders, so every page sees the right CurrentUICulture.
+//
+// Indonesian is the default: staff are primarily Indonesian-speaking and the business
+// vocabulary (PPN, HPP, Laba Kotor…) is already Indonesian throughout. English is opt-in.
+//
+// Cookie is the ONLY culture provider, deliberately. The framework default also consults
+// the browser's Accept-Language header, which would silently hand an English-locale
+// browser an English UI and make the intended Indonesian default look broken. The
+// requirement is an explicit per-browser choice, not implicit detection — so the header
+// provider is left out rather than merely reordered.
+var supportedCultures = new[] { "id", "en" };
+var localizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture("id")
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+
+// Assigning the list REPLACES the framework's three defaults. Note that
+// AddInitialRequestCultureProvider() would not: it only prepends, leaving
+// AcceptLanguageHeaderRequestCultureProvider in place to answer whenever the cookie is
+// absent — which silently served English to a fresh en-US browser and made the Indonesian
+// default look broken. Verified live: with the cookie cleared the app must render Indonesian.
+localizationOptions.RequestCultureProviders = new List<IRequestCultureProvider>
+{
+    new CookieRequestCultureProvider()
+};
+
+app.UseRequestLocalization(localizationOptions);
+
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAntiforgery();
 app.MapRazorPages();
 app.MapControllers();
+
+// Sets the language cookie and returns to where the user was. GET rather than POST, and
+// therefore no antiforgery token: it writes a display preference, not business data, and
+// the worst a forged request can do is show the victim their own app in the other language.
+// LocalRedirect (not Redirect) so a crafted returnUrl can't bounce anyone off-site.
+app.MapGet("/set-language", (string culture, string? returnUrl, HttpContext ctx) =>
+{
+    if (!supportedCultures.Contains(culture)) culture = "id";
+
+    ctx.Response.Cookies.Append(
+        CookieRequestCultureProvider.DefaultCookieName,
+        CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(culture)),
+        new CookieOptions
+        {
+            Expires    = DateTimeOffset.UtcNow.AddYears(1),
+            IsEssential = true,          // a UI preference, not tracking — survives consent gating
+            SameSite   = SameSiteMode.Strict,
+            HttpOnly   = false           // harmless to read client-side; no secret in it
+        });
+
+    return Results.LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+});
 
 app.Run();

@@ -6,5 +6,12 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Domain\SimpleERP.Domain.csproj" />
+    <!--
+      IStringLocalizer<T> lives here. The Web project gets it free from the ASP.NET Core
+      shared framework, but Application is a plain class library, so it needs the
+      abstractions package explicitly — required once the services' validation messages
+      are localized (Phase B); the resource files themselves need no package.
+    -->
+    <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="8.0.0" />
   </ItemGroup>
 </Project>
