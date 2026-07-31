@@ -18,9 +18,9 @@ public class AdjustModel : PageModel {
         ViewData["Title"] = "Stock Adjustment";
         await Load();
         if (productId.HasValue) {
-            Input.ProductId  = productId.Value;
-            CurrentStock     = await _inv.GetCurrentStockAsync(productId.Value);
-            Input.AdjustedQty = CurrentStock;
+            Input.ProductId = productId.Value;
+            CurrentStock    = await _inv.GetCurrentStockAsync(productId.Value);
+            Input.QtyActual = CurrentStock;
         }
     }
 
@@ -32,8 +32,7 @@ public class AdjustModel : PageModel {
         CurrentStock = await _inv.GetCurrentStockAsync(Input.ProductId);
         var r = await _inv.AdjustStockAsync(Input, User.Identity?.Name ?? "staff");
         if (!r.Success) { Error=r.Error; return Page(); }
-        Success = $"Stock adjusted successfully. New stock: {Input.AdjustedQty:N0}";
-        var prevProduct = Input.ProductId;
+        Success = $"Stock adjusted. New stock: {Input.QtyActual:N0}";
         Input = new StockAdjustmentDto();
         CurrentStock = 0;
         return Page();

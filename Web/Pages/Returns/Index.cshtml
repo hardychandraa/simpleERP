@@ -1,0 +1,137 @@
+@page "/Returns"
+@model SimpleERP.Web.Pages.Returns.IndexModel
+@{ ViewData["Title"] = "Returns"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div class="stats" style="grid-template-columns:repeat(2,1fr)">
+    <div class="stat orange">
+        <div class="stat-lbl">Credited to customers</div>
+        <div class="stat-val">@Model.CustomerCreditTotal.ToString("N0")</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">@Model.CustomerReturns.Count(r => r.Status == "Active") active sales return(s)</div>
+    </div>
+    <div class="stat teal">
+        <div class="stat-lbl">Debited to suppliers</div>
+        <div class="stat-val">@Model.SupplierDebitTotal.ToString("N0")</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">@Model.SupplierReturns.Count(r => r.Status == "Active") active purchase return(s)</div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:14px">
+    <form method="get" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="margin:0;flex:1;min-width:130px">
+            <label>From</label>
+            <input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="fg" style="margin:0;flex:1;min-width:130px">
+            <label>To</label>
+            <input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="fg" style="margin:0;flex:1.5;min-width:160px">
+            <label>Search</label>
+            <input type="text" name="search" value="@Model.Search" placeholder="Return no., document, name..." />
+        </div>
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="/Returns" class="btn btn-outline">Reset</a>
+        <a href="/CreditNotes" class="btn btn-outline" style="margin-left:auto">📄 Credit &amp; Debit Notes</a>
+    </form>
+    <p style="font-size:12px;color:#6b7280;margin-top:12px;line-height:1.6">
+        A return always starts from the document it reverses: open the
+        <a href="/Sales">invoice</a> or the <a href="/Purchases">purchase</a> and use
+        <strong>Return items</strong> there. Posting a return restocks (or issues) the goods
+        and raises a credit or debit note — the original document is never edited.
+    </p>
+</div>
+
+<!-- ── Sales returns ─────────────────────────────────────────────────────────── -->
+<div class="card">
+    <div class="card-title">↩ Sales Returns (@Model.CustomerReturns.Count)</div>
+    @if (Model.CustomerReturns.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">
+            No sales returns. Start one from an <a href="/Sales">invoice</a>.
+        </p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Return No.</th>
+                    <th>Date</th>
+                    <th>Invoice</th>
+                    <th>Customer</th>
+                    <th>Reason</th>
+                    <th style="text-align:center">Lines</th>
+                    <th style="text-align:right">Credited</th>
+                    <th style="text-align:center">Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.CustomerReturns)
+            {
+                <tr>
+                    <td><strong>@r.ReturnNumber</strong></td>
+                    <td>@r.ReturnDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+                    <td><a href="/Sales/@r.SourceId" style="color:#2563eb">@r.SourceDocument</a></td>
+                    <td>@r.CounterpartyName</td>
+                    <td style="font-size:12px;color:#6b7280">@r.Reason</td>
+                    <td style="text-align:center">@r.LineCount</td>
+                    <td style="text-align:right;font-weight:600">@r.GrandTotal.ToString("N0")</td>
+                    <td style="text-align:center"><span class="badge @(r.Status == "Active" ? "ok" : "err")">@r.Status</span></td>
+                    <td><a href="/Returns/Customer/@r.Id" class="btn btn-outline btn-sm">View</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<!-- ── Purchase returns ──────────────────────────────────────────────────────── -->
+<div class="card">
+    <div class="card-title">↪ Purchase Returns (@Model.SupplierReturns.Count)</div>
+    @if (Model.SupplierReturns.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">
+            No purchase returns. Start one from a <a href="/Purchases">purchase</a>.
+        </p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Return No.</th>
+                    <th>Date</th>
+                    <th>Purchase</th>
+                    <th>Supplier</th>
+                    <th>Reason</th>
+                    <th style="text-align:center">Lines</th>
+                    <th style="text-align:right">Debited</th>
+                    <th style="text-align:center">Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.SupplierReturns)
+            {
+                <tr>
+                    <td><strong>@r.ReturnNumber</strong></td>
+                    <td>@r.ReturnDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+                    <td><a href="/Purchases/@r.SourceId" style="color:#2563eb">@r.SourceDocument</a></td>
+                    <td>@r.CounterpartyName</td>
+                    <td style="font-size:12px;color:#6b7280">@r.Reason</td>
+                    <td style="text-align:center">@r.LineCount</td>
+                    <td style="text-align:right;font-weight:600">@r.GrandTotal.ToString("N0")</td>
+                    <td style="text-align:center"><span class="badge @(r.Status == "Active" ? "ok" : "err")">@r.Status</span></td>
+                    <td><a href="/Returns/Supplier/@r.Id" class="btn btn-outline btn-sm">View</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>

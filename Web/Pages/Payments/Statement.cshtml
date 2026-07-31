@@ -1,0 +1,209 @@
+@page "/Payments/Statement/{customerId:guid}"
+@model SimpleERP.Web.Pages.Payments.StatementModel
+@using System.Globalization
+@{
+    ViewData["Title"] = $"Statement — {Model.Statement.CounterpartyName}";
+    // Invariant and without trailing zeros: this feeds <input type="number">, which posts
+    // back in invariant format, and "3800000.0000" is noise in an amount box.
+    string Inv(decimal d) => d.ToString("0.##", CultureInfo.InvariantCulture);
+}
+
+<div class="no-print" style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+    <a href="/Sales/Due" class="btn btn-outline btn-sm">← Due by customer</a>
+    <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 Print statement</button>
+    <form method="get" style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
+        <div class="fg" style="margin:0">
+            <label>From</label>
+            <input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="fg" style="margin:0">
+            <label>To</label>
+            <input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="/Payments/Statement/@Model.Statement.CounterpartyId" class="btn btn-outline btn-sm">Reset</a>
+    </form>
+</div>
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger no-print">@Model.Error</div>
+}
+
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+        <div>
+            <div style="font-size:20px;font-weight:800;color:#1a1a2e">Statement of Account</div>
+            <div style="color:#6b7280;font-size:12px">Amounts outstanding on this account</div>
+        </div>
+        <div style="text-align:right">
+            <div style="font-size:16px;font-weight:700">@Model.Statement.CounterpartyName</div>
+            @if (!string.IsNullOrEmpty(Model.Statement.Phone))
+            {
+                <div style="color:#6b7280;font-size:12px">📞 @Model.Statement.Phone</div>
+            }
+            <div style="color:#9ca3af;font-size:12px">
+                @if (Model.From.HasValue || Model.To.HasValue)
+                {
+                    @($"{Model.From?.ToString("dd MMM yyyy") ?? "start"} — {Model.To?.ToString("dd MMM yyyy") ?? "today"}")
+                }
+                else
+                {
+                    @("All open documents")
+                }
+            </div>
+        </div>
+    </div>
+
+@if (Model.Statement.NothingOpen)
+{
+    <div class="alert alert-success" style="margin:0">
+        ✓ Nothing outstanding for @Model.Statement.CounterpartyName in this period.
+    </div>
+}
+else
+{
+    <form method="post">
+    <table style="margin-bottom:14px">
+        <thead>
+            <tr>
+                <th>Invoice</th>
+                <th>Date</th>
+                <th>Due</th>
+                <th style="text-align:right">Total</th>
+                <th style="text-align:right">Paid</th>
+                <th style="text-align:right">Balance</th>
+                <th style="width:130px;text-align:center" class="no-print">Collect now</th>
+            </tr>
+        </thead>
+        <tbody>
+        @for (var i = 0; i < Model.Statement.Lines.Count; i++)
+        {
+            var line   = Model.Statement.Lines[i];
+            var posted = i < Model.Lines.Count ? Model.Lines[i] : null;
+            <tr>
+                <td><a href="/Sales/@line.DocumentId" style="color:#2563eb;font-weight:600">@line.DocumentNumber</a></td>
+                <td style="font-size:12px">@line.DocumentDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+                <td style="font-size:12px">
+                    @if (line.DueDate.HasValue)
+                    {
+                        <span style="color:@(line.IsOverdue ? "#dc2626" : "#6b7280");font-weight:@(line.IsOverdue ? "700" : "400")">
+                            @(line.IsOverdue ? "⚠ " : "")@line.DueDate.Value.ToString("dd-MMM-yy")
+                        </span>
+                    }
+                    else
+                    {
+                        <span style="color:#9ca3af">—</span>
+                    }
+                </td>
+                <td style="text-align:right">@line.GrandTotal.ToString("N0")</td>
+                <td style="text-align:right;color:#059669">@line.AmountPaid.ToString("N0")</td>
+                <td style="text-align:right;font-weight:700">@line.BalanceDue.ToString("N0")</td>
+                <td class="no-print">
+                    <input type="hidden" name="Lines[@i].DocumentId" value="@line.DocumentId" />
+                    <input type="number" name="Lines[@i].Amount" class="pay-amt"
+                           min="0" max="@Inv(line.BalanceDue)" step="0.01"
+                           value="@Inv(posted?.Amount > 0 ? posted.Amount : line.BalanceDue)"
+                           style="text-align:right" />
+                </td>
+            </tr>
+        }
+        </tbody>
+        <tfoot>
+            <tr style="background:#f9fafb">
+                <td colspan="5" style="font-weight:700">Total outstanding</td>
+                <td style="text-align:right;font-weight:700">@Model.Statement.TotalDue.ToString("N0")</td>
+                <td class="no-print"></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    @if (Model.Statement.OpenNotes.Any())
+    {
+        <div class="card-title" style="margin-top:18px">📄 Credit Notes — reduce what they owe</div>
+        <table style="margin-bottom:14px">
+            <thead>
+                <tr>
+                    <th style="width:34px" class="no-print"></th>
+                    <th>Note</th><th>Date</th><th>Category</th><th>Reason</th>
+                    <th style="text-align:right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var n in Model.Statement.OpenNotes)
+            {
+                <tr>
+                    <td class="no-print" style="text-align:center">
+                        <input type="checkbox" name="ApplyNoteIds" value="@n.CreditNoteId"
+                               class="apply-note" data-amount="@Inv(n.Amount)"
+                               checked="@(Model.ApplyNoteIds.Contains(n.CreditNoteId))" />
+                    </td>
+                    <td style="font-weight:600">@n.DocumentNumber</td>
+                    <td style="font-size:12px">@n.NoteDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+                    <td style="font-size:12px">@n.Category</td>
+                    <td style="font-size:12px;color:#6b7280">@n.Reason</td>
+                    <td style="text-align:right;font-weight:600;color:#059669">−@n.Amount.ToString("N0")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p style="font-size:11px;color:#9ca3af;margin-bottom:14px">
+            Ticking a note settles it in full as part of this collection — the goods movement
+            behind it already happened when the return was posted.
+        </p>
+    }
+
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;margin-top:16px">
+        <div class="no-print">
+            <div class="fg">
+                <label>Payment notes (optional)</label>
+                <input type="text" asp-for="Notes" maxlength="500"
+                       placeholder="e.g. Transfer received 30 Jul, covers July statement" />
+            </div>
+        </div>
+        <div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6">
+                <span style="color:#6b7280">Gross being collected</span><span id="pv-gross">0</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0">
+                <span style="color:#6b7280">Less credit notes</span>
+                <span id="pv-notes" style="color:#059669">0</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1a1a2e;font-size:16px;font-weight:700">
+                <span>Net received</span><span id="pv-net">0</span>
+            </div>
+            <button type="submit" class="btn btn-success no-print" style="width:100%;margin-top:12px">
+                ✓ Record Settlement
+            </button>
+        </div>
+    </div>
+    </form>
+}
+</div>
+
+@section Scripts {
+<script>
+// Mirrors the server: net = gross(applied line amounts) − face value of ticked notes.
+function preview() {
+    const netEl = document.getElementById('pv-net');
+    if (!netEl) return;
+
+    let gross = 0;
+    document.querySelectorAll('.pay-amt').forEach(el => { gross += parseFloat(el.value) || 0; });
+
+    let notes = 0;
+    document.querySelectorAll('.apply-note').forEach(el => {
+        if (el.checked) notes += parseFloat(el.dataset.amount) || 0;
+    });
+
+    const fmt = v => Math.round(v).toLocaleString();
+    document.getElementById('pv-gross').textContent = fmt(gross);
+    document.getElementById('pv-notes').textContent = notes > 0 ? '−' + fmt(notes) : '0';
+    netEl.textContent = fmt(gross - notes);
+}
+
+document.querySelectorAll('.pay-amt').forEach(el => el.addEventListener('input', preview));
+document.querySelectorAll('.apply-note').forEach(el => el.addEventListener('change', preview));
+preview();
+</script>
+}

@@ -27,10 +27,10 @@
       </div>
       <div class="fg">
         <label>Actual Physical Count *</label>
-        <input type="number" asp-for="Input.AdjustedQty" min="0" step="0.01" required
+        <input type="number" asp-for="Input.QtyActual" min="0" step="0.01" required
                style="font-size:16px;font-weight:600"/>
-        @{ var diff = Model.Input.AdjustedQty - Model.CurrentStock; }
-        @if (Model.CurrentStock > 0 || Model.Input.AdjustedQty > 0) {
+        @{ var diff = Model.Input.QtyActual - Model.CurrentStock; }
+        @if (Model.CurrentStock > 0 || Model.Input.QtyActual > 0) {
           <div style="font-size:12px;margin-top:4px;font-weight:600;color:@(diff>0?"#059669":diff<0?"#dc2626":"#9ca3af")">
             @(diff>0 ? $"↑ Will add {diff:N2} units to stock" : diff<0 ? $"↓ Will remove {Math.Abs(diff):N2} units from stock" : "No change")
           </div>
@@ -56,7 +56,7 @@
 @section Scripts {
 <script>
 // Live diff calculation
-document.querySelector('input[name="Input.AdjustedQty"]')?.addEventListener('input', function() {
+document.querySelector('input[name="Input.QtyActual"]')?.addEventListener('input', function() {
     const sysStock = @Model.CurrentStock;
     const newVal   = parseFloat(this.value) || 0;
     const diff     = newVal - sysStock;

@@ -29,6 +29,12 @@ public class AppDbContext : DbContext
     public DbSet<CommissionRule>    CommissionRules    => Set<CommissionRule>();
     public DbSet<CommissionAccrual> CommissionAccruals => Set<CommissionAccrual>();
     public DbSet<CommissionPayout>  CommissionPayouts  => Set<CommissionPayout>();
+    public DbSet<CustomerReturn>     CustomerReturns     => Set<CustomerReturn>();
+    public DbSet<CustomerReturnItem> CustomerReturnItems => Set<CustomerReturnItem>();
+    public DbSet<SupplierReturn>     SupplierReturns     => Set<SupplierReturn>();
+    public DbSet<SupplierReturnItem> SupplierReturnItems => Set<SupplierReturnItem>();
+    public DbSet<CreditNote>         CreditNotes         => Set<CreditNote>();
+    public DbSet<PaymentBatch>       PaymentBatches      => Set<PaymentBatch>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense>         Expenses          => Set<Expense>();
 
@@ -124,7 +130,12 @@ public class AppDbContext : DbContext
             e.Property(p => p.CreatedBy).HasMaxLength(100);
             e.HasOne(p => p.Sale).WithMany(s => s.PaymentRecords)
                 .HasForeignKey(p => p.SaleId).OnDelete(DeleteBehavior.Cascade);
+            // SetNull mirrors CommissionAccrual→Payout: the batch is an envelope, and a
+            // payment outlives it rather than vanishing with it.
+            e.HasOne(p => p.PaymentBatch).WithMany(b => b.Payments)
+                .HasForeignKey(p => p.PaymentBatchId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(p => p.SaleId);
+            e.HasIndex(p => p.PaymentBatchId);
         });
 
         m.Entity<StockAdjustment>(e => {
@@ -219,7 +230,10 @@ public class AppDbContext : DbContext
             e.Property(p => p.CreatedBy).HasMaxLength(100);
             e.HasOne(p => p.Purchase).WithMany(x => x.SupplierPayments)
                 .HasForeignKey(p => p.PurchaseId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(p => p.PaymentBatch).WithMany(b => b.SupplierPayments)
+                .HasForeignKey(p => p.PaymentBatchId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(p => p.PurchaseId);
+            e.HasIndex(p => p.PaymentBatchId);
         });
 
         m.Entity<RebateRule>(e => {
@@ -327,6 +341,138 @@ public class AppDbContext : DbContext
             e.HasOne(p => p.SalesPerson).WithMany()
                 .HasForeignKey(p => p.SalesPersonId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(p => new { p.SalesPersonId, p.PayoutDate });
+        });
+
+        m.Entity<CustomerReturn>(e => {
+            e.HasKey(r => r.Id);
+            e.Property(r => r.ReturnNumber).IsRequired().HasMaxLength(50);
+            e.Property(r => r.SubTotal).HasColumnType("decimal(18,4)");
+            e.Property(r => r.TaxBase).HasColumnType("decimal(18,4)");
+            e.Property(r => r.TaxRate).HasColumnType("decimal(18,4)");
+            e.Property(r => r.TaxAmount).HasColumnType("decimal(18,4)");
+            e.Property(r => r.GrandTotal).HasColumnType("decimal(18,4)");
+            e.Property(r => r.Reason).IsRequired().HasMaxLength(500);
+            e.Property(r => r.Notes).HasMaxLength(500);
+            e.Property(r => r.CreatedBy).HasMaxLength(100);
+            // Restrict: a return is cancelled, never deleted, and the invoice it reverses
+            // must stay resolvable for the credit to make sense.
+            e.HasOne(r => r.Sale).WithMany()
+                .HasForeignKey(r => r.SaleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.Branch).WithMany()
+                .HasForeignKey(r => r.BranchId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(r => r.ReturnNumber).IsUnique();
+            // Both hot paths: returns for one invoice (the cap check and the sale's detail)
+            // and the period list.
+            e.HasIndex(r => r.SaleId);
+            e.HasIndex(r => r.ReturnDate);
+        });
+
+        m.Entity<CustomerReturnItem>(e => {
+            e.HasKey(i => i.Id);
+            e.Property(i => i.Qty).HasColumnType("decimal(18,4)");
+            e.Property(i => i.UnitPrice).HasColumnType("decimal(18,4)");
+            e.Property(i => i.CreditAmount).HasColumnType("decimal(18,4)");
+            e.Property(i => i.CostAtSale).HasColumnType("decimal(18,4)");
+            e.Property(i => i.Notes).HasMaxLength(500);
+            e.HasOne(i => i.Return).WithMany(r => r.Items)
+                .HasForeignKey(i => i.CustomerReturnId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.SaleItem).WithMany()
+                .HasForeignKey(i => i.SaleItemId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(i => i.Product).WithMany()
+                .HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+            // Backs the per-line returned-quantity cap.
+            e.HasIndex(i => i.SaleItemId);
+            e.HasIndex(i => i.ProductId);
+        });
+
+        m.Entity<SupplierReturn>(e => {
+            e.HasKey(r => r.Id);
+            e.Property(r => r.ReturnNumber).IsRequired().HasMaxLength(50);
+            e.Property(r => r.SubTotal).HasColumnType("decimal(18,4)");
+            e.Property(r => r.TaxBase).HasColumnType("decimal(18,4)");
+            e.Property(r => r.TaxRate).HasColumnType("decimal(18,4)");
+            e.Property(r => r.TaxAmount).HasColumnType("decimal(18,4)");
+            e.Property(r => r.GrandTotal).HasColumnType("decimal(18,4)");
+            e.Property(r => r.Reason).IsRequired().HasMaxLength(500);
+            e.Property(r => r.Notes).HasMaxLength(500);
+            e.Property(r => r.CreatedBy).HasMaxLength(100);
+            e.HasOne(r => r.Purchase).WithMany()
+                .HasForeignKey(r => r.PurchaseId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.Branch).WithMany()
+                .HasForeignKey(r => r.BranchId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(r => r.ReturnNumber).IsUnique();
+            e.HasIndex(r => r.PurchaseId);
+            e.HasIndex(r => r.ReturnDate);
+        });
+
+        m.Entity<SupplierReturnItem>(e => {
+            e.HasKey(i => i.Id);
+            e.Property(i => i.Qty).HasColumnType("decimal(18,4)");
+            e.Property(i => i.UnitCost).HasColumnType("decimal(18,4)");
+            e.Property(i => i.DebitAmount).HasColumnType("decimal(18,4)");
+            e.Property(i => i.CostAtReturn).HasColumnType("decimal(18,4)");
+            e.Property(i => i.Notes).HasMaxLength(500);
+            e.HasOne(i => i.Return).WithMany(r => r.Items)
+                .HasForeignKey(i => i.SupplierReturnId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.PurchaseItem).WithMany()
+                .HasForeignKey(i => i.PurchaseItemId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(i => i.Product).WithMany()
+                .HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(i => i.PurchaseItemId);
+            e.HasIndex(i => i.ProductId);
+        });
+
+        m.Entity<CreditNote>(e => {
+            e.HasKey(n => n.Id);
+            e.Property(n => n.DocumentNumber).IsRequired().HasMaxLength(50);
+            e.Property(n => n.TaxBase).HasColumnType("decimal(18,4)");
+            e.Property(n => n.TaxRate).HasColumnType("decimal(18,4)");
+            e.Property(n => n.TaxAmount).HasColumnType("decimal(18,4)");
+            e.Property(n => n.Amount).HasColumnType("decimal(18,4)");
+            e.Property(n => n.Reason).IsRequired().HasMaxLength(500);
+            e.Property(n => n.Notes).HasMaxLength(500);
+            e.Property(n => n.SettlementNotes).HasMaxLength(500);
+            e.Property(n => n.CreatedBy).HasMaxLength(100);
+            e.HasOne(n => n.Customer).WithMany()
+                .HasForeignKey(n => n.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(n => n.Supplier).WithMany()
+                .HasForeignKey(n => n.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(n => n.SourceSale).WithMany()
+                .HasForeignKey(n => n.SourceSaleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(n => n.SourcePurchase).WithMany()
+                .HasForeignKey(n => n.SourcePurchaseId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(n => n.SourceCustomerReturn).WithMany(r => r.CreditNotes)
+                .HasForeignKey(n => n.SourceCustomerReturnId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(n => n.SourceSupplierReturn).WithMany(r => r.CreditNotes)
+                .HasForeignKey(n => n.SourceSupplierReturnId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(n => n.SettledByPaymentBatch).WithMany(b => b.AppliedNotes)
+                .HasForeignKey(n => n.SettledByPaymentBatchId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(n => n.DocumentNumber).IsUnique();
+            // The AR/AP netting query: open notes by direction.
+            e.HasIndex(n => new { n.Type, n.Status });
+            e.HasIndex(n => n.NoteDate);
+            e.HasIndex(n => n.CustomerId);
+            e.HasIndex(n => n.SupplierId);
+        });
+
+        m.Entity<PaymentBatch>(e => {
+            e.HasKey(b => b.Id);
+            e.Property(b => b.BatchNumber).IsRequired().HasMaxLength(50);
+            e.Property(b => b.GrossAmount).HasColumnType("decimal(18,4)");
+            e.Property(b => b.NotesAppliedAmount).HasColumnType("decimal(18,4)");
+            e.Property(b => b.NetAmount).HasColumnType("decimal(18,4)");
+            e.Property(b => b.Notes).HasMaxLength(500);
+            e.Property(b => b.CreatedBy).HasMaxLength(100);
+            // Restrict, like CreditNote's counterparties: a party with settlement history
+            // stays resolvable — deactivate, never delete.
+            e.HasOne(b => b.Customer).WithMany()
+                .HasForeignKey(b => b.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(b => b.Supplier).WithMany()
+                .HasForeignKey(b => b.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(b => b.BatchNumber).IsUnique();
+            e.HasIndex(b => new { b.Direction, b.BatchDate });
+            e.HasIndex(b => b.CustomerId);
+            e.HasIndex(b => b.SupplierId);
         });
 
         m.Entity<ExpenseCategory>(e => {

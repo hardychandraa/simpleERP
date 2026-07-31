@@ -19,6 +19,7 @@
   }
   <a href="?handler=Txt&id=@Model.Sale.Id" class="btn btn-outline btn-sm">📄 TXT</a>
   @if (Model.Sale.Status == "Active") {
+    <a href="/Returns/Customer/New/@Model.Sale.Id" class="btn btn-warn btn-sm">↩ Return items</a>
     <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Sale.Id" style="margin-left:auto"
           onsubmit="return confirm('Cancel this sale? Stock will be reversed.')">
       <button type="submit" class="btn btn-danger btn-sm">✕ Cancel Sale</button>
@@ -63,22 +64,17 @@
     <div>
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">Payment</div>
       @{
-        var ptLabel = Model.Sale.PaymentType switch {
-          "Cash"  => "💵 Cash",
-          "Due"   => "📋 Due",
-          "TOP30" => "📋 TOP 30",
-          "TOP45" => "📋 TOP 45",
-          "TOP60" => "📋 TOP 60",
-          "TOP90" => "📋 TOP 90",
-          _       => Model.Sale.PaymentType
-        };
-        var isCash = Model.Sale.PaymentType == "Cash";
+        var isCash  = Model.Sale.PaymentType == "Cash";
+        var ptLabel = isCash ? "💵 Cash" : "📋 Credit";
         var ptClass = isCash ? "ok" : "warn";
         var isOverdue = Model.Sale.DueDate.HasValue
                      && Model.Sale.DueDate.Value.Date < DateTime.UtcNow.Date
                      && Model.Sale.BalanceDue > 0;
       }
       <span class="badge @ptClass">@ptLabel</span>
+      @if (!string.IsNullOrEmpty(Model.Sale.PaymentTermName)) {
+        <span style="font-size:12px;color:#6b7280"> · @Model.Sale.PaymentTermName</span>
+      }
       @if (Model.Sale.DueDate.HasValue) {
         var dueLbl = isOverdue
             ? $"⚠ OVERDUE since {Model.Sale.DueDate.Value:dd MMM yyyy}"
@@ -201,6 +197,34 @@
           <button type="submit" class="btn btn-success" style="width:100%">✓ Confirm Payment</button>
         </form>
       }
+    </div>
+  }
+
+  <!-- Returns -->
+  @if (Model.Returns.Any()) {
+    <div class="card">
+      <div class="card-title">↩ Returns Against This Invoice</div>
+      <table>
+        <thead><tr><th>Return</th><th style="text-align:right">Credited</th><th style="text-align:center">Status</th></tr></thead>
+        <tbody>
+        @foreach (var r in Model.Returns) {
+          <tr>
+            <td style="font-size:12px">
+              <a href="/Returns/Customer/@r.Id" style="color:#2563eb;font-weight:600">@r.ReturnNumber</a>
+              <div style="color:#9ca3af;font-size:11px">@r.ReturnDate.ToLocalTime().ToString("dd-MMM-yy") · @r.LineCount line(s)</div>
+            </td>
+            <td style="text-align:right;font-weight:600">@r.GrandTotal.ToString("N0")</td>
+            <td style="text-align:center;font-size:11px">
+              <span class="badge @(r.Status == "Active" ? "ok" : "gray")">@r.Status</span>
+            </td>
+          </tr>
+        }
+        </tbody>
+      </table>
+      <p style="font-size:11px;color:#9ca3af;margin-top:8px">
+        The invoice total above is unchanged by design — what the customer is owed sits on the
+        credit note each return raised.
+      </p>
     </div>
   }
 

@@ -14,6 +14,12 @@ public class SupplierPayment
     public decimal  Amount      { get; set; }
     public string?  Notes       { get; set; }
     public string   CreatedBy   { get; set; } = "staff";
+    /// <summary>
+    /// Set when this payment was one line of a multi-purchase settlement. Null for an
+    /// ordinary single-purchase payment, which is the unchanged default path.
+    /// </summary>
+    public Guid?    PaymentBatchId { get; set; }
 
     public Purchase? Purchase { get; set; }
+    public PaymentBatch? PaymentBatch { get; set; }
 }

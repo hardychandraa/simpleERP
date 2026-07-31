@@ -21,6 +21,12 @@ builder.Services.AddAntiforgery(options => {
 
 builder.Services.AddRazorPages(options => {
     // All Razor Pages require antiforgery by default (already the case, explicit for clarity)
+})
+.AddMvcOptions(o => {
+    // <input type="number"> always posts an invariant floating-point number, but the
+    // default binder reads it with the server's culture — where a dot is a thousands
+    // separator. Without this, a posted 3800000.0000 binds as 38,000,000,000.
+    o.ModelBinderProviders.Insert(0, new SimpleERP.Web.Services.InvariantDecimalModelBinderProvider());
 });
 builder.Services.AddControllers();
 

@@ -9,15 +9,18 @@ public class DetailModel : PageModel
 {
     private readonly IPurchaseService    _purchases;
     private readonly IRebateService      _rebates;
+    private readonly IReturnService      _returns;
     private readonly IAppSettingsService _settings;
 
-    public DetailModel(IPurchaseService purchases, IRebateService rebates, IAppSettingsService settings)
-    { _purchases = purchases; _rebates = rebates; _settings = settings; }
+    public DetailModel(IPurchaseService purchases, IRebateService rebates,
+                       IReturnService returns, IAppSettingsService settings)
+    { _purchases = purchases; _rebates = rebates; _returns = returns; _settings = settings; }
 
     public PurchaseDto    Purchase       { get; set; } = null!;
     public AppSettingsDto AppSettings    { get; set; } = null!;
     public List<SupplierPaymentDto> Payments { get; set; } = new();
     public List<RebateAccrualDto>   Rebates  { get; set; } = new();
+    public List<ReturnListDto>      Returns  { get; set; } = new();
     public decimal        StillOwed      { get; set; }
 
     [BindProperty] public RecordSupplierPaymentDto PayInput { get; set; } = new();
@@ -34,6 +37,7 @@ public class DetailModel : PageModel
         AppSettings = await _settings.GetAsync();
         Payments    = purchase.PaymentHistory;
         Rebates     = await _rebates.GetAccrualsForPurchaseAsync(id);
+        Returns     = await _returns.GetReturnsForPurchaseAsync(id);
         StillOwed   = Math.Max(0, purchase.GrandTotal - purchase.AmountPaid);
         PayInput.PurchaseId = id;
         Msg = msg; IsErr = err;

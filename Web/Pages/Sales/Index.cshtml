@@ -17,6 +17,10 @@
             <label>To</label>
             <input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" />
         </div>
+        <div class="fg" style="margin:0;flex:1;min-width:180px">
+            <label>Search</label>
+            <input type="text" name="search" value="@Model.Search" placeholder="Invoice, customer, or phone..." />
+        </div>
         <button type="submit" class="btn btn-primary">Filter</button>
         <a href="/Sales" class="btn btn-outline">Reset</a>
         <a href="/Sales/Create" class="btn btn-success" style="margin-left:auto">＋ New Sale</a>
@@ -51,8 +55,11 @@
                         }
                     </td>
                     <td><span class="badge @(s.PaymentType == "Cash" ? "ok" : "warn")">
-                        @(s.PaymentType switch { "TOP30"=>"TOP 30","TOP45"=>"TOP 45","TOP60"=>"TOP 60","TOP90"=>"TOP 90", _=>s.PaymentType })
+                        @(s.PaymentType == "Cash" ? "Cash" : "Credit")
                     </span>
+                    @if (!string.IsNullOrEmpty(s.PaymentTermName)) {
+                        <div style="font-size:11px;color:#6b7280">@s.PaymentTermName</div>
+                    }
                     @if (s.DueDate.HasValue && s.BalanceDue > 0) {
                         var od = s.IsOverdue;
                         <div style="font-size:11px;color:@(od?"#dc2626":"#d97706");font-weight:600">

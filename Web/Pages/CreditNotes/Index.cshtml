@@ -1,0 +1,240 @@
+@page "/CreditNotes"
+@model SimpleERP.Web.Pages.CreditNotes.IndexModel
+@using SimpleERP.Domain.Enums
+@{ ViewData["Title"] = "Credit & Debit Notes"; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div class="stats" style="grid-template-columns:repeat(2,1fr)">
+    <div class="stat orange">
+        <div class="stat-lbl">Open credit — owed to customers</div>
+        <div class="stat-val">@Model.OpenCredit.ToString("N0")</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">Nets off accounts receivable</div>
+    </div>
+    <div class="stat teal">
+        <div class="stat-lbl">Open debit — owed by suppliers</div>
+        <div class="stat-val">@Model.OpenDebit.ToString("N0")</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">Nets off accounts payable</div>
+    </div>
+</div>
+
+<!-- ── Raise a standalone note ───────────────────────────────────────────────── -->
+<div class="card">
+    <div class="card-title">＋ Raise a Note</div>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:12px;line-height:1.6">
+        For adjustments with no goods behind them — a price dispute, a billing error, a rebate
+        credited against the payable. A note for returned goods is raised automatically by the
+        <a href="/Returns">return</a> itself, so it reverses the stock at the same time.
+    </p>
+    <form method="post" asp-page-handler="Create">
+        <div class="frow frow3">
+            <div class="fg">
+                <label>Direction</label>
+                <select asp-for="NewNote.Type" id="note-type">
+                    <option value="@((int)CreditDebitType.Credit)">Credit note — we owe a customer</option>
+                    <option value="@((int)CreditDebitType.Debit)">Debit note — a supplier owes us</option>
+                </select>
+            </div>
+            <div class="fg" id="fg-customer">
+                <label>Customer</label>
+                <select asp-for="NewNote.CustomerId">
+                    <option value="">— select —</option>
+                    @foreach (var c in Model.CustomerOptions)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="fg" id="fg-supplier" style="display:none">
+                <label>Supplier</label>
+                <select asp-for="NewNote.SupplierId">
+                    <option value="">— select —</option>
+                    @foreach (var s in Model.SupplierOptions)
+                    {
+                        <option value="@s.Id">@s.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="frow frow3">
+            <div class="fg">
+                <label>Category</label>
+                <select asp-for="NewNote.Category">
+                    <option value="@((int)CreditNoteCategory.PriceDispute)">Price dispute</option>
+                    <option value="@((int)CreditNoteCategory.BillingError)">Billing error</option>
+                    <option value="@((int)CreditNoteCategory.RebateSettlement)">Rebate settlement</option>
+                    <option value="@((int)CreditNoteCategory.Return)">Return</option>
+                    <option value="@((int)CreditNoteCategory.Other)">Other</option>
+                </select>
+            </div>
+            <div class="fg">
+                <label>Note date</label>
+                <input type="date" asp-for="NewNote.NoteDate" required />
+            </div>
+            <div class="fg">
+                <label>Amount</label>
+                <input type="number" asp-for="NewNote.Amount" min="0.01" step="0.01" required placeholder="0" />
+                <label style="margin-top:6px;text-transform:none;font-weight:400;font-size:12px;display:flex;gap:6px;align-items:center">
+                    <input type="checkbox" asp-for="NewNote.IsTaxInclusive" style="width:auto" />
+                    Amount already includes PPN
+                </label>
+            </div>
+        </div>
+        <div class="frow frow2">
+            <div class="fg">
+                <label>Reason <span style="color:#dc2626">*</span></label>
+                <input type="text" asp-for="NewNote.Reason" maxlength="500" required
+                       placeholder="e.g. Agreed price correction on Jan delivery" />
+            </div>
+            <div class="fg">
+                <label>Notes (optional)</label>
+                <input type="text" asp-for="NewNote.Notes" maxlength="500" />
+            </div>
+        </div>
+        <button type="submit" class="btn btn-success">✓ Raise Note</button>
+    </form>
+</div>
+
+<!-- ── Register ──────────────────────────────────────────────────────────────── -->
+<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div class="card-title" style="margin:0">Register (@Model.Notes.Count)</div>
+        <form method="get" style="display:flex;gap:8px;align-items:center">
+            <select name="type" style="width:auto">
+                <option value="">All directions</option>
+                <option value="@((int)CreditDebitType.Credit)" selected="@(Model.FilterType == CreditDebitType.Credit)">Credit only</option>
+                <option value="@((int)CreditDebitType.Debit)"  selected="@(Model.FilterType == CreditDebitType.Debit)">Debit only</option>
+            </select>
+            <select name="status" style="width:auto">
+                <option value="">All statuses</option>
+                <option value="@((int)CreditNoteStatus.Open)"      selected="@(Model.FilterStatus == CreditNoteStatus.Open)">Open</option>
+                <option value="@((int)CreditNoteStatus.Settled)"   selected="@(Model.FilterStatus == CreditNoteStatus.Settled)">Settled</option>
+                <option value="@((int)CreditNoteStatus.Cancelled)" selected="@(Model.FilterStatus == CreditNoteStatus.Cancelled)">Cancelled</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            <a href="/CreditNotes" class="btn btn-outline btn-sm">Reset</a>
+        </form>
+    </div>
+
+    @if (Model.Notes.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px;margin-top:12px">No notes match.</p>
+    }
+    else
+    {
+        <table style="margin-top:12px">
+            <thead>
+                <tr>
+                    <th>Number</th>
+                    <th>Date</th>
+                    <th>Direction</th>
+                    <th>Counterparty</th>
+                    <th>Category</th>
+                    <th>Source</th>
+                    <th>Reason</th>
+                    <th style="text-align:right">Amount</th>
+                    <th style="text-align:center">Status</th>
+                    <th style="width:260px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var n in Model.Notes)
+            {
+                <tr>
+                    <td><strong>@n.DocumentNumber</strong></td>
+                    <td>@n.NoteDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+                    <td>
+                        <span class="badge @(n.IsCredit ? "warn" : "info")">
+                            @(n.IsCredit ? "Credit" : "Debit")
+                        </span>
+                    </td>
+                    <td>@n.CounterpartyName</td>
+                    <td style="font-size:12px">@n.Category</td>
+                    <td style="font-size:12px">
+                        @if (n.SourceCustomerReturnId.HasValue)
+                        {
+                            <a href="/Returns/Customer/@n.SourceCustomerReturnId" style="color:#2563eb">@n.SourceDocument</a>
+                        }
+                        else if (n.SourceSupplierReturnId.HasValue)
+                        {
+                            <a href="/Returns/Supplier/@n.SourceSupplierReturnId" style="color:#2563eb">@n.SourceDocument</a>
+                        }
+                        else if (n.SourceSaleId.HasValue)
+                        {
+                            <a href="/Sales/@n.SourceSaleId" style="color:#2563eb">@n.SourceDocument</a>
+                        }
+                        else if (n.SourcePurchaseId.HasValue)
+                        {
+                            <a href="/Purchases/@n.SourcePurchaseId" style="color:#2563eb">@n.SourceDocument</a>
+                        }
+                        else
+                        {
+                            <span style="color:#9ca3af">standalone</span>
+                        }
+                    </td>
+                    <td style="font-size:12px;color:#6b7280">@n.Reason</td>
+                    <td style="text-align:right;font-weight:600">
+                        @n.Amount.ToString("N0")
+                        @if (n.TaxAmount > 0)
+                        {
+                            <br /><small style="color:#9ca3af;font-weight:400">incl. PPN @n.TaxAmount.ToString("N0")</small>
+                        }
+                    </td>
+                    <td style="text-align:center">
+                        <span class="badge @(n.Status == "Open" ? "warn" : n.Status == "Settled" ? "ok" : "gray")">@n.Status</span>
+                        @if (n.SettledDate.HasValue)
+                        {
+                            <div style="font-size:10px;color:#9ca3af;margin-top:2px">@n.SettledDate.Value.ToLocalTime().ToString("dd-MMM-yy")</div>
+                        }
+                    </td>
+                    <td>
+                        @if (n.IsOpen)
+                        {
+                            <form method="post" asp-page-handler="Settle" style="display:flex;gap:5px;align-items:center">
+                                <input type="hidden" name="Settle.Id" value="@n.Id" />
+                                <input type="text" name="Settle.SettlementNotes" maxlength="500"
+                                       placeholder="Applied to / refunded" style="width:130px" />
+                                <button type="submit" class="btn btn-success btn-sm">Settle</button>
+                            </form>
+                            @if (!n.SourceCustomerReturnId.HasValue && !n.SourceSupplierReturnId.HasValue)
+                            {
+                                <form method="post" asp-page-handler="Cancel" asp-route-id="@n.Id"
+                                      style="margin-top:4px"
+                                      onsubmit="return confirm('Cancel this note?')">
+                                    <button type="submit" class="btn btn-outline btn-sm">Cancel note</button>
+                                </form>
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(n.SettlementNotes))
+                        {
+                            <span style="font-size:11px;color:#6b7280">@n.SettlementNotes</span>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p style="font-size:11px;color:#9ca3af;margin-top:10px">
+            A note raised by a return can only be voided by cancelling that return, which
+            reverses the goods movement at the same time.
+        </p>
+    }
+</div>
+
+@section Scripts {
+<script>
+// A credit note needs a customer, a debit note needs a supplier — show only the one
+// the chosen direction will actually accept.
+const typeSel = document.getElementById('note-type');
+function syncCounterparty() {
+    const isCredit = typeSel.value === '@((int)CreditDebitType.Credit)';
+    document.getElementById('fg-customer').style.display = isCredit ? '' : 'none';
+    document.getElementById('fg-supplier').style.display = isCredit ? 'none' : '';
+}
+typeSel.addEventListener('change', syncCounterparty);
+syncCounterparty();
+</script>
+}

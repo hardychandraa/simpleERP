@@ -39,14 +39,9 @@
         <td>@s.CustomerName</td>
         <td>
           @{
-            var termLabel = s.PaymentType switch {
-              "Due"   => "Due",
-              "TOP30" => "TOP 30",
-              "TOP45" => "TOP 45",
-              "TOP60" => "TOP 60",
-              "TOP90" => "TOP 90",
-              _       => s.PaymentType
-            };
+            // The term name is the real information here; "open credit" is what a credit
+            // sale with no agreed term legitimately looks like.
+            var termLabel = string.IsNullOrEmpty(s.PaymentTermName) ? "Open credit" : s.PaymentTermName;
           }
           <span style="font-size:12px;color:#374151">@termLabel</span>
         </td>

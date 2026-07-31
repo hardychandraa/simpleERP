@@ -35,6 +35,10 @@ public static class DependencyInjection
         services.AddScoped<ICommissionRuleRepository,    CommissionRuleRepository>();
         services.AddScoped<ICommissionAccrualRepository, CommissionAccrualRepository>();
         services.AddScoped<ICommissionPayoutRepository,  CommissionPayoutRepository>();
+        services.AddScoped<ICustomerReturnRepository,    CustomerReturnRepository>();
+        services.AddScoped<ISupplierReturnRepository,    SupplierReturnRepository>();
+        services.AddScoped<ICreditNoteRepository,        CreditNoteRepository>();
+        services.AddScoped<IPaymentBatchRepository,      PaymentBatchRepository>();
         services.AddScoped<IExpenseCategoryRepository,  ExpenseCategoryRepository>();
         services.AddScoped<IExpenseRepository,          ExpenseRepository>();
         services.AddScoped<IUnitOfWork,                 UnitOfWork>();
@@ -63,6 +67,12 @@ public static class DependencyInjection
         // PurchaseService chains writes into InventoryService and RebateService inside
         // one transaction, so it depends on those concrete classes.
         services.AddScoped<IPurchaseService,     PurchaseService>();
+        // ReturnService chains stock movements into InventoryService inside one
+        // transaction, so it takes the concrete class — same pattern as above. It raises
+        // its own credit/debit notes straight through the repository rather than through
+        // CreditNoteService, which keeps that service free of return-specific rules.
+        services.AddScoped<IReturnService,       ReturnService>();
+        services.AddScoped<ICreditNoteService,   CreditNoteService>();
         services.AddScoped<IExpenseService,      ExpenseService>();
         services.AddScoped<IAppSettingsService, AppSettingsService>();
         services.AddScoped<SimpleERP.Application.Services.AuditService>();

@@ -93,15 +93,6 @@ public class InventoryService : IInventoryService
     }
 
     /// <summary>
-    /// Reverses a purchase receipt on cancellation. Called inside the PurchaseService
-    /// transaction — does NOT SaveChanges.
-    ///
-    /// Guarded: stock received on a purchase may already have been sold, and taking it
-    /// back out would drive the ledger negative and corrupt every cost derived from it.
-    /// Refusing here forces the correct answer — a supplier return (Step 8), which is a
-    /// real business event — rather than silently rewriting history.
-    /// </summary>
-    /// <summary>
     /// Receives free rebate goods at zero cost, through the normal moving-average path.
     /// Called inside the RebateService transaction — does NOT SaveChanges.
     ///
@@ -123,23 +114,81 @@ public class InventoryService : IInventoryService
             QtyIn = qty, QtyOut = 0, UnitCost = newCost, TotalCost = qty * newCost });
     }
 
-    public async Task<ServiceResult> StockOutForPurchaseCancelAsync(
-        Guid productId, decimal qty, Guid referenceId, Guid branchId)
-    {
-        var stock = await _ledger.GetCurrentStockAsync(productId, branchId);
-        if (stock < qty)
-            return ServiceResult.Fail(
-                $"Cannot cancel: only {stock:N2} of {qty:N2} received units are still in stock — " +
-                "the rest has already been sold or issued. Record a supplier return instead.");
+    /// <summary>
+    /// Puts a sales return's goods back into stock, at the cost each line left at
+    /// (SaleItem.CostAtSale). Called inside the ReturnService transaction — does NOT
+    /// SaveChanges.
+    ///
+    /// Takes the whole document for the same reason StockInForPurchaseAsync does: the
+    /// moving average has to compound across lines, and nothing in the transaction is
+    /// committed yet, so a per-line loop would compute every line from the same
+    /// pre-return figures.
+    /// </summary>
+    public Task StockInForCustomerReturnAsync(
+        IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId)
+        => StockInManyCore(lines, returnId, branchId, ReferenceType.CustomerReturn);
 
-        var cost = await _ledger.GetCurrentAvgCostAsync(productId, branchId);
-        await _ledger.AddAsync(new InventoryLedger {
-            Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
-            BranchId = branchId, ProductId = productId,
-            ReferenceType = ReferenceType.Cancel, ReferenceId = referenceId,
-            QtyIn = 0, QtyOut = qty, UnitCost = cost, TotalCost = cost * qty });
-        return ServiceResult.Ok();
-    }
+    /// <summary>
+    /// Reverses a sales return on cancellation — the goods go back out at the current
+    /// moving-average cost, mirroring how a cancelled purchase is reversed. Guarded:
+    /// the returned units may already have been re-sold. No SaveChanges.
+    /// </summary>
+    public Task<ServiceResult> StockOutForCustomerReturnCancelAsync(
+        IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId)
+        => StockOutManyCore(lines, returnId, branchId, ReferenceType.Cancel, useCurrentCost: true,
+            shortfall: (name, stock, want) =>
+                $"{name}: only {stock:N2} of the {want:N2} returned units are still in stock — " +
+                "the rest has been sold again. This return can no longer be cancelled.");
+
+    /// <summary>
+    /// Sends goods back to a supplier. Stock leaves at the moving-average cost the caller
+    /// resolved (which is what the return records as CostAtReturn), not at the cost the
+    /// supplier originally billed. Called inside the ReturnService transaction — does NOT
+    /// SaveChanges.
+    ///
+    /// Guarded against driving the ledger negative, using the same shape as the proven
+    /// sales StockOutAsync. The guard keeps a running tally rather than re-reading the
+    /// database per line: nothing is committed yet, so two lines of the same product
+    /// would otherwise both be checked against the same pre-return stock and could
+    /// together issue more than exists.
+    /// </summary>
+    public Task<ServiceResult> StockOutForSupplierReturnAsync(
+        IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId)
+        => StockOutManyCore(lines, returnId, branchId, ReferenceType.SupplierReturn, useCurrentCost: false,
+            shortfall: (name, stock, want) =>
+                $"{name}: only {stock:N2} in stock, {want:N2} being returned. " +
+                "Stock cannot go negative — check the quantity, or adjust stock first.");
+
+    /// <summary>
+    /// Reverses a supplier return on cancellation, putting the goods back at exactly the
+    /// value they left at (SupplierReturnItem.CostAtReturn) rather than at whatever the
+    /// average has drifted to since. No SaveChanges.
+    /// </summary>
+    public Task StockInForSupplierReturnCancelAsync(
+        IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId)
+        => StockInManyCore(lines, returnId, branchId, ReferenceType.Cancel);
+
+    /// <summary>
+    /// Reverses a whole purchase receipt on cancellation. Called inside the PurchaseService
+    /// transaction — does NOT SaveChanges.
+    ///
+    /// Guarded: stock received on a purchase may already have been sold, and taking it back
+    /// out would drive the ledger negative and corrupt every cost derived from it. Refusing
+    /// forces the correct answer — a supplier return, a real business event — rather than
+    /// silently rewriting history.
+    ///
+    /// Takes the whole document because the guard needs a running tally. This used to be
+    /// called once per line, each call re-reading current stock from the database inside the
+    /// still-uncommitted transaction, so a purchase listing the same product on two lines
+    /// (two batches at two prices — normal) had both lines checked against the same
+    /// pre-cancel figure and could jointly issue more than existed.
+    /// </summary>
+    public Task<ServiceResult> StockOutForPurchaseCancelAsync(
+        IEnumerable<StockMovementLine> lines, Guid purchaseId, Guid branchId)
+        => StockOutManyCore(lines, purchaseId, branchId, ReferenceType.Cancel, useCurrentCost: true,
+            shortfall: (name, stock, want) =>
+                $"{name}: only {stock:N2} of the {want:N2} received units are still in stock — " +
+                "the rest has already been sold or issued. Record a supplier return instead.");
 
     public async Task<ServiceResult> AdjustStockAsync(StockAdjustmentDto dto, string user)
     {
@@ -207,6 +256,83 @@ public class InventoryService : IInventoryService
             ProductName = e.Product?.Name ?? "", ReferenceType = e.ReferenceType.ToString(),
             QtyIn = e.QtyIn, QtyOut = e.QtyOut, UnitCost = e.UnitCost, TotalCost = e.TotalCost
         }).ToList();
+    }
+
+    /// <summary>
+    /// Receives many lines in one uncommitted transaction, compounding the moving average
+    /// across them via a running tally. Each line is valued at its own supplied UnitCost.
+    /// </summary>
+    private async Task StockInManyCore(IEnumerable<StockMovementLine> lines,
+        Guid referenceId, Guid branchId, ReferenceType refType)
+    {
+        var running = new Dictionary<Guid, (decimal Stock, decimal Cost)>();
+
+        foreach (var line in lines)
+        {
+            if (line.Qty <= 0) continue;
+
+            if (!running.TryGetValue(line.ProductId, out var state))
+                state = (await _ledger.GetCurrentStockAsync(line.ProductId, branchId),
+                         await _ledger.GetCurrentAvgCostAsync(line.ProductId, branchId));
+
+            var newCost = state.Stock <= 0
+                ? line.UnitCost
+                : (state.Stock * state.Cost + line.Qty * line.UnitCost) / (state.Stock + line.Qty);
+
+            await _ledger.AddAsync(new InventoryLedger {
+                Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
+                BranchId = branchId, ProductId = line.ProductId,
+                ReferenceType = refType, ReferenceId = referenceId,
+                QtyIn = line.Qty, QtyOut = 0,
+                UnitCost = newCost, TotalCost = line.Qty * newCost });
+
+            running[line.ProductId] = (state.Stock + line.Qty, newCost);
+        }
+    }
+
+    /// <summary>
+    /// Issues many lines in one uncommitted transaction, refusing the whole document if
+    /// any product would go negative. The available-stock tally runs in memory because
+    /// nothing here is committed yet — re-reading the database per line would check two
+    /// lines of the same product against the same figure and let them jointly overdraw.
+    ///
+    /// A stock-out never moves the moving average (that only changes on receipt), so the
+    /// current cost is resolved once per product and reused across its lines.
+    /// </summary>
+    private async Task<ServiceResult> StockOutManyCore(IEnumerable<StockMovementLine> lines,
+        Guid referenceId, Guid branchId, ReferenceType refType, bool useCurrentCost,
+        Func<string, decimal, decimal, string> shortfall)
+    {
+        var materialised = lines.Where(l => l.Qty > 0).ToList();
+        var available    = new Dictionary<Guid, decimal>();
+        var currentCost  = new Dictionary<Guid, decimal>();
+
+        // Validate every line first, so a document whose stock is partly gone fails whole
+        // rather than issuing some lines before refusing.
+        foreach (var line in materialised)
+        {
+            if (!available.TryGetValue(line.ProductId, out var stock))
+            {
+                stock = await _ledger.GetCurrentStockAsync(line.ProductId, branchId);
+                currentCost[line.ProductId] = await _ledger.GetCurrentAvgCostAsync(line.ProductId, branchId);
+            }
+            if (stock < line.Qty)
+                return ServiceResult.Fail(shortfall(line.ProductName, stock, line.Qty));
+            available[line.ProductId] = stock - line.Qty;
+        }
+
+        foreach (var line in materialised)
+        {
+            var cost = useCurrentCost ? currentCost[line.ProductId] : line.UnitCost;
+            await _ledger.AddAsync(new InventoryLedger {
+                Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
+                BranchId = branchId, ProductId = line.ProductId,
+                ReferenceType = refType, ReferenceId = referenceId,
+                QtyIn = 0, QtyOut = line.Qty,
+                UnitCost = cost, TotalCost = cost * line.Qty });
+        }
+
+        return ServiceResult.Ok();
     }
 
     private async Task StockInCore(Guid productId, decimal qty, decimal unitCost,

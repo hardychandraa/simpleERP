@@ -67,8 +67,12 @@ public class StockInDto {
 }
 public class StockAdjustmentDto {
     public Guid    ProductId  { get; set; }
-    public decimal QtyActual  { get; set; }   // what staff physically counted
-    public decimal AdjustedQty { get; set; }
+    /// <summary>
+    /// What staff physically counted. The service works out the delta against the ledger.
+    /// This was previously shadowed by a second AdjustedQty field that the form bound to
+    /// and the service ignored, so every adjustment was read as a count of zero.
+    /// </summary>
+    public decimal QtyActual  { get; set; }
     public string  Reason     { get; set; } = "";
 }
 public class InventoryLedgerDto {
@@ -261,6 +265,214 @@ public class DueSupplierDto {
     public bool    HasOverdue    { get; set; }
 }
 
+// ── Returns ───────────────────────────────────────────────────────────────────
+/// <summary>One line of a source document that can still be returned, with its cap.</summary>
+public class ReturnableLineDto {
+    /// <summary>The SaleItem or PurchaseItem this line came from.</summary>
+    public Guid    SourceItemId    { get; set; }
+    public Guid    ProductId       { get; set; }
+    public string  ProductName     { get; set; } = "";
+    public string  SKU             { get; set; } = "";
+    public decimal OriginalQty     { get; set; }
+    public decimal AlreadyReturned { get; set; }
+    public decimal ReturnableQty   => OriginalQty - AlreadyReturned;
+    /// <summary>Unit price as sold, or unit cost as billed. Display only.</summary>
+    public decimal UnitAmount      { get; set; }
+    /// <summary>Line total net of both its own discount and its share of the document discount.</summary>
+    public decimal NetLineTotal    { get; set; }
+    /// <summary>
+    /// What one unit is actually credited at — the net line divided by the original
+    /// quantity, never UnitAmount, so a discounted document isn't credited back at gross.
+    /// </summary>
+    public decimal UnitCredit      => OriginalQty == 0 ? 0m : NetLineTotal / OriginalQty;
+}
+/// <summary>A source document plus its returnable lines — everything the return form needs.</summary>
+public class ReturnFormDto {
+    public Guid     SourceId         { get; set; }
+    public string   DocumentNumber   { get; set; } = "";
+    public DateTime DocumentDate     { get; set; }
+    public string   CounterpartyName { get; set; } = "";
+    /// <summary>Rate from the source document, so the form previews the same tax the server will reverse.</summary>
+    public decimal  TaxRate          { get; set; }
+    public bool     IsTaxInclusive   { get; set; }
+    public bool     NothingLeft      => Lines.Count == 0 || Lines.All(l => l.ReturnableQty <= 0);
+    /// <summary>
+    /// Set when the document can't be returned against at all (e.g. it's cancelled).
+    /// Null means the form is usable. Kept separate from NothingLeft, which is the
+    /// ordinary "everything has already gone back" case.
+    /// </summary>
+    public string?  BlockReason      { get; set; }
+    public List<ReturnableLineDto> Lines { get; set; } = new();
+}
+public class CreateCustomerReturnDto {
+    public Guid      SaleId     { get; set; }
+    public DateTime? ReturnDate { get; set; }
+    public string    Reason     { get; set; } = "";
+    public string?   Notes      { get; set; }
+    public List<CreateReturnItemDto> Items { get; set; } = new();
+}
+public class CreateSupplierReturnDto {
+    public Guid      PurchaseId { get; set; }
+    public DateTime? ReturnDate { get; set; }
+    public string    Reason     { get; set; } = "";
+    public string?   Notes      { get; set; }
+    public List<CreateReturnItemDto> Items { get; set; } = new();
+}
+public class CreateReturnItemDto {
+    /// <summary>The SaleItem or PurchaseItem being returned against.</summary>
+    public Guid    SourceItemId { get; set; }
+    public decimal Qty          { get; set; }
+    public string? Notes        { get; set; }
+}
+public class CustomerReturnDto {
+    public Guid      Id             { get; set; }
+    public string    ReturnNumber   { get; set; } = "";
+    public DateTime  ReturnDate     { get; set; }
+    public Guid      SaleId         { get; set; }
+    public string    InvoiceNumber  { get; set; } = "";
+    public string    CustomerName   { get; set; } = "";
+    public decimal   SubTotal       { get; set; }
+    public decimal   TaxBase        { get; set; }
+    public decimal   TaxRate        { get; set; }
+    public decimal   TaxAmount      { get; set; }
+    public bool      IsTaxInclusive { get; set; }
+    public decimal   GrandTotal     { get; set; }
+    /// <summary>Value put back into stock, at the cost the goods left at.</summary>
+    public decimal   CostRestocked  { get; set; }
+    public string    Reason         { get; set; } = "";
+    public string?   Notes          { get; set; }
+    public string    Status         { get; set; } = "";
+    public string    CreatedBy      { get; set; } = "";
+    /// <summary>The credit note this return generated, if it hasn't been cancelled.</summary>
+    public string    CreditNoteNumber { get; set; } = "";
+    public Guid?     CreditNoteId   { get; set; }
+    public string    CreditNoteStatus { get; set; } = "";
+    public List<CustomerReturnItemDto> Items { get; set; } = new();
+}
+public class CustomerReturnItemDto {
+    public Guid    Id           { get; set; }
+    public Guid    ProductId    { get; set; }
+    public string  ProductName  { get; set; } = "";
+    public string  SKU          { get; set; } = "";
+    public decimal Qty          { get; set; }
+    public decimal UnitPrice    { get; set; }
+    public decimal CreditAmount { get; set; }
+    public decimal CostAtSale   { get; set; }
+    public string? Notes        { get; set; }
+}
+public class SupplierReturnDto {
+    public Guid      Id             { get; set; }
+    public string    ReturnNumber   { get; set; } = "";
+    public DateTime  ReturnDate     { get; set; }
+    public Guid      PurchaseId     { get; set; }
+    public string    PurchaseNumber { get; set; } = "";
+    public string    SupplierName   { get; set; } = "";
+    public decimal   SubTotal       { get; set; }
+    public decimal   TaxBase        { get; set; }
+    public decimal   TaxRate        { get; set; }
+    public decimal   TaxAmount      { get; set; }
+    public bool      IsTaxInclusive { get; set; }
+    public decimal   GrandTotal     { get; set; }
+    /// <summary>Inventory value released, at the moving-average cost the goods left at.</summary>
+    public decimal   StockReleased  { get; set; }
+    /// <summary>
+    /// GrandTotal − StockReleased: what the supplier credits us versus what the goods
+    /// were carried at. Non-zero is normal once the moving average has moved, and is
+    /// shown rather than hidden.
+    /// </summary>
+    public decimal   ValueDifference => GrandTotal - StockReleased;
+    public string    Reason         { get; set; } = "";
+    public string?   Notes          { get; set; }
+    public string    Status         { get; set; } = "";
+    public string    CreatedBy      { get; set; } = "";
+    public string    DebitNoteNumber { get; set; } = "";
+    public Guid?     DebitNoteId    { get; set; }
+    public string    DebitNoteStatus { get; set; } = "";
+    public List<SupplierReturnItemDto> Items { get; set; } = new();
+}
+public class SupplierReturnItemDto {
+    public Guid    Id           { get; set; }
+    public Guid    ProductId    { get; set; }
+    public string  ProductName  { get; set; } = "";
+    public string  SKU          { get; set; } = "";
+    public decimal Qty          { get; set; }
+    public decimal UnitCost     { get; set; }
+    public decimal DebitAmount  { get; set; }
+    public decimal CostAtReturn { get; set; }
+    public string? Notes        { get; set; }
+}
+/// <summary>
+/// One row on the returns list. Shared by both directions — the two sides differ only
+/// in which document they point at, so one shape renders both tables.
+/// </summary>
+public class ReturnListDto {
+    public Guid      Id               { get; set; }
+    public string    ReturnNumber     { get; set; } = "";
+    public DateTime  ReturnDate       { get; set; }
+    public bool      IsCustomerReturn { get; set; }
+    /// <summary>Invoice number for a sales return, PO number for a purchase return.</summary>
+    public string    SourceDocument   { get; set; } = "";
+    public Guid      SourceId         { get; set; }
+    /// <summary>Customer or supplier, whichever side this is.</summary>
+    public string    CounterpartyName { get; set; } = "";
+    public int       LineCount        { get; set; }
+    public decimal   GrandTotal       { get; set; }
+    public string    Reason           { get; set; } = "";
+    public string    Status           { get; set; } = "";
+}
+
+// ── Credit / debit notes ──────────────────────────────────────────────────────
+public class CreditNoteDto {
+    public Guid      Id             { get; set; }
+    public string    DocumentNumber { get; set; } = "";
+    public string    Type           { get; set; } = "";
+    public bool      IsCredit       { get; set; }
+    public string    Category       { get; set; } = "";
+    public DateTime  NoteDate       { get; set; }
+    /// <summary>Customer on a credit note, supplier on a debit note.</summary>
+    public string    CounterpartyName { get; set; } = "";
+    public decimal   TaxBase        { get; set; }
+    public decimal   TaxRate        { get; set; }
+    public decimal   TaxAmount      { get; set; }
+    public decimal   Amount         { get; set; }
+    /// <summary>Source document for display — invoice, PO or return number. Empty when standalone.</summary>
+    public string    SourceDocument { get; set; } = "";
+    public Guid?     SourceSaleId           { get; set; }
+    public Guid?     SourcePurchaseId       { get; set; }
+    public Guid?     SourceCustomerReturnId { get; set; }
+    public Guid?     SourceSupplierReturnId { get; set; }
+    public string    Status         { get; set; } = "";
+    public bool      IsOpen         { get; set; }
+    public DateTime? SettledDate    { get; set; }
+    public string?   SettlementNotes{ get; set; }
+    public string    Reason         { get; set; } = "";
+    public string?   Notes          { get; set; }
+    public string    CreatedBy      { get; set; } = "";
+}
+public class CreateCreditNoteDto {
+    public CreditDebitType    Type     { get; set; } = CreditDebitType.Credit;
+    public CreditNoteCategory Category { get; set; } = CreditNoteCategory.Other;
+    public DateTime? NoteDate   { get; set; }
+    /// <summary>Required for a credit note. Ignored for a debit note.</summary>
+    public Guid?     CustomerId { get; set; }
+    /// <summary>Required for a debit note. Ignored for a credit note.</summary>
+    public Guid?     SupplierId { get; set; }
+    /// <summary>Face value as entered.</summary>
+    public decimal   Amount     { get; set; }
+    /// <summary>True if Amount already includes PPN; false to add it on top.</summary>
+    public bool      IsTaxInclusive { get; set; } = true;
+    /// <summary>Optional link to the invoice or PO being adjusted. Sets the tax rate when given.</summary>
+    public Guid?     SourceSaleId     { get; set; }
+    public Guid?     SourcePurchaseId { get; set; }
+    public string    Reason     { get; set; } = "";
+    public string?   Notes      { get; set; }
+}
+public class SettleCreditNoteDto {
+    public Guid    Id              { get; set; }
+    /// <summary>How it was settled — applied to which invoice, or refunded in cash.</summary>
+    public string? SettlementNotes { get; set; }
+}
+
 // ── Commission ────────────────────────────────────────────────────────────────
 public class CommissionRuleDto {
     public Guid    Id            { get; set; }
@@ -414,6 +626,10 @@ public class SalesPersonDto {
 // ── Sales ─────────────────────────────────────────────────────────────────────
 public class CreateSaleDto {
     public Guid        CustomerId   { get; set; }
+    /// <summary>Business date of the sale. Null = today. May be backdated so a day's
+    /// paperwork can be entered late (power outage, manual write-up); a future date is
+    /// rejected — see SaleService.CreateAsync for why.</summary>
+    public DateTime?   SaleDate     { get; set; }
     public PaymentType PaymentType  { get; set; }
     /// <summary>Credit term. Null = open credit with no agreed due date. Ignored for Cash.</summary>
     public Guid?       PaymentTermId { get; set; }
@@ -500,6 +716,8 @@ public class SaleListDto {
     public string   CustomerName  { get; set; } = "";
     public string   SalesPersonName { get; set; } = "";
     public string   PaymentType   { get; set; } = "";
+    /// <summary>Term name, e.g. "TOP 30". Empty for Cash and for open credit with no agreed term.</summary>
+    public string   PaymentTermName { get; set; } = "";
     public DateTime? DueDate      { get; set; }
     public decimal  GrandTotal    { get; set; }
     public decimal  AmountPaid    { get; set; }
@@ -528,6 +746,92 @@ public class PaymentCollectionDto {
     public decimal  Amount      { get; set; }
     public string?  Notes       { get; set; }
     public string   CreatedBy   { get; set; } = "";
+}
+
+// ── Statements & multi-document settlement ────────────────────────────────────
+/// <summary>One open document on a statement of account, with what's still owed on it.</summary>
+public class StatementLineDto {
+    public Guid      DocumentId     { get; set; }
+    /// <summary>Invoice number (AR) or PO number (AP).</summary>
+    public string    DocumentNumber { get; set; } = "";
+    /// <summary>The counterparty's own reference, when there is one. AP only.</summary>
+    public string?   TheirReference { get; set; }
+    public DateTime  DocumentDate   { get; set; }
+    public DateTime? DueDate        { get; set; }
+    public decimal   GrandTotal     { get; set; }
+    public decimal   AmountPaid     { get; set; }
+    public decimal   BalanceDue     => GrandTotal - AmountPaid;
+    public bool      IsOverdue      => DueDate.HasValue && DueDate.Value.Date < DateTime.UtcNow.Date && BalanceDue > 0;
+}
+/// <summary>An open credit/debit note that can be netted off this settlement.</summary>
+public class StatementNoteDto {
+    public Guid     CreditNoteId   { get; set; }
+    public string   DocumentNumber { get; set; } = "";
+    public DateTime NoteDate       { get; set; }
+    public string   Category       { get; set; } = "";
+    public decimal  Amount         { get; set; }
+    public string   Reason         { get; set; } = "";
+}
+/// <summary>
+/// A counterparty's statement of account: every open document, plus the notes that reduce
+/// what actually changes hands. Shared by both directions — a customer statement and a
+/// supplier statement differ only in which documents they list.
+/// </summary>
+public class PaymentStatementDto {
+    public Guid     CounterpartyId   { get; set; }
+    public string   CounterpartyName { get; set; } = "";
+    public string?  Phone            { get; set; }
+    public List<StatementLineDto> Lines     { get; set; } = new();
+    /// <summary>Open credit notes (AR) or debit notes (AP) held against this counterparty.</summary>
+    public List<StatementNoteDto> OpenNotes { get; set; } = new();
+    /// <summary>Total still owed across every listed document, before any notes.</summary>
+    public decimal  TotalDue         => Lines.Sum(l => l.BalanceDue);
+    public decimal  OpenNotesTotal   => OpenNotes.Sum(n => n.Amount);
+    /// <summary>
+    /// Supplier statements only. Outstanding cash rebate for this supplier — shown so the
+    /// figure isn't invisible, but deliberately NOT settled here: rebate reconciles on its
+    /// own periodic cadence against the supplier's own sheet, not against a PO payment run.
+    /// </summary>
+    public decimal? OutstandingRebateAmount { get; set; }
+    public bool     NothingOpen      => Lines.Count == 0 && OpenNotes.Count == 0;
+}
+public class RecordSaleBatchPaymentDto {
+    public Guid    CustomerId { get; set; }
+    public string? Notes      { get; set; }
+    public List<SaleBatchPaymentLineDto> Lines { get; set; } = new();
+    /// <summary>Open credit notes to net off this settlement. Applied in full or not at all.</summary>
+    public List<Guid> ApplyCreditNoteIds { get; set; } = new();
+}
+public class SaleBatchPaymentLineDto {
+    public Guid    SaleId { get; set; }
+    public decimal Amount { get; set; }
+}
+public class RecordSupplierBatchPaymentDto {
+    public Guid    SupplierId { get; set; }
+    public string? Notes      { get; set; }
+    public List<SupplierBatchPaymentLineDto> Lines { get; set; } = new();
+    /// <summary>Open debit notes to net off this settlement. Applied in full or not at all.</summary>
+    public List<Guid> ApplyCreditNoteIds { get; set; } = new();
+}
+public class SupplierBatchPaymentLineDto {
+    public Guid    PurchaseId { get; set; }
+    public decimal Amount     { get; set; }
+}
+public class PaymentBatchDto {
+    public Guid      Id                 { get; set; }
+    public string    BatchNumber        { get; set; } = "";
+    public string    Direction          { get; set; } = "";
+    public bool      IsReceived         { get; set; }
+    public DateTime  BatchDate          { get; set; }
+    public string    CounterpartyName   { get; set; } = "";
+    public decimal   GrossAmount        { get; set; }
+    public decimal   NotesAppliedAmount { get; set; }
+    /// <summary>The cash that actually changed hands: gross less any notes netted off.</summary>
+    public decimal   NetAmount          { get; set; }
+    public int       DocumentCount      { get; set; }
+    public int       NoteCount          { get; set; }
+    public string?   Notes              { get; set; }
+    public string    CreatedBy          { get; set; } = "";
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────

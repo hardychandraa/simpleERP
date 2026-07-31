@@ -288,6 +288,112 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.ToTable("CommissionRules");
                 });
 
+            modelBuilder.Entity("SimpleERP.Domain.Entities.CreditNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DocumentNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("NoteDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("SettledByPaymentBatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("SettledDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("SettlementNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("SourceCustomerReturnId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourcePurchaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourceSaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourceSupplierReturnId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TaxBase")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("DocumentNumber")
+                        .IsUnique();
+
+                    b.HasIndex("NoteDate");
+
+                    b.HasIndex("SettledByPaymentBatchId");
+
+                    b.HasIndex("SourceCustomerReturnId");
+
+                    b.HasIndex("SourcePurchaseId");
+
+                    b.HasIndex("SourceSaleId");
+
+                    b.HasIndex("SourceSupplierReturnId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("Type", "Status");
+
+                    b.ToTable("CreditNotes");
+                });
+
             modelBuilder.Entity("SimpleERP.Domain.Entities.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -316,6 +422,120 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.CustomerReturn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("GrandTotal")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<bool>("IsTaxInclusive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("ReturnDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReturnNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TaxBase")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("ReturnDate");
+
+                    b.HasIndex("ReturnNumber")
+                        .IsUnique();
+
+                    b.HasIndex("SaleId");
+
+                    b.ToTable("CustomerReturns");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.CustomerReturnItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CostAtSale")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("CreditAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("CustomerReturnId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Qty")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("SaleItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerReturnId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SaleItemId");
+
+                    b.ToTable("CustomerReturnItems");
                 });
 
             modelBuilder.Entity("SimpleERP.Domain.Entities.Expense", b =>
@@ -518,6 +738,64 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.ToTable("InventoryLedgers");
                 });
 
+            modelBuilder.Entity("SimpleERP.Domain.Entities.PaymentBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("BatchDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("BatchNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Direction")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("GrossAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("NetAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("NotesAppliedAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchNumber")
+                        .IsUnique();
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("Direction", "BatchDate");
+
+                    b.ToTable("PaymentBatches");
+                });
+
             modelBuilder.Entity("SimpleERP.Domain.Entities.PaymentRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -536,6 +814,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<Guid?>("PaymentBatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("PaymentDate")
                         .HasColumnType("timestamp without time zone");
 
@@ -543,6 +824,8 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PaymentBatchId");
 
                     b.HasIndex("SaleId");
 
@@ -1255,6 +1538,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<Guid?>("PaymentBatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("PaymentDate")
                         .HasColumnType("timestamp without time zone");
 
@@ -1263,9 +1549,125 @@ namespace SimpleERP.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PaymentBatchId");
+
                     b.HasIndex("PurchaseId");
 
                     b.ToTable("SupplierPayments");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.SupplierReturn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("GrandTotal")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<bool>("IsTaxInclusive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("PurchaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("ReturnDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReturnNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TaxBase")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("PurchaseId");
+
+                    b.HasIndex("ReturnDate");
+
+                    b.HasIndex("ReturnNumber")
+                        .IsUnique();
+
+                    b.ToTable("SupplierReturns");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.SupplierReturnItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CostAtReturn")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("DebitAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PurchaseItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Qty")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("SupplierReturnId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("PurchaseItemId");
+
+                    b.HasIndex("SupplierReturnId");
+
+                    b.ToTable("SupplierReturnItems");
                 });
 
             modelBuilder.Entity("SimpleERP.Domain.Entities.CommissionAccrual", b =>
@@ -1338,6 +1740,104 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Navigation("SalesPerson");
                 });
 
+            modelBuilder.Entity("SimpleERP.Domain.Entities.CreditNote", b =>
+                {
+                    b.HasOne("SimpleERP.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SimpleERP.Domain.Entities.PaymentBatch", "SettledByPaymentBatch")
+                        .WithMany("AppliedNotes")
+                        .HasForeignKey("SettledByPaymentBatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SimpleERP.Domain.Entities.CustomerReturn", "SourceCustomerReturn")
+                        .WithMany("CreditNotes")
+                        .HasForeignKey("SourceCustomerReturnId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SimpleERP.Domain.Entities.Purchase", "SourcePurchase")
+                        .WithMany()
+                        .HasForeignKey("SourcePurchaseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SimpleERP.Domain.Entities.Sale", "SourceSale")
+                        .WithMany()
+                        .HasForeignKey("SourceSaleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SimpleERP.Domain.Entities.SupplierReturn", "SourceSupplierReturn")
+                        .WithMany("CreditNotes")
+                        .HasForeignKey("SourceSupplierReturnId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SimpleERP.Domain.Entities.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("SettledByPaymentBatch");
+
+                    b.Navigation("SourceCustomerReturn");
+
+                    b.Navigation("SourcePurchase");
+
+                    b.Navigation("SourceSale");
+
+                    b.Navigation("SourceSupplierReturn");
+
+                    b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.CustomerReturn", b =>
+                {
+                    b.HasOne("SimpleERP.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.Sale", "Sale")
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.CustomerReturnItem", b =>
+                {
+                    b.HasOne("SimpleERP.Domain.Entities.CustomerReturn", "Return")
+                        .WithMany("Items")
+                        .HasForeignKey("CustomerReturnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.SaleItem", "SaleItem")
+                        .WithMany()
+                        .HasForeignKey("SaleItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Return");
+
+                    b.Navigation("SaleItem");
+                });
+
             modelBuilder.Entity("SimpleERP.Domain.Entities.Expense", b =>
                 {
                     b.HasOne("SimpleERP.Domain.Entities.ExpenseCategory", "Category")
@@ -1368,13 +1868,37 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("SimpleERP.Domain.Entities.PaymentBatch", b =>
+                {
+                    b.HasOne("SimpleERP.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SimpleERP.Domain.Entities.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Supplier");
+                });
+
             modelBuilder.Entity("SimpleERP.Domain.Entities.PaymentRecord", b =>
                 {
+                    b.HasOne("SimpleERP.Domain.Entities.PaymentBatch", "PaymentBatch")
+                        .WithMany("Payments")
+                        .HasForeignKey("PaymentBatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("SimpleERP.Domain.Entities.Sale", "Sale")
                         .WithMany("PaymentRecords")
                         .HasForeignKey("SaleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("PaymentBatch");
 
                     b.Navigation("Sale");
                 });
@@ -1575,13 +2099,66 @@ namespace SimpleERP.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("SimpleERP.Domain.Entities.SupplierPayment", b =>
                 {
+                    b.HasOne("SimpleERP.Domain.Entities.PaymentBatch", "PaymentBatch")
+                        .WithMany("SupplierPayments")
+                        .HasForeignKey("PaymentBatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("SimpleERP.Domain.Entities.Purchase", "Purchase")
                         .WithMany("SupplierPayments")
                         .HasForeignKey("PurchaseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("PaymentBatch");
+
                     b.Navigation("Purchase");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.SupplierReturn", b =>
+                {
+                    b.HasOne("SimpleERP.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.Purchase", "Purchase")
+                        .WithMany()
+                        .HasForeignKey("PurchaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Purchase");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.SupplierReturnItem", b =>
+                {
+                    b.HasOne("SimpleERP.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.PurchaseItem", "PurchaseItem")
+                        .WithMany()
+                        .HasForeignKey("PurchaseItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.SupplierReturn", "Return")
+                        .WithMany("Items")
+                        .HasForeignKey("SupplierReturnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("PurchaseItem");
+
+                    b.Navigation("Return");
                 });
 
             modelBuilder.Entity("SimpleERP.Domain.Entities.CommissionPayout", b =>
@@ -1592,6 +2169,22 @@ namespace SimpleERP.Infrastructure.Data.Migrations
             modelBuilder.Entity("SimpleERP.Domain.Entities.Customer", b =>
                 {
                     b.Navigation("Sales");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.CustomerReturn", b =>
+                {
+                    b.Navigation("CreditNotes");
+
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.PaymentBatch", b =>
+                {
+                    b.Navigation("AppliedNotes");
+
+                    b.Navigation("Payments");
+
+                    b.Navigation("SupplierPayments");
                 });
 
             modelBuilder.Entity("SimpleERP.Domain.Entities.Product", b =>
@@ -1621,6 +2214,13 @@ namespace SimpleERP.Infrastructure.Data.Migrations
             modelBuilder.Entity("SimpleERP.Domain.Entities.Supplier", b =>
                 {
                     b.Navigation("Purchases");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.SupplierReturn", b =>
+                {
+                    b.Navigation("CreditNotes");
+
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

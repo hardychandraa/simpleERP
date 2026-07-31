@@ -10,6 +10,7 @@ public class SaleService : ISaleService
 {
     private readonly ISaleRepository            _sales;
     private readonly IProductRepository         _products;
+    private readonly ICustomerRepository        _customers;
     private readonly IBranchRepository          _branches;
     private readonly IPaymentRecordRepository   _payments;
     private readonly IAuditLogRepository        _audit;
@@ -17,35 +18,25 @@ public class SaleService : ISaleService
     private readonly IAppSettingsRepository     _settings;
     private readonly IPaymentTermRepository     _terms;
     private readonly ISalesPersonRepository     _people;
+    private readonly ICustomerReturnRepository  _returns;
+    private readonly ICreditNoteRepository      _notes;
+    private readonly IPaymentBatchRepository    _batches;
     private readonly CommissionService          _commissions;
     private readonly IUnitOfWork                _uow;
 
     public SaleService(ISaleRepository sales, IProductRepository products,
-        IBranchRepository branches, IPaymentRecordRepository payments,
+        ICustomerRepository customers, IBranchRepository branches,
+        IPaymentRecordRepository payments,
         IAuditLogRepository audit, InventoryService inventory,
         IAppSettingsRepository settings, IPaymentTermRepository terms,
-        ISalesPersonRepository people, CommissionService commissions, IUnitOfWork uow)
-    { _sales=sales; _products=products; _branches=branches; _payments=payments;
+        ISalesPersonRepository people, ICustomerReturnRepository returns,
+        ICreditNoteRepository notes, IPaymentBatchRepository batches,
+        CommissionService commissions, IUnitOfWork uow)
+    { _sales=sales; _products=products; _customers=customers; _branches=branches;
+      _payments=payments;
       _audit=audit; _inventory=inventory; _settings=settings; _terms=terms;
-      _people=people; _commissions=commissions; _uow=uow; }
-
-    /// <summary>
-    /// Credit days for the legacy TOP payment types, or null for Cash/Due.
-    /// Retained only to interpret sales posted before terms became master data —
-    /// new sales carry a PaymentTermId instead. Do not extend this switch; add a
-    /// PaymentTerm row instead.
-    /// </summary>
-    private static int? GetTopDays(PaymentType pt) => pt switch {
-        PaymentType.TOP30 => 30,
-        PaymentType.TOP45 => 45,
-        PaymentType.TOP60 => 60,
-        PaymentType.TOP90 => 90,
-        _                 => null
-    };
-
-    /// <summary>True if this payment type is a credit term (Due or any TOP term).</summary>
-    private static bool IsCreditTerm(PaymentType pt) =>
-        pt == PaymentType.Due || GetTopDays(pt).HasValue;
+      _people=people; _returns=returns; _notes=notes; _batches=batches;
+      _commissions=commissions; _uow=uow; }
 
     public async Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user)
     {
@@ -53,6 +44,13 @@ public class SaleService : ISaleService
             return ServiceResult<SaleDto>.Fail("Add at least one item.");
         if (dto.CustomerId == Guid.Empty)
             return ServiceResult<SaleDto>.Fail("Customer is required.");
+
+        // Checked up front, like every other counterparty: without this a bogus id only
+        // failed at save time as an FK violation, and a deactivated customer could still
+        // be invoiced — the one gap in the app's otherwise consistent inactive guards.
+        var customer = await _customers.GetByIdAsync(dto.CustomerId);
+        if (customer == null)   return ServiceResult<SaleDto>.Fail("Customer not found.");
+        if (!customer.IsActive) return ServiceResult<SaleDto>.Fail($"Customer '{customer.Name}' is inactive.");
 
         var branch = await _branches.GetDefaultAsync();
         if (branch == null) return ServiceResult<SaleDto>.Fail("Default branch not found.");
@@ -69,6 +67,27 @@ public class SaleService : ISaleService
                 return ServiceResult<SaleDto>.Fail($"Sales person '{person.Name}' is no longer active.");
             salesPersonId = person.Id;
         }
+
+        // The picked date is the business's *local* calendar day. Backdating is allowed so a
+        // day's paperwork can be entered late; a future date is refused, because posting this
+        // takes the stock off the shelf right now and the PPN belongs to the period the sale
+        // actually happened in — a sale dated forward would misstate both.
+        //
+        // Compared local-to-local, so there is no UTC/local skew to absorb (unlike the older
+        // `> UtcNow.Date.AddDays(1)` guard used elsewhere, whose one-day grace exists purely
+        // to work around that skew and, as a side effect, lets tomorrow through).
+        var todayLocal  = DateTime.Now.Date;
+        var pickedLocal = dto.SaleDate?.Date ?? todayLocal;
+        if (pickedLocal > todayLocal)
+            return ServiceResult<SaleDto>.Fail("Sale date cannot be in the future.");
+
+        // Today keeps the real clock time, so same-day ordering and EndOfDay are unchanged.
+        // A backdated entry anchors to that day's local midnight, converted to UTC — SaleDate
+        // stays a genuine UTC instant either way, which is what every .ToLocalTime() display
+        // and the day-boundary reports already assume.
+        var saleDate = pickedLocal == todayLocal
+            ? DateTime.UtcNow
+            : DateTime.SpecifyKind(pickedLocal, DateTimeKind.Local).ToUniversalTime();
 
         // Validate all items BEFORE touching ledger
         foreach (var item in dto.Items)
@@ -130,7 +149,7 @@ public class SaleService : ISaleService
                 LineTotal      = (itemDto.UnitPrice - itemDto.DiscountAmount) * itemDto.Qty,
                 CostAtSale     = cost,
                 WarrantyMonths = wMonths,
-                WarrantyExpiry = wMonths > 0 ? DateTime.UtcNow.AddMonths(wMonths!.Value) : null,
+                WarrantyExpiry = wMonths > 0 ? saleDate.AddMonths(wMonths!.Value) : null,
                 Notes          = itemDto.Notes,
                 PriceReason    = itemDto.PriceReason,
                 Product        = product
@@ -189,31 +208,25 @@ public class SaleService : ISaleService
         }
 
         // ── Credit term ────────────────────────────────────────────────────────────
-        // Due date comes from the selected PaymentTerm. The legacy GetTopDays switch
-        // is only a fallback for the TOP* enum members, which new sales no longer use.
+        // The selected PaymentTerm is the only source of a due date. A credit sale with
+        // no term chosen is open credit with no agreed date, which is legitimate — it
+        // just leaves DueDate null so ageing reports don't invent a deadline.
         Guid?     termId  = null;
         DateTime? dueDate = null;
 
-        if (dto.PaymentType != PaymentType.Cash)
+        if (dto.PaymentType != PaymentType.Cash && dto.PaymentTermId.HasValue)
         {
-            if (dto.PaymentTermId.HasValue)
-            {
-                var term = await _terms.GetByIdAsync(dto.PaymentTermId.Value);
-                if (term == null)
-                    return ServiceResult<SaleDto>.Fail("Selected payment term not found.");
-                if (!term.IsActive)
-                    return ServiceResult<SaleDto>.Fail($"Payment term '{term.Name}' is no longer active.");
+            var term = await _terms.GetByIdAsync(dto.PaymentTermId.Value);
+            if (term == null)
+                return ServiceResult<SaleDto>.Fail("Selected payment term not found.");
+            if (!term.IsActive)
+                return ServiceResult<SaleDto>.Fail($"Payment term '{term.Name}' is no longer active.");
 
-                termId  = term.Id;
-                dueDate = DateTime.UtcNow.Date.AddDays(term.DueDays);
-            }
-            else
-            {
-                // No term chosen: open credit. Fall back to the legacy enum days so
-                // an existing TOP* selection still produces the same due date.
-                var topDays = GetTopDays(dto.PaymentType);
-                if (topDays.HasValue) dueDate = DateTime.UtcNow.Date.AddDays(topDays.Value);
-            }
+            termId  = term.Id;
+            // Counted from the sale's own date, not from today — backdating a credit sale
+            // must not silently shorten the customer's agreed term. (Purchase already
+            // counts from the supplier's invoice date for the same reason.)
+            dueDate = pickedLocal.AddDays(term.DueDays);
         }
 
         // Build audit detail — note any price overrides
@@ -225,7 +238,7 @@ public class SaleService : ISaleService
         var sale = new Sale {
             Id            = saleId,
             InvoiceNumber = await _sales.GenerateInvoiceNumberAsync(),
-            SaleDate      = DateTime.UtcNow,
+            SaleDate      = saleDate,
             CustomerId    = dto.CustomerId,
             BranchId      = branch.Id,
             PaymentType   = dto.PaymentType,
@@ -273,6 +286,14 @@ public class SaleService : ISaleService
         if (sale == null) return ServiceResult.Fail("Sale not found.");
         if (sale.Status == SaleStatus.Cancelled) return ServiceResult.Fail("Sale is already cancelled.");
 
+        // Cancelling restocks every unit sold. If a return has already put some of them
+        // back, doing that would receive the same goods twice and leave a credit note
+        // hanging against an invoice that no longer exists.
+        if (await _returns.HasActiveReturnAsync(saleId))
+            return ServiceResult.Fail(
+                "This invoice has a sales return against it. Cancel the return first — " +
+                "cancelling the invoice now would put the returned goods back into stock twice.");
+
         var branch = await _branches.GetDefaultAsync();
         if (branch == null) return ServiceResult.Fail("Default branch not found.");
 
@@ -309,21 +330,7 @@ public class SaleService : ISaleService
             return ServiceResult<PaymentRecordDto>.Fail(
                 $"Amount ({dto.Amount:N0}) exceeds balance due ({currentBalance:N0}).");
 
-        var record = new PaymentRecord {
-            Id          = Guid.NewGuid(),
-            SaleId      = dto.SaleId,
-            PaymentDate = DateTime.UtcNow,
-            Amount      = dto.Amount,
-            Notes       = dto.Notes?.Trim(),
-            CreatedBy   = user
-        };
-
-        await _payments.AddAsync(record);
-        sale.AmountPaid += dto.Amount;
-        _sales.Update(sale);
-
-        // Commission accrues on collection, prorated to this payment's share of the invoice.
-        await _commissions.AccrueForPaymentAsync(sale, record);
+        var record = await RecordPaymentCoreAsync(sale, dto.Amount, dto.Notes, batchId: null, user);
 
         await _audit.LogAsync(user, "Payment.Record", $"{sale.InvoiceNumber} +{dto.Amount:N0}");
         await _uow.SaveChangesAsync();
@@ -333,6 +340,197 @@ public class SaleService : ISaleService
             Amount = record.Amount, Notes = record.Notes, CreatedBy = record.CreatedBy
         });
     }
+
+    /// <summary>
+    /// Applies one payment to one sale: the payment row, the balance increment, and the
+    /// commission that collection earns. Does NOT SaveChanges — the caller owns the
+    /// transaction, so a single payment and a multi-invoice settlement both commit once.
+    /// </summary>
+    private async Task<PaymentRecord> RecordPaymentCoreAsync(
+        Sale sale, decimal amount, string? notes, Guid? batchId, string user)
+    {
+        var record = new PaymentRecord {
+            Id             = Guid.NewGuid(),
+            SaleId         = sale.Id,
+            PaymentDate    = DateTime.UtcNow,
+            Amount         = amount,
+            Notes          = notes?.Trim(),
+            CreatedBy      = user,
+            PaymentBatchId = batchId
+        };
+
+        await _payments.AddAsync(record);
+        sale.AmountPaid += amount;
+        _sales.Update(sale);
+
+        // Commission accrues on collection, prorated to this payment's share of the invoice.
+        await _commissions.AccrueForPaymentAsync(sale, record);
+        return record;
+    }
+
+    public async Task<ServiceResult<PaymentBatchDto>> RecordBatchPaymentAsync(
+        RecordSaleBatchPaymentDto dto, string user)
+    {
+        var lines = (dto.Lines ?? new()).Where(l => l.Amount > 0).ToList();
+        var noteIds = (dto.ApplyCreditNoteIds ?? new()).Distinct().ToList();
+
+        if (lines.Count == 0 && noteIds.Count == 0)
+            return ServiceResult<PaymentBatchDto>.Fail("Enter an amount on at least one invoice.");
+
+        var customer = await _customers.GetByIdAsync(dto.CustomerId);
+        if (customer == null) return ServiceResult<PaymentBatchDto>.Fail("Customer not found.");
+
+        // One invoice can only appear once. Without this, two lines could each pass a
+        // balance check read before either was applied, and jointly overpay.
+        if (lines.GroupBy(l => l.SaleId).Any(g => g.Count() > 1))
+            return ServiceResult<PaymentBatchDto>.Fail(
+                "The same invoice appears twice — combine it into one row.");
+
+        // ── Validate every invoice line before anything is written ────────────────
+        var sales = await _sales.GetByIdsWithItemsAsync(lines.Select(l => l.SaleId));
+        var byId  = sales.ToDictionary(s => s.Id);
+
+        foreach (var line in lines)
+        {
+            if (!byId.TryGetValue(line.SaleId, out var sale))
+                return ServiceResult<PaymentBatchDto>.Fail("An invoice on this settlement no longer exists.");
+            if (sale.CustomerId != dto.CustomerId)
+                return ServiceResult<PaymentBatchDto>.Fail(
+                    $"Invoice {sale.InvoiceNumber} belongs to a different customer.");
+            if (sale.Status == SaleStatus.Cancelled)
+                return ServiceResult<PaymentBatchDto>.Fail(
+                    $"Invoice {sale.InvoiceNumber} is cancelled.");
+            if (sale.PaymentType == PaymentType.Cash)
+                return ServiceResult<PaymentBatchDto>.Fail(
+                    $"Invoice {sale.InvoiceNumber} is a cash sale — already collected.");
+
+            var balance = sale.GrandTotal - sale.AmountPaid;
+            if (line.Amount > balance)
+                return ServiceResult<PaymentBatchDto>.Fail(
+                    $"Invoice {sale.InvoiceNumber}: {line.Amount:N0} exceeds its balance of {balance:N0}.");
+        }
+
+        // ── Validate every note before anything is written ────────────────────────
+        var notes = noteIds.Count == 0 ? new List<CreditNote>() : await _notes.GetByIdsAsync(noteIds);
+        if (notes.Count != noteIds.Count)
+            return ServiceResult<PaymentBatchDto>.Fail("A credit note on this settlement no longer exists.");
+
+        foreach (var note in notes)
+        {
+            if (note.Type != CreditDebitType.Credit)
+                return ServiceResult<PaymentBatchDto>.Fail(
+                    $"{note.DocumentNumber} is a debit note and cannot be applied to money received.");
+            if (note.CustomerId != dto.CustomerId)
+                return ServiceResult<PaymentBatchDto>.Fail(
+                    $"{note.DocumentNumber} belongs to a different customer.");
+            if (note.Status != CreditNoteStatus.Open)
+                return ServiceResult<PaymentBatchDto>.Fail(
+                    $"{note.DocumentNumber} is already {note.Status.ToString().ToLower()}.");
+        }
+
+        // ── Post ─────────────────────────────────────────────────────────────────
+        var gross        = lines.Sum(l => l.Amount);
+        var notesApplied = notes.Sum(n => n.Amount);
+
+        // A note is applied whole or not at all, so netting more credit than is being
+        // collected would settle notes whose value this settlement can't absorb — quietly
+        // destroying the customer's remaining credit. Refuse, and say what to change.
+        if (notesApplied > gross)
+            return ServiceResult<PaymentBatchDto>.Fail(
+                $"The selected credit notes ({notesApplied:N0}) exceed the {gross:N0} being " +
+                "collected. Include more invoices, or untick a note and settle it against a " +
+                "later payment.");
+
+        var batchNotes   = SanitiseText(dto.Notes, 500);
+
+        var batch = new PaymentBatch {
+            Id                 = Guid.NewGuid(),
+            BatchNumber        = await _batches.GenerateBatchNumberAsync(PaymentBatchDirection.Received),
+            Direction          = PaymentBatchDirection.Received,
+            BatchDate          = DateTime.UtcNow,
+            CustomerId         = dto.CustomerId,
+            GrossAmount        = gross,
+            NotesAppliedAmount = notesApplied,
+            NetAmount          = gross - notesApplied,
+            Notes              = batchNotes,
+            CreatedBy          = user,
+            CreatedAt          = DateTime.UtcNow
+        };
+        await _batches.AddAsync(batch);
+
+        foreach (var line in lines)
+            await RecordPaymentCoreAsync(byId[line.SaleId], line.Amount, batchNotes, batch.Id, user);
+
+        // Tracked mutation — no Update() on entities EF is already following.
+        foreach (var note in notes)
+        {
+            note.Status                  = CreditNoteStatus.Settled;
+            note.SettledDate             = batch.BatchDate;
+            note.SettledByPaymentBatchId = batch.Id;
+            note.SettlementNotes         = $"Applied to settlement {batch.BatchNumber}";
+        }
+
+        await _audit.LogAsync(user, "PaymentBatch.Record",
+            $"{batch.BatchNumber} | {customer.Name} | net {batch.NetAmount:N0} " +
+            $"({gross:N0} gross − {notesApplied:N0} notes) across {lines.Count} invoice(s)");
+        await _uow.SaveChangesAsync();
+
+        return ServiceResult<PaymentBatchDto>.Ok(MapBatch(batch, customer.Name, lines.Count, notes.Count));
+    }
+
+    public async Task<PaymentStatementDto?> GetCustomerStatementAsync(
+        Guid customerId, DateTime? from = null, DateTime? to = null)
+    {
+        var customer = await _customers.GetByIdAsync(customerId);
+        if (customer == null) return null;
+
+        var due = await _sales.GetDueSalesAsync(customerId);
+        // The window narrows what's listed, never what's payable — a statement covering
+        // "last month" still settles against whatever the customer chooses to pay.
+        if (from.HasValue) due = due.Where(s => s.SaleDate.Date >= from.Value.Date).ToList();
+        if (to.HasValue)   due = due.Where(s => s.SaleDate.Date <= to.Value.Date).ToList();
+
+        var openNotes = await _notes.GetAllAsync(
+            type: CreditDebitType.Credit, status: CreditNoteStatus.Open, customerId: customerId);
+
+        return new PaymentStatementDto {
+            CounterpartyId   = customer.Id,
+            CounterpartyName = customer.Name,
+            Phone            = customer.Phone,
+            Lines = due.Select(s => new StatementLineDto {
+                DocumentId     = s.Id,
+                DocumentNumber = s.InvoiceNumber,
+                DocumentDate   = s.SaleDate,
+                DueDate        = s.DueDate,
+                GrandTotal     = s.GrandTotal,
+                AmountPaid     = s.AmountPaid
+            }).ToList(),
+            OpenNotes = openNotes.Select(n => new StatementNoteDto {
+                CreditNoteId   = n.Id,
+                DocumentNumber = n.DocumentNumber,
+                NoteDate       = n.NoteDate,
+                Category       = n.Category.ToString(),
+                Amount         = n.Amount,
+                Reason         = n.Reason
+            }).ToList()
+        };
+    }
+
+    private static PaymentBatchDto MapBatch(PaymentBatch b, string counterparty, int docCount, int noteCount) => new() {
+        Id                 = b.Id,
+        BatchNumber        = b.BatchNumber,
+        Direction          = b.Direction.ToString(),
+        IsReceived         = b.Direction == PaymentBatchDirection.Received,
+        BatchDate          = b.BatchDate,
+        CounterpartyName   = counterparty,
+        GrossAmount        = b.GrossAmount,
+        NotesAppliedAmount = b.NotesAppliedAmount,
+        NetAmount          = b.NetAmount,
+        DocumentCount      = docCount,
+        NoteCount          = noteCount,
+        Notes              = b.Notes,
+        CreatedBy          = b.CreatedBy
+    };
 
     public async Task<SaleDto?> GetByIdAsync(Guid id)
     {
@@ -356,6 +554,7 @@ public class SaleService : ISaleService
             CustomerName  = s.Customer?.Name ?? "",
             SalesPersonName = s.SalesPerson?.Name ?? "",
             PaymentType   = s.PaymentType.ToString(),
+            PaymentTermName = s.PaymentTerm?.Name ?? "",
             DueDate       = s.DueDate,
             GrandTotal    = s.GrandTotal,
             AmountPaid    = s.AmountPaid,

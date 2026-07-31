@@ -7,8 +7,10 @@ public class DueModel : PageModel {
     public DueModel(ISaleService svc) => _svc = svc;
     public List<DueCustomerDto> Summary { get; set; } = new();
     public decimal TotalOutstanding { get; set; }
-    public async Task OnGetAsync() {
+    public string? Msg { get; set; }
+    public async Task OnGetAsync(string? msg) {
         ViewData["Title"] = "Due Payments";
+        Msg = msg;
         Summary = await _svc.GetDueSummaryAsync();
         TotalOutstanding = Summary.Sum(d => d.TotalDue);
     }

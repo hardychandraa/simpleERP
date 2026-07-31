@@ -1,13 +1,13 @@
 namespace SimpleERP.Domain.Entities;
 
 /// <summary>
-/// Editable credit terms (TOP 30, COD, …), replacing the hardcoded
-/// PaymentType.TOP30–TOP90 enum members for new transactions.
+/// Editable credit terms (TOP 30, COD, …) — the single source of truth for how long a
+/// credit transaction has to pay, and the only input to its due date.
 ///
-/// Master data rather than an enum because adding a term the business agrees with
-/// a customer or supplier shouldn't require a code change and redeploy. The old
-/// enum members are deliberately left in place for rows that already use them —
-/// see PaymentType.
+/// Master data rather than an enum because adding a term the business agrees with a
+/// customer or supplier shouldn't require a code change and redeploy. The hardcoded
+/// PaymentType.TOP30–TOP90 members that used to duplicate this were retired on
+/// 2026-07-30 — see PaymentType for why those numbers stay burnt.
 /// </summary>
 public class PaymentTerm {
     public Guid   Id       { get; set; }

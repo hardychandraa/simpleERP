@@ -1,17 +1,62 @@
 namespace SimpleERP.Domain.Enums;
 
+/// <summary>
+/// How a transaction settles: paid now, or on credit. Nothing more.
+///
+/// The specific credit term (TOP 30, TOP 45, …) is master data in
+/// <see cref="Entities.PaymentTerm"/>, referenced by Sale.PaymentTermId /
+/// Purchase.PaymentTermId. That table is the single source of truth for due dates.
+///
+/// Values 3–6 were TOP30/TOP45/TOP60/TOP90 — a duplicate of what PaymentTerm already
+/// held, which meant a credit sale carried the term in two places that could disagree.
+/// They were retired 2026-07-30; the one posted row still using one was migrated to Due
+/// (its PaymentTermId already carried the identical term). The numbers stay burnt:
+/// never reuse 3–6 for a new meaning, because posted rows store the number.
+/// </summary>
 public enum PaymentType
 {
-    Cash  = 1,
-    Due   = 2,
-    TOP30 = 3,
-    TOP45 = 4,
-    TOP60 = 5,
-    TOP90 = 6
+    Cash = 1,
+    /// <summary>On credit. The agreed term, when there is one, is PaymentTermId.</summary>
+    Due  = 2
 }
 
 public enum SaleStatus     { Active = 1, Cancelled = 2 }
 public enum PurchaseStatus { Active = 1, Cancelled = 2 }
+/// <summary>Shared by CustomerReturn and SupplierReturn — a return is posted or reversed, never edited.</summary>
+public enum ReturnStatus   { Active = 1, Cancelled = 2 }
+
+/// <summary>
+/// Which way money moved in a settlement covering several documents at once.
+/// <c>Received</c>: a customer paid us against several invoices (AR).
+/// <c>Paid</c>: we paid a supplier against several purchases (AP).
+/// Append only.
+/// </summary>
+public enum PaymentBatchDirection { Received = 1, Paid = 2 }
+
+/// <summary>
+/// Which direction a note moves money. One entity carries both rather than two
+/// near-identical ones — the codebase already has that mistake once
+/// (PaymentRecord vs. the orphaned PaymentCollection).
+/// <c>Credit</c>: we owe the customer (a sales return, an overcharge we made).
+/// <c>Debit</c>: the supplier owes us (a purchase return, an overcharge they made).
+/// </summary>
+public enum CreditDebitType { Credit = 1, Debit = 2 }
+
+/// <summary>Why a note was issued. Append only.</summary>
+public enum CreditNoteCategory {
+    Return           = 1,
+    PriceDispute     = 2,
+    RebateSettlement = 3,
+    BillingError     = 4,
+    Other            = 5
+}
+
+/// <summary>
+/// Whether a note still hangs over the receivable/payable. <c>Open</c> notes are what
+/// AR and AP reporting must net off; settling records that it was applied to an invoice
+/// or refunded in cash. Append only.
+/// </summary>
+public enum CreditNoteStatus { Open = 1, Settled = 2, Cancelled = 3 }
 
 /// <summary>
 /// What triggers a rebate. Append only.

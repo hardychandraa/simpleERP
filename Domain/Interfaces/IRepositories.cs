@@ -1,4 +1,5 @@
 using SimpleERP.Domain.Entities;
+using SimpleERP.Domain.Enums;
 
 namespace SimpleERP.Domain.Interfaces;
 
@@ -6,6 +7,9 @@ public interface IProductRepository {
     Task<Product?> GetByIdAsync(Guid id);
     Task<List<Product>> GetAllActiveAsync();
     Task<List<Product>> GetAllAsync();
+    /// <summary>SKU is uniquely indexed in the database; check here first so a duplicate
+    /// returns a readable message instead of surfacing as a constraint violation.</summary>
+    Task<bool> SkuExistsAsync(string sku, Guid? excludeId = null);
     Task AddAsync(Product product);
     void Update(Product product);
 }
@@ -32,8 +36,18 @@ public interface IInventoryLedgerRepository {
 
 public interface ISaleRepository {
     Task<Sale?> GetByIdWithItemsAsync(Guid id);
+    /// <summary>
+    /// Several sales in one round trip, same includes as GetByIdWithItemsAsync. Backs
+    /// multi-invoice settlement, where loading N invoices one at a time would be N queries
+    /// against a list the user already has in front of them.
+    /// </summary>
+    Task<List<Sale>> GetByIdsWithItemsAsync(IEnumerable<Guid> ids);
     Task<List<Sale>> GetAllAsync(DateTime? from = null, DateTime? to = null);
-    Task<List<Sale>> GetDueSalesAsync();
+    /// <summary>
+    /// Active credit sales still owing money, oldest due first — the AR ageing list.
+    /// Optionally scoped to one customer, which is what a statement of account needs.
+    /// </summary>
+    Task<List<Sale>> GetDueSalesAsync(Guid? customerId = null);
     Task<string> GenerateInvoiceNumberAsync();
     Task AddAsync(Sale sale);
     void Update(Sale sale);
@@ -115,9 +129,14 @@ public interface ISupplierRepository {
 
 public interface IPurchaseRepository {
     Task<Purchase?> GetByIdWithItemsAsync(Guid id);
+    /// <summary>Several purchases in one round trip — the AP mirror, backing supplier statements.</summary>
+    Task<List<Purchase>> GetByIdsWithItemsAsync(IEnumerable<Guid> ids);
     Task<List<Purchase>> GetAllAsync(DateTime? from = null, DateTime? to = null);
-    /// <summary>Active purchases still owing money, oldest due first — the AP ageing list.</summary>
-    Task<List<Purchase>> GetDuePurchasesAsync();
+    /// <summary>
+    /// Active purchases still owing money, oldest due first — the AP ageing list.
+    /// Optionally scoped to one supplier, which is what a statement of account needs.
+    /// </summary>
+    Task<List<Purchase>> GetDuePurchasesAsync(Guid? supplierId = null);
     Task<string> GeneratePurchaseNumberAsync();
     /// <summary>
     /// True if this supplier already has a purchase carrying the same document number.
@@ -236,6 +255,111 @@ public interface ICommissionPayoutRepository {
     Task AddAsync(CommissionPayout payout);
     Task<CommissionPayout?> GetByIdAsync(Guid id);
     Task<List<CommissionPayout>> GetAllAsync(Guid? salesPersonId = null);
+}
+
+public interface ICustomerReturnRepository {
+    Task<CustomerReturn?> GetByIdWithItemsAsync(Guid id);
+    Task<List<CustomerReturn>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null);
+    /// <summary>Returns raised against one invoice — shown on the sale, and used to cap further returns.</summary>
+    Task<List<CustomerReturn>> GetBySaleAsync(Guid saleId);
+    Task<string> GenerateReturnNumberAsync();
+    /// <summary>
+    /// What has already been returned per SaleItem on this invoice, active returns only.
+    /// The quantity is the cap — nobody can hand back more of a line than was sold on it —
+    /// and the amount lets the return that closes a line out absorb the rounding residual.
+    /// </summary>
+    Task<Dictionary<Guid, ReturnedLineTally>> GetReturnedQtyBySaleItemAsync(Guid saleId);
+    /// <summary>
+    /// True if the invoice has an active return. Blocks cancelling the sale: cancel
+    /// restocks every sold unit, so doing it after a return had already restocked some
+    /// would put the same goods into stock twice.
+    /// </summary>
+    Task<bool> HasActiveReturnAsync(Guid saleId);
+    Task AddAsync(CustomerReturn ret);
+    void Update(CustomerReturn ret);
+    /// <summary>
+    /// Aggregated sales-return figures for [from, to), active returns only. Set-based —
+    /// the P&amp;L needs Retur Penjualan and its COGS reversal without loading rows.
+    /// </summary>
+    Task<ReturnPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to);
+}
+
+public interface ISupplierReturnRepository {
+    Task<SupplierReturn?> GetByIdWithItemsAsync(Guid id);
+    Task<List<SupplierReturn>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null);
+    Task<List<SupplierReturn>> GetByPurchaseAsync(Guid purchaseId);
+    Task<string> GenerateReturnNumberAsync();
+    /// <summary>What has already been returned per PurchaseItem, active returns only — the cap.</summary>
+    Task<Dictionary<Guid, ReturnedLineTally>> GetReturnedQtyByPurchaseItemAsync(Guid purchaseId);
+    /// <summary>
+    /// True if the purchase has an active return. Blocks cancelling the purchase, which
+    /// would try to reverse stock a return has already sent back.
+    /// </summary>
+    Task<bool> HasActiveReturnAsync(Guid purchaseId);
+    Task AddAsync(SupplierReturn ret);
+    void Update(SupplierReturn ret);
+    Task<ReturnPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to);
+}
+
+/// <summary>
+/// How much of one source line has already gone back. <paramref name="Amount"/> is the
+/// credit/debit already raised against it, so the return that finally closes the line out
+/// can be derived by subtraction instead of accumulating per-slice rounding error.
+/// </summary>
+public record ReturnedLineTally(decimal Qty, decimal Amount);
+
+/// <summary>
+/// Period totals for one side's returns. <paramref name="NetAmount"/> is ex-PPN, so it
+/// nets straight against the matching revenue or purchases line;
+/// <paramref name="TaxReversed"/> carries the PPN back out for the monthly tax summary,
+/// and <paramref name="GrossAmount"/> is the tax-inclusive figure the credit/debit note
+/// was actually issued for. <paramref name="StockValue"/> is what the goods were worth
+/// as they moved — cost restocked on a sales return, inventory released on a purchase
+/// return.
+/// </summary>
+public record ReturnPeriodTotals(
+    int     ReturnCount,
+    decimal NetAmount,
+    decimal TaxReversed,
+    decimal GrossAmount,
+    decimal StockValue);
+
+public interface ICreditNoteRepository {
+    Task<CreditNote?> GetByIdAsync(Guid id);
+    /// <summary>
+    /// Notes filtered by any combination of direction, status, date window and counterparty.
+    /// The counterparty filters back the statement of account: "what does this supplier
+    /// already owe us back, that should come off what we're about to pay them."
+    /// </summary>
+    Task<List<CreditNote>> GetAllAsync(CreditDebitType? type = null, CreditNoteStatus? status = null,
+                                       DateTime? from = null, DateTime? to = null,
+                                       Guid? customerId = null, Guid? supplierId = null);
+    /// <summary>Several notes in one round trip — the ones ticked for netting into a settlement.</summary>
+    Task<List<CreditNote>> GetByIdsAsync(IEnumerable<Guid> ids);
+    /// <summary>The note a return generated, so cancelling the return can cancel it too.</summary>
+    Task<CreditNote?> GetByCustomerReturnAsync(Guid customerReturnId);
+    Task<CreditNote?> GetBySupplierReturnAsync(Guid supplierReturnId);
+    /// <summary>Numbered per direction — CN- for credit, DN- for debit — so the two run independently.</summary>
+    Task<string> GenerateDocumentNumberAsync(CreditDebitType type);
+    /// <summary>
+    /// Face value of notes still Open, by direction. What AR (credit) and AP (debit)
+    /// reporting has to net off, since posted invoices are never edited.
+    /// </summary>
+    Task<decimal> GetOpenTotalAsync(CreditDebitType type);
+    Task AddAsync(CreditNote note);
+    void Update(CreditNote note);
+}
+
+public interface IPaymentBatchRepository {
+    Task AddAsync(PaymentBatch batch);
+    Task<PaymentBatch?> GetByIdAsync(Guid id);
+    Task<List<PaymentBatch>> GetAllAsync(PaymentBatchDirection? direction = null,
+                                         Guid? customerId = null, Guid? supplierId = null,
+                                         DateTime? from = null, DateTime? to = null);
+    /// <summary>Numbered per direction, so received and paid settlements run independently.</summary>
+    Task<string> GenerateBatchNumberAsync(PaymentBatchDirection direction);
+    // Deliberately no Remove: a settlement is history, like RebateRealization and
+    // CommissionPayout. Correcting one means reversing its payments, not deleting it.
 }
 
 public interface ISalesPersonRepository {

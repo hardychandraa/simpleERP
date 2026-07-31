@@ -21,6 +21,17 @@
                 </select>
             </div>
             <div class="fg">
+                <label>Sale Date *</label>
+                <input type="date" asp-for="SaleDate" id="saleDateInput" required
+                       max="@DateTime.Now.Date.ToString("yyyy-MM-dd")"
+                       value="@((Model.SaleDate ?? DateTime.Now.Date).ToString("yyyy-MM-dd"))"
+                       onchange="updateDueDatePreview()" />
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                    Defaults to today. Backdate it to enter a sale that was written up earlier —
+                    a future date isn't accepted.
+                </div>
+            </div>
+            <div class="fg">
                 <label>Sales Person</label>
                 <select asp-for="SalesPersonId">
                     <option value="">— none (unattributed) —</option>
@@ -37,11 +48,7 @@
                 <label>Payment Type</label>
                 <select asp-for="PaymentType" id="paymentTypeSelect" onchange="onPaymentTypeChange()">
                     <option value="1">Cash — paid now</option>
-                    <option value="2">Due — credit / pay later</option>
-                    <option value="3">TOP 30 days</option>
-                    <option value="4">TOP 45 days</option>
-                    <option value="5">TOP 60 days</option>
-                    <option value="6">TOP 90 days</option>
+                    <option value="2">Credit — pay later</option>
                 </select>
             </div>
             <div class="fg" id="paymentTermRow" style="display:none">
@@ -254,8 +261,6 @@ const PRODUCTS = @Html.Raw(JsonSerializer.Serialize(
 let items = [];  // { productId, name, masterPrice, qty, price, disc, warranty, notes, priceReason, total }
 
 // ── Payment type → due date preview ──────────────────────────────────────────
-const TOP_DAYS = { '3': 30, '4': 45, '5': 60, '6': 90 };
-
 function onPaymentTypeChange() {
     const val    = document.getElementById('paymentTypeSelect').value;
     const isCash = val === '1';
@@ -268,19 +273,22 @@ function onPaymentTypeChange() {
     updateDueDatePreview();
 }
 
-// Due date comes from the selected PaymentTerm; the legacy TOP_DAYS map is only
-// a fallback for the TOP* payment types, which new sales no longer need.
+// The selected PaymentTerm is the only source of a due date — mirrors the server.
+// No term on a credit sale means open credit, so no date is previewed.
 function updateDueDatePreview() {
     const typeVal  = document.getElementById('paymentTypeSelect').value;
     const termSel  = document.getElementById('paymentTermSelect');
     const termOpt  = termSel.options[termSel.selectedIndex];
     const termDays = termOpt && termOpt.value ? parseInt(termOpt.dataset.days, 10) : null;
 
-    const days  = (termDays !== null && !isNaN(termDays)) ? termDays : TOP_DAYS[typeVal];
+    const days  = (termDays !== null && !isNaN(termDays)) ? termDays : null;
     const block = document.getElementById('dueDatePreview');
 
-    if (typeVal !== '1' && days !== undefined && days !== null) {
-        const d = new Date();
+    if (typeVal !== '1' && days !== null) {
+        // Counted from the sale date, not today — mirrors the server, so backdating
+        // a credit sale previews the same due date it will actually be given.
+        const saleDateVal = document.getElementById('saleDateInput').value;
+        const d = saleDateVal ? new Date(saleDateVal + 'T00:00:00') : new Date();
         d.setDate(d.getDate() + days);
         document.getElementById('dueDateText').textContent = d.toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'});
         block.style.display = 'block';

@@ -48,10 +48,15 @@ public class FinancialReportService : IFinancialReportService
             }).ToList(),
 
             // Named explicitly so the report can show what it cannot yet account for.
-            // Each disappears when its module lands.
+            // Each disappears when Step 9 wires its module into the figures above.
             PendingSections = {
                 "Pendapatan Luar Usaha (rebate/support income) — needs the Purchase and Rebate modules",
-                "Komisi Penjualan (sales commission) — needs the SalesPerson and Commission modules"
+                "Komisi Penjualan (sales commission) — needs the SalesPerson and Commission modules",
+                // Returns now exist and move real money, so Penjualan/HPP above are gross of
+                // them. Listed rather than netted here because assembling the full statement
+                // is Step 9's job; ICustomerReturnRepository/ISupplierReturnRepository already
+                // expose set-based GetPeriodTotalsAsync for it.
+                "Retur Penjualan & Retur Pembelian — returns are recorded but not yet netted off Penjualan or HPP"
             }
         };
     }

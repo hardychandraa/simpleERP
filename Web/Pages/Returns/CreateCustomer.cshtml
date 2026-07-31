@@ -1,0 +1,207 @@
+@page "/Returns/Customer/New/{saleId:guid}"
+@model SimpleERP.Web.Pages.Returns.CreateCustomerModel
+@using System.Globalization
+@{
+    ViewData["Title"] = $"Sales Return — {Model.Form.DocumentNumber}";
+    string Inv(decimal d) => d.ToString(CultureInfo.InvariantCulture);
+}
+
+<div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+    <a href="/Sales/@Model.Form.SourceId" class="btn btn-outline btn-sm">← Invoice @Model.Form.DocumentNumber</a>
+    <a href="/Returns" class="btn btn-outline btn-sm">All returns</a>
+</div>
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+@if (Model.Form.BlockReason != null)
+{
+    <div class="card">
+        <div class="alert alert-warning" style="margin:0">@Model.Form.BlockReason</div>
+    </div>
+}
+else if (Model.Form.NothingLeft)
+{
+    <div class="card">
+        <div class="alert alert-info" style="margin:0">
+            Everything on invoice @Model.Form.DocumentNumber has already been returned.
+            <a href="/Sales/@Model.Form.SourceId">Back to the invoice →</a>
+        </div>
+    </div>
+}
+else
+{
+<form method="post">
+<div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+
+<div class="card">
+    <div class="card-title">↩ Goods Coming Back</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;padding:12px;background:#f9fafb;border-radius:6px">
+        <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">Invoice</div>
+            <div style="font-weight:600">@Model.Form.DocumentNumber</div>
+            <div style="font-size:12px;color:#6b7280">@Model.Form.DocumentDate.ToLocalTime().ToString("dd MMM yyyy")</div>
+        </div>
+        <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">Customer</div>
+            <div style="font-weight:600">@Model.Form.CounterpartyName</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th style="text-align:center">Sold</th>
+                <th style="text-align:center">Already back</th>
+                <th style="text-align:right">Credit / unit</th>
+                <th style="width:110px;text-align:center">Return qty</th>
+                <th style="width:150px">Line note</th>
+            </tr>
+        </thead>
+        <tbody>
+        @for (var i = 0; i < Model.Form.Lines.Count; i++)
+        {
+            var line      = Model.Form.Lines[i];
+            var posted    = i < Model.Lines.Count ? Model.Lines[i] : null;
+            var exhausted = line.ReturnableQty <= 0;
+            <tr style="@(exhausted ? "opacity:.5" : "")">
+                <td>
+                    <div style="font-weight:600">@line.ProductName</div>
+                    <div style="font-size:11px;color:#9ca3af">@line.SKU</div>
+                </td>
+                <td style="text-align:center">@line.OriginalQty.ToString("N0")</td>
+                <td style="text-align:center">
+                    @if (line.AlreadyReturned > 0)
+                    {
+                        <span style="color:#d97706;font-weight:600">@line.AlreadyReturned.ToString("N0")</span>
+                    }
+                    else
+                    {
+                        <span style="color:#9ca3af">—</span>
+                    }
+                </td>
+                <td style="text-align:right">@line.UnitCredit.ToString("N0")</td>
+                <td>
+                    <input type="hidden" name="Lines[@i].SourceItemId" value="@line.SourceItemId" />
+                    @if (exhausted)
+                    {
+                        <input type="number" name="Lines[@i].Qty" class="ret-qty"
+                               data-unit="@Inv(line.UnitCredit)" value="" placeholder="0"
+                               style="text-align:center" readonly />
+                        <div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:2px">fully returned</div>
+                    }
+                    else
+                    {
+                        <input type="number" name="Lines[@i].Qty" class="ret-qty"
+                               data-unit="@Inv(line.UnitCredit)"
+                               min="0" max="@Inv(line.ReturnableQty)" step="0.01"
+                               value="@(posted != null && posted.Qty > 0 ? Inv(posted.Qty) : "")"
+                               placeholder="0" style="text-align:center" />
+                        <div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:2px">
+                            up to @line.ReturnableQty.ToString("N0")
+                        </div>
+                    }
+                </td>
+                <td>
+                    <input type="text" name="Lines[@i].Notes" maxlength="500"
+                           value="@posted?.Notes" placeholder="optional" />
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <p style="font-size:11px;color:#9ca3af;margin-top:10px">
+        Credit per unit comes from what the customer was actually charged on that line —
+        net of its own discount and its share of any invoice discount — not from the list price.
+    </p>
+</div>
+
+<div>
+    <div class="card">
+        <div class="card-title">Return Details</div>
+        <div class="fg">
+            <label>Return date</label>
+            <input type="date" asp-for="ReturnDate" required />
+            <div style="font-size:11px;color:#6b7280;margin-top:3px">Cannot be before the invoice date.</div>
+        </div>
+        <div class="fg">
+            <label>Reason <span style="color:#dc2626">*</span></label>
+            <input type="text" asp-for="Reason" maxlength="500" required
+                   placeholder="e.g. Faulty unit, wrong item shipped" />
+        </div>
+        <div class="fg">
+            <label>Notes (optional)</label>
+            <textarea asp-for="Notes" rows="2" maxlength="500"></textarea>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Credit Preview</div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0">
+            <span style="color:#6b7280">Lines returning</span><span id="pv-lines">0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6">
+            <span style="color:#6b7280">DPP (tax base)</span><span id="pv-base">0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0">
+            <span style="color:#6b7280">
+                PPN @((Model.Form.TaxRate * 100).ToString("0.##"))%
+                @if (Model.Form.IsTaxInclusive) { <span style="font-size:11px;color:#9ca3af">(included)</span> }
+            </span>
+            <span id="pv-tax">0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1a1a2e;font-size:16px;font-weight:700">
+            <span>Credit Note</span><span id="pv-total">0</span>
+        </div>
+        <button type="submit" class="btn btn-success" style="width:100%;margin-top:12px">
+            ✓ Post Return
+        </button>
+        <p style="font-size:11px;color:#9ca3af;margin-top:10px;line-height:1.5">
+            Posting restocks the goods at the cost they were sold at and raises a credit note.
+            The invoice itself is left exactly as it was.
+        </p>
+    </div>
+</div>
+</div>
+</form>
+}
+
+@section Scripts {
+<script>
+// Mirrors MoneyMath.SplitTax on the server: the inclusive branch derives the tax by
+// subtraction, the exclusive branch rounds it once and adds it on.
+const RATE = @Inv(Model.Form.TaxRate);
+const INCL = @(Model.Form.IsTaxInclusive ? "true" : "false");
+const r2 = v => Math.round(v * 100) / 100;
+
+function preview() {
+    const totalEl = document.getElementById('pv-total');
+    if (!totalEl) return;                 // blocked/nothing-left view has no form
+
+    let subtotal = 0, lines = 0;
+    document.querySelectorAll('.ret-qty').forEach(el => {
+        const q = parseFloat(el.value) || 0;
+        if (q > 0) { lines++; subtotal += q * parseFloat(el.dataset.unit); }
+    });
+
+    let base, tax, total;
+    if (RATE <= 0) { base = subtotal; tax = 0; total = subtotal; }
+    else if (INCL) { total = subtotal; base = r2(subtotal / (1 + RATE)); tax = total - base; }
+    else           { base = subtotal; tax = r2(subtotal * RATE); total = base + tax; }
+
+    const fmt = v => Math.round(v).toLocaleString();
+    document.getElementById('pv-lines').textContent = lines;
+    document.getElementById('pv-base').textContent  = fmt(base);
+    document.getElementById('pv-tax').textContent   = fmt(tax);
+    totalEl.textContent = fmt(total);
+}
+
+document.querySelectorAll('.ret-qty').forEach(el => el.addEventListener('input', preview));
+preview();
+</script>
+}

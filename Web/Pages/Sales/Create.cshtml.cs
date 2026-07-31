@@ -24,6 +24,9 @@ public class CreateModel : PageModel
       _people=people; _settings=settings; }
 
     [BindProperty] public Guid        CustomerId  { get; set; }
+    /// <summary>Business date of the sale. Defaults to today; may be backdated for
+    /// catch-up entry. Future dates are refused by the service.</summary>
+    [BindProperty] public DateTime?   SaleDate    { get; set; }
     [BindProperty] public PaymentType PaymentType { get; set; } = PaymentType.Cash;
     [BindProperty] public string?     Notes       { get; set; }
     [BindProperty] public string      ItemsJson   { get; set; } = "[]";
@@ -47,7 +50,12 @@ public class CreateModel : PageModel
     public List<ProductDto>     AvailableProducts { get; set; } = new();
     public string? Error { get; set; }
 
-    public async Task OnGetAsync() { ViewData["Title"]="New Sale"; await LoadAsync(); }
+    public async Task OnGetAsync()
+    {
+        ViewData["Title"] = "New Sale";
+        SaleDate = DateTime.Now.Date;   // business-local today
+        await LoadAsync();
+    }
 
     public async Task<IActionResult> OnPostAsync()
     {
@@ -71,6 +79,7 @@ public class CreateModel : PageModel
 
         var result = await _sales.CreateAsync(new CreateSaleDto {
             CustomerId     = CustomerId,
+            SaleDate       = SaleDate,
             PaymentType    = PaymentType,
             PaymentTermId  = PaymentTermId,
             SalesPersonId  = SalesPersonId,

@@ -11,8 +11,8 @@ public class Sale
     public Guid        BranchId      { get; set; }
     public PaymentType PaymentType   { get; set; }
     /// <summary>
-    /// Credit term for this sale. Null for Cash, and for legacy rows that used the
-    /// PaymentType.TOP30–TOP90 enum members before terms became master data.
+    /// Credit term for this sale, and the only place the term is recorded. Null for Cash
+    /// and for open credit with no agreed term.
     /// </summary>
     public Guid?       PaymentTermId { get; set; }
     /// <summary>
@@ -22,7 +22,8 @@ public class Sale
     public Guid?       SalesPersonId { get; set; }
     /// <summary>
     /// When payment falls due. Null for Cash, and for open credit with no agreed term.
-    /// Formula: SaleDate + PaymentTerm.DueDays (legacy rows: SaleDate + the enum's days).
+    /// Formula: SaleDate + PaymentTerm.DueDays, computed once at posting time so a later
+    /// edit to the term never moves an existing invoice's deadline.
     /// </summary>
     public DateTime?   DueDate       { get; set; }
     public decimal     SubTotal      { get; set; }

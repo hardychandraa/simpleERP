@@ -175,15 +175,30 @@ public class PurchaseRepository : IPurchaseRepository
         return q.OrderByDescending(p => p.PurchaseDate).ToListAsync();
     }
 
-    public Task<List<Purchase>> GetDuePurchasesAsync() =>
-        _db.Purchases
+    public Task<List<Purchase>> GetByIdsWithItemsAsync(IEnumerable<Guid> ids)
+    {
+        var list = ids.ToList();
+        return _db.Purchases
+           .Include(p => p.Supplier)
+           .Include(p => p.Branch)
+           .Include(p => p.PaymentTerm)
+           .Include(p => p.PurchaseItems).ThenInclude(i => i.Product)
+           .Include(p => p.SupplierPayments)
+           .Where(p => list.Contains(p.Id))
+           .AsSplitQuery()
+           .ToListAsync();
+    }
+
+    public Task<List<Purchase>> GetDuePurchasesAsync(Guid? supplierId = null)
+    {
+        var q = _db.Purchases
            .Include(p => p.Supplier)
            .Where(p => p.Status == PurchaseStatus.Active
                     && p.PaymentType != PaymentType.Cash
-                    && p.AmountPaid < p.GrandTotal)
-           .OrderBy(p => p.DueDate)
-           .ThenBy(p => p.PurchaseDate)
-           .ToListAsync();
+                    && p.AmountPaid < p.GrandTotal);
+        if (supplierId.HasValue) q = q.Where(p => p.SupplierId == supplierId.Value);
+        return q.OrderBy(p => p.DueDate).ThenBy(p => p.PurchaseDate).ToListAsync();
+    }
 
     public async Task<string> GeneratePurchaseNumberAsync()
     {
@@ -481,6 +496,300 @@ public class CommissionPayoutRepository : ICommissionPayoutRepository
     }
 }
 
+public class CustomerReturnRepository : ICustomerReturnRepository
+{
+    private readonly AppDbContext _db;
+    public CustomerReturnRepository(AppDbContext db) => _db = db;
+
+    public Task<CustomerReturn?> GetByIdWithItemsAsync(Guid id) =>
+        _db.CustomerReturns
+           .Include(r => r.Sale!).ThenInclude(s => s.Customer)
+           .Include(r => r.Items).ThenInclude(i => i.Product)
+           .Include(r => r.CreditNotes)
+           .FirstOrDefaultAsync(r => r.Id == id);
+
+    public Task<List<CustomerReturn>> GetAllAsync(
+        DateTime? from = null, DateTime? to = null, string? search = null)
+    {
+        // Items are included for the line count on the list. Bounded by return volume,
+        // which is a small fraction of sales volume.
+        var q = _db.CustomerReturns
+                   .Include(r => r.Sale!).ThenInclude(s => s.Customer)
+                   .Include(r => r.Items)
+                   .AsQueryable();
+        if (from.HasValue) q = q.Where(r => r.ReturnDate >= from.Value);
+        if (to.HasValue)   q = q.Where(r => r.ReturnDate <= to.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            q = q.Where(r => r.ReturnNumber.ToLower().Contains(s)
+                          || r.Sale!.InvoiceNumber.ToLower().Contains(s)
+                          || r.Sale.Customer!.Name.ToLower().Contains(s));
+        }
+        return q.OrderByDescending(r => r.ReturnDate).ThenByDescending(r => r.CreatedAt).ToListAsync();
+    }
+
+    public Task<List<CustomerReturn>> GetBySaleAsync(Guid saleId) =>
+        _db.CustomerReturns
+           .Include(r => r.Sale!).ThenInclude(s => s.Customer)
+           .Include(r => r.Items)
+           .Where(r => r.SaleId == saleId)
+           .OrderBy(r => r.ReturnDate).ToListAsync();
+
+    public async Task<string> GenerateReturnNumberAsync()
+    {
+        // Same count-then-append shape as GenerateInvoiceNumberAsync/GeneratePurchaseNumberAsync,
+        // with the same caveat: two returns posted in the same instant could collide, and the
+        // unique index turns that into a failed save rather than a duplicate number.
+        var prefix = $"CRN-{DateTime.UtcNow:yyyyMM}";
+        var count  = await _db.CustomerReturns.CountAsync(r => r.ReturnNumber.StartsWith(prefix));
+        return $"{prefix}-{count + 1:D4}";
+    }
+
+    public async Task<Dictionary<Guid, ReturnedLineTally>> GetReturnedQtyBySaleItemAsync(Guid saleId)
+    {
+        // Cancelled returns don't count — their goods went back out of stock, so the
+        // quantity is returnable again.
+        var rows = await _db.CustomerReturnItems
+            .Where(i => i.Return!.SaleId == saleId && i.Return.Status == ReturnStatus.Active)
+            .GroupBy(i => i.SaleItemId)
+            .Select(g => new {
+                SaleItemId = g.Key,
+                Qty        = g.Sum(i => (decimal?)i.Qty)          ?? 0m,
+                Amount     = g.Sum(i => (decimal?)i.CreditAmount) ?? 0m
+            })
+            .ToListAsync();
+
+        return rows.ToDictionary(r => r.SaleItemId, r => new ReturnedLineTally(r.Qty, r.Amount));
+    }
+
+    public Task<bool> HasActiveReturnAsync(Guid saleId) =>
+        _db.CustomerReturns.AnyAsync(r => r.SaleId == saleId && r.Status == ReturnStatus.Active);
+
+    public async Task AddAsync(CustomerReturn ret) => await _db.CustomerReturns.AddAsync(ret);
+    public void Update(CustomerReturn ret) => _db.CustomerReturns.Update(ret);
+
+    public async Task<ReturnPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to)
+    {
+        var head = await _db.CustomerReturns
+            .Where(r => r.ReturnDate >= from && r.ReturnDate < to && r.Status == ReturnStatus.Active)
+            .GroupBy(_ => 1)
+            .Select(g => new {
+                Count = g.Count(),
+                Net   = g.Sum(r => (decimal?)r.TaxBase)    ?? 0m,
+                Tax   = g.Sum(r => (decimal?)r.TaxAmount)  ?? 0m,
+                Gross = g.Sum(r => (decimal?)r.GrandTotal) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        // Cost put back into stock — the COGS reversal that has to accompany the revenue one.
+        var stock = await _db.CustomerReturnItems
+            .Where(i => i.Return!.ReturnDate >= from && i.Return.ReturnDate < to
+                     && i.Return.Status == ReturnStatus.Active)
+            .SumAsync(i => (decimal?)(i.CostAtSale * i.Qty)) ?? 0m;
+
+        return new ReturnPeriodTotals(
+            ReturnCount: head?.Count ?? 0,
+            NetAmount:   head?.Net   ?? 0m,
+            TaxReversed: head?.Tax   ?? 0m,
+            GrossAmount: head?.Gross ?? 0m,
+            StockValue:  stock);
+    }
+}
+
+public class SupplierReturnRepository : ISupplierReturnRepository
+{
+    private readonly AppDbContext _db;
+    public SupplierReturnRepository(AppDbContext db) => _db = db;
+
+    public Task<SupplierReturn?> GetByIdWithItemsAsync(Guid id) =>
+        _db.SupplierReturns
+           .Include(r => r.Purchase!).ThenInclude(p => p.Supplier)
+           .Include(r => r.Items).ThenInclude(i => i.Product)
+           .Include(r => r.CreditNotes)
+           .FirstOrDefaultAsync(r => r.Id == id);
+
+    public Task<List<SupplierReturn>> GetAllAsync(
+        DateTime? from = null, DateTime? to = null, string? search = null)
+    {
+        var q = _db.SupplierReturns
+                   .Include(r => r.Purchase!).ThenInclude(p => p.Supplier)
+                   .Include(r => r.Items)
+                   .AsQueryable();
+        if (from.HasValue) q = q.Where(r => r.ReturnDate >= from.Value);
+        if (to.HasValue)   q = q.Where(r => r.ReturnDate <= to.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            q = q.Where(r => r.ReturnNumber.ToLower().Contains(s)
+                          || r.Purchase!.PurchaseNumber.ToLower().Contains(s)
+                          || (r.Purchase.SupplierDocumentNumber ?? "").ToLower().Contains(s)
+                          || r.Purchase.Supplier!.Name.ToLower().Contains(s));
+        }
+        return q.OrderByDescending(r => r.ReturnDate).ThenByDescending(r => r.CreatedAt).ToListAsync();
+    }
+
+    public Task<List<SupplierReturn>> GetByPurchaseAsync(Guid purchaseId) =>
+        _db.SupplierReturns
+           .Include(r => r.Purchase!).ThenInclude(p => p.Supplier)
+           .Include(r => r.Items)
+           .Where(r => r.PurchaseId == purchaseId)
+           .OrderBy(r => r.ReturnDate).ToListAsync();
+
+    public async Task<string> GenerateReturnNumberAsync()
+    {
+        var prefix = $"SRN-{DateTime.UtcNow:yyyyMM}";
+        var count  = await _db.SupplierReturns.CountAsync(r => r.ReturnNumber.StartsWith(prefix));
+        return $"{prefix}-{count + 1:D4}";
+    }
+
+    public async Task<Dictionary<Guid, ReturnedLineTally>> GetReturnedQtyByPurchaseItemAsync(Guid purchaseId)
+    {
+        var rows = await _db.SupplierReturnItems
+            .Where(i => i.Return!.PurchaseId == purchaseId && i.Return.Status == ReturnStatus.Active)
+            .GroupBy(i => i.PurchaseItemId)
+            .Select(g => new {
+                PurchaseItemId = g.Key,
+                Qty            = g.Sum(i => (decimal?)i.Qty)         ?? 0m,
+                Amount         = g.Sum(i => (decimal?)i.DebitAmount) ?? 0m
+            })
+            .ToListAsync();
+
+        return rows.ToDictionary(r => r.PurchaseItemId, r => new ReturnedLineTally(r.Qty, r.Amount));
+    }
+
+    public Task<bool> HasActiveReturnAsync(Guid purchaseId) =>
+        _db.SupplierReturns.AnyAsync(r => r.PurchaseId == purchaseId && r.Status == ReturnStatus.Active);
+
+    public async Task AddAsync(SupplierReturn ret) => await _db.SupplierReturns.AddAsync(ret);
+    public void Update(SupplierReturn ret) => _db.SupplierReturns.Update(ret);
+
+    public async Task<ReturnPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to)
+    {
+        var head = await _db.SupplierReturns
+            .Where(r => r.ReturnDate >= from && r.ReturnDate < to && r.Status == ReturnStatus.Active)
+            .GroupBy(_ => 1)
+            .Select(g => new {
+                Count = g.Count(),
+                Net   = g.Sum(r => (decimal?)r.TaxBase)    ?? 0m,
+                Tax   = g.Sum(r => (decimal?)r.TaxAmount)  ?? 0m,
+                Gross = g.Sum(r => (decimal?)r.GrandTotal) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        // Inventory value released — the moving-average cost the goods left at, which is
+        // deliberately not the same as what the supplier credits back.
+        var stock = await _db.SupplierReturnItems
+            .Where(i => i.Return!.ReturnDate >= from && i.Return.ReturnDate < to
+                     && i.Return.Status == ReturnStatus.Active)
+            .SumAsync(i => (decimal?)(i.CostAtReturn * i.Qty)) ?? 0m;
+
+        return new ReturnPeriodTotals(
+            ReturnCount: head?.Count ?? 0,
+            NetAmount:   head?.Net   ?? 0m,
+            TaxReversed: head?.Tax   ?? 0m,
+            GrossAmount: head?.Gross ?? 0m,
+            StockValue:  stock);
+    }
+}
+
+public class CreditNoteRepository : ICreditNoteRepository
+{
+    private readonly AppDbContext _db;
+    public CreditNoteRepository(AppDbContext db) => _db = db;
+
+    private IQueryable<CreditNote> WithNav => _db.CreditNotes
+        .Include(n => n.Customer).Include(n => n.Supplier)
+        .Include(n => n.SourceSale).Include(n => n.SourcePurchase)
+        .Include(n => n.SourceCustomerReturn).Include(n => n.SourceSupplierReturn);
+
+    public Task<CreditNote?> GetByIdAsync(Guid id) => WithNav.FirstOrDefaultAsync(n => n.Id == id);
+
+    public Task<List<CreditNote>> GetAllAsync(CreditDebitType? type = null,
+        CreditNoteStatus? status = null, DateTime? from = null, DateTime? to = null,
+        Guid? customerId = null, Guid? supplierId = null)
+    {
+        var q = WithNav;
+        if (type.HasValue)       q = q.Where(n => n.Type == type.Value);
+        if (status.HasValue)     q = q.Where(n => n.Status == status.Value);
+        if (from.HasValue)       q = q.Where(n => n.NoteDate >= from.Value);
+        if (to.HasValue)         q = q.Where(n => n.NoteDate <= to.Value);
+        if (customerId.HasValue) q = q.Where(n => n.CustomerId == customerId.Value);
+        if (supplierId.HasValue) q = q.Where(n => n.SupplierId == supplierId.Value);
+        return q.OrderByDescending(n => n.NoteDate).ThenByDescending(n => n.CreatedAt).ToListAsync();
+    }
+
+    public Task<List<CreditNote>> GetByIdsAsync(IEnumerable<Guid> ids)
+    {
+        var list = ids.ToList();
+        return WithNav.Where(n => list.Contains(n.Id)).ToListAsync();
+    }
+
+    public Task<CreditNote?> GetByCustomerReturnAsync(Guid customerReturnId) =>
+        WithNav.FirstOrDefaultAsync(n => n.SourceCustomerReturnId == customerReturnId
+                                      && n.Status != CreditNoteStatus.Cancelled);
+
+    public Task<CreditNote?> GetBySupplierReturnAsync(Guid supplierReturnId) =>
+        WithNav.FirstOrDefaultAsync(n => n.SourceSupplierReturnId == supplierReturnId
+                                      && n.Status != CreditNoteStatus.Cancelled);
+
+    public async Task<string> GenerateDocumentNumberAsync(CreditDebitType type)
+    {
+        // Two independent sequences, so a credit note and a debit note raised in the same
+        // month never share a number. Same count-then-append caveat as the other generators.
+        var prefix = $"{(type == CreditDebitType.Credit ? "CN" : "DN")}-{DateTime.UtcNow:yyyyMM}";
+        var count  = await _db.CreditNotes.CountAsync(n => n.DocumentNumber.StartsWith(prefix));
+        return $"{prefix}-{count + 1:D4}";
+    }
+
+    public async Task<decimal> GetOpenTotalAsync(CreditDebitType type) =>
+        await _db.CreditNotes
+            .Where(n => n.Type == type && n.Status == CreditNoteStatus.Open)
+            .SumAsync(n => (decimal?)n.Amount) ?? 0m;
+
+    public async Task AddAsync(CreditNote note) => await _db.CreditNotes.AddAsync(note);
+    public void Update(CreditNote note) => _db.CreditNotes.Update(note);
+}
+
+public class PaymentBatchRepository : IPaymentBatchRepository
+{
+    private readonly AppDbContext _db;
+    public PaymentBatchRepository(AppDbContext db) => _db = db;
+
+    private IQueryable<PaymentBatch> WithNav => _db.PaymentBatches
+        .Include(b => b.Customer).Include(b => b.Supplier)
+        .Include(b => b.Payments).Include(b => b.SupplierPayments)
+        .Include(b => b.AppliedNotes);
+
+    public async Task AddAsync(PaymentBatch batch) => await _db.PaymentBatches.AddAsync(batch);
+
+    public Task<PaymentBatch?> GetByIdAsync(Guid id) =>
+        WithNav.AsSplitQuery().FirstOrDefaultAsync(b => b.Id == id);
+
+    public Task<List<PaymentBatch>> GetAllAsync(PaymentBatchDirection? direction = null,
+        Guid? customerId = null, Guid? supplierId = null,
+        DateTime? from = null, DateTime? to = null)
+    {
+        var q = WithNav.AsSplitQuery();
+        if (direction.HasValue)  q = q.Where(b => b.Direction == direction.Value);
+        if (customerId.HasValue) q = q.Where(b => b.CustomerId == customerId.Value);
+        if (supplierId.HasValue) q = q.Where(b => b.SupplierId == supplierId.Value);
+        if (from.HasValue)       q = q.Where(b => b.BatchDate >= from.Value);
+        if (to.HasValue)         q = q.Where(b => b.BatchDate <= to.Value);
+        return q.OrderByDescending(b => b.BatchDate).ThenByDescending(b => b.CreatedAt).ToListAsync();
+    }
+
+    public async Task<string> GenerateBatchNumberAsync(PaymentBatchDirection direction)
+    {
+        // Two independent sequences so a received and a paid settlement in the same month
+        // never share a number. Same count-then-append caveat as the other generators: a
+        // collision becomes a failed save on the unique index, not a duplicate.
+        var prefix = $"STL-{(direction == PaymentBatchDirection.Received ? "R" : "P")}-{DateTime.UtcNow:yyyyMM}";
+        var count  = await _db.PaymentBatches.CountAsync(b => b.BatchNumber.StartsWith(prefix));
+        return $"{prefix}-{count + 1:D4}";
+    }
+}
+
 public class SalesPersonRepository : ISalesPersonRepository
 {
     private readonly AppDbContext _db;
@@ -514,6 +823,9 @@ public class ProductRepository : IProductRepository
     public Task<Product?> GetByIdAsync(Guid id) => _db.Products.FindAsync(id).AsTask();
     public Task<List<Product>> GetAllActiveAsync() => _db.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
     public Task<List<Product>> GetAllAsync()       => _db.Products.OrderBy(p => p.Name).ToListAsync();
+    public Task<bool> SkuExistsAsync(string sku, Guid? excludeId = null) =>
+        _db.Products.AnyAsync(p => p.SKU.ToLower() == sku.ToLower()
+                                && (excludeId == null || p.Id != excludeId));
     public async Task AddAsync(Product p) => await _db.Products.AddAsync(p);
     public void Update(Product p) => _db.Products.Update(p);
 }
@@ -577,7 +889,11 @@ public class SaleRepository : ISaleRepository
 
     public Task<List<Sale>> GetAllAsync(DateTime? from = null, DateTime? to = null)
     {
-        var q = _db.Sales.Include(s => s.Customer).Include(s => s.SalesPerson).AsQueryable();
+        // PaymentTerm is included because the list and ageing screens show the term name —
+        // since the TOP* enum members were retired, the term table is the only place that
+        // information exists.
+        var q = _db.Sales.Include(s => s.Customer).Include(s => s.SalesPerson)
+                         .Include(s => s.PaymentTerm).AsQueryable();
         if (from.HasValue) q = q.Where(s => s.SaleDate >= from.Value);
         if (to.HasValue)   q = q.Where(s => s.SaleDate <= to.Value);
         return q.OrderByDescending(s => s.SaleDate).ToListAsync();
@@ -615,19 +931,39 @@ public class SaleRepository : ISaleRepository
             GrossSales:   head?.GrossSales ?? 0m);
     }
 
-    public Task<List<Sale>> GetDueSalesAsync() =>
-        _db.Sales
+    /// <summary>
+    /// Active sales still owing money, oldest due first — the AR ageing list. Mirrors
+    /// GetDuePurchasesAsync: anything not Cash is credit, so a single negated comparison
+    /// replaces what used to be an OR-chain over the retired TOP* enum members.
+    /// </summary>
+    public Task<List<Sale>> GetByIdsWithItemsAsync(IEnumerable<Guid> ids)
+    {
+        var list = ids.ToList();
+        return _db.Sales
            .Include(s => s.Customer)
-           .Where(s => s.Status == Domain.Enums.SaleStatus.Active
-                    && s.AmountPaid < s.GrandTotal
-                    && (s.PaymentType == Domain.Enums.PaymentType.Due
-                     || s.PaymentType == Domain.Enums.PaymentType.TOP30
-                     || s.PaymentType == Domain.Enums.PaymentType.TOP45
-                     || s.PaymentType == Domain.Enums.PaymentType.TOP60
-                     || s.PaymentType == Domain.Enums.PaymentType.TOP90))
-           .OrderBy(s => s.DueDate)   // overdue first, then by due date
-           .ThenBy(s => s.SaleDate)
+           .Include(s => s.Branch)
+           .Include(s => s.PaymentTerm)
+           .Include(s => s.SalesPerson)
+           .Include(s => s.SaleItems).ThenInclude(i => i.Product)
+           .Include(s => s.PaymentRecords)
+           .Where(s => list.Contains(s.Id))
+           .AsSplitQuery()
            .ToListAsync();
+    }
+
+    public Task<List<Sale>> GetDueSalesAsync(Guid? customerId = null)
+    {
+        var q = _db.Sales
+           .Include(s => s.Customer)
+           .Include(s => s.PaymentTerm)
+           .Where(s => s.Status == SaleStatus.Active
+                    && s.PaymentType != PaymentType.Cash
+                    && s.AmountPaid < s.GrandTotal);
+        if (customerId.HasValue) q = q.Where(s => s.CustomerId == customerId.Value);
+        return q.OrderBy(s => s.DueDate)   // overdue first, then by due date
+                .ThenBy(s => s.SaleDate)
+                .ToListAsync();
+    }
 
     public async Task<string> GenerateInvoiceNumberAsync()
     {

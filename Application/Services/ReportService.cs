@@ -16,9 +16,18 @@ public class ReportService : IReportService
 
     public async Task<EndOfDayDto> GetEndOfDayAsync(DateTime date)
     {
-        // Use UTC boundaries
-        var from = date.ToUniversalTime().Date;
-        var to   = from.AddDays(1);
+        // `date` is the business's local calendar day, as picked on the report screen.
+        // Sale/payment timestamps are stored in UTC (DateTime.UtcNow), and every screen
+        // renders them back through .ToLocalTime() — so "today" means the local day, and
+        // the query bounds are that local midnight-to-midnight converted to UTC.
+        //
+        // Do NOT call .Date after converting: truncating the converted instant back to
+        // midnight discards the UTC offset and shifts the whole window by a day (at UTC+7
+        // this reported 07:00-yesterday to 07:00-today, so sales made after local midnight
+        // were missing while the previous evening's were counted).
+        var localMidnight = DateTime.SpecifyKind(date.Date, DateTimeKind.Local);
+        var from = localMidnight.ToUniversalTime();
+        var to   = localMidnight.AddDays(1).ToUniversalTime();
 
         var allToday   = await _sales.GetAllAsync(from, to);
         var todaySales = allToday.Where(s => s.Status == Domain.Enums.SaleStatus.Active).ToList();

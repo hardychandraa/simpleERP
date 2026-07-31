@@ -9,7 +9,13 @@ public class PaymentRecord
     public decimal  Amount      { get; set; }
     public string?  Notes       { get; set; }
     public string   CreatedBy   { get; set; } = "staff";
+    /// <summary>
+    /// Set when this payment was one line of a multi-invoice settlement. Null for an
+    /// ordinary single-invoice payment, which is the unchanged default path.
+    /// </summary>
+    public Guid?    PaymentBatchId { get; set; }
 
     // Navigation
     public Sale? Sale { get; set; }
+    public PaymentBatch? PaymentBatch { get; set; }
 }

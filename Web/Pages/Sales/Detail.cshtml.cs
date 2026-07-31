@@ -9,15 +9,18 @@ public class DetailModel : PageModel
 {
     private readonly ISaleService        _sales;
     private readonly ICommissionService  _commissions;
+    private readonly IReturnService      _returns;
     private readonly IAppSettingsService _settings;
 
-    public DetailModel(ISaleService s, ICommissionService commissions, IAppSettingsService cfg)
-    { _sales = s; _commissions = commissions; _settings = cfg; }
+    public DetailModel(ISaleService s, ICommissionService commissions,
+                       IReturnService returns, IAppSettingsService cfg)
+    { _sales = s; _commissions = commissions; _returns = returns; _settings = cfg; }
 
     public SaleDto        Sale           { get; set; } = null!;
     public AppSettingsDto AppSettings    { get; set; } = null!;
     public List<PaymentRecordDto> Payments      { get; set; } = new();
     public List<CommissionAccrualDto> Commissions { get; set; } = new();
+    public List<ReturnListDto>    Returns       { get; set; } = new();
     public decimal        TotalCollected { get; set; }
     public decimal        StillOwed      { get; set; }
 
@@ -35,6 +38,7 @@ public class DetailModel : PageModel
         AppSettings = await _settings.GetAsync();
         Payments    = sale.PaymentHistory;
         Commissions = await _commissions.GetAccrualsForSaleAsync(id);
+        Returns     = await _returns.GetReturnsForSaleAsync(id);
         TotalCollected = Payments.Sum(p => p.Amount);
         StillOwed   = Math.Max(0, sale.GrandTotal - sale.AmountPaid);
         PayInput.SaleId = id;

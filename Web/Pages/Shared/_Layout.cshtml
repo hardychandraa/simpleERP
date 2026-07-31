@@ -82,8 +82,13 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
 
     <div class="sb-sec">Purchasing</div>
     <a href="/Purchases/Create" class="@(page=="/Purchases/Create"?"active":"")">📥 New Purchase</a>
-    <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Create"?"active":"")">📦 Purchases</a>
+    <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Create"&&page!="/Purchases/Due"&&page!="/Purchases/Statement"?"active":"")">📦 Purchases</a>
+    <a href="/Purchases/Due"    class="@(page=="/Purchases/Due"||page=="/Purchases/Statement"?"active":"")">💰 Payables</a>
     <a href="/Rebates"          class="@(page.StartsWith("/Rebates")?"active":"")">💰 Rebates</a>
+
+    <div class="sb-sec">Adjustments</div>
+    <a href="/Returns"     class="@(page.StartsWith("/Returns")?"active":"")">↩ Returns</a>
+    <a href="/CreditNotes" class="@(page.StartsWith("/CreditNotes")?"active":"")">📄 Credit / Debit Notes</a>
 
     <div class="sb-sec">Inventory</div>
     <a href="/Inventory/StockIn"  class="@(page=="/Inventory/StockIn" ?"active":"")">📥 Stock In</a>

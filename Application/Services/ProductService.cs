@@ -39,8 +39,12 @@ public class ProductService : IProductService
         if (dto.UnitPrice < 0)   return ServiceResult.Fail("Unit price cannot be negative.");
         if (dto.LowStockThreshold < 0) return ServiceResult.Fail("Low stock threshold cannot be negative.");
 
+        var sku = dto.SKU.Trim().ToUpper();
+        if (await _products.SkuExistsAsync(sku))
+            return ServiceResult.Fail($"SKU '{sku}' is already used by another product.");
+
         await _products.AddAsync(new Product {
-            Id = Guid.NewGuid(), Name = dto.Name.Trim(), SKU = dto.SKU.Trim().ToUpper(),
+            Id = Guid.NewGuid(), Name = dto.Name.Trim(), SKU = sku,
             UnitPrice = dto.UnitPrice, Category = dto.Category?.Trim(),
             DefaultWarrantyMonths = dto.DefaultWarrantyMonths,
             LowStockThreshold = dto.LowStockThreshold,
@@ -55,9 +59,15 @@ public class ProductService : IProductService
         var p = await _products.GetByIdAsync(dto.Id);
         if (p == null) return ServiceResult.Fail("Product not found.");
         if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail("Product name is required.");
+        if (string.IsNullOrWhiteSpace(dto.SKU))  return ServiceResult.Fail("SKU is required.");
+        if (dto.UnitPrice < 0)   return ServiceResult.Fail("Unit price cannot be negative.");
         if (dto.LowStockThreshold < 0) return ServiceResult.Fail("Threshold cannot be negative.");
 
-        p.Name = dto.Name.Trim(); p.SKU = dto.SKU.Trim().ToUpper();
+        var sku = dto.SKU.Trim().ToUpper();
+        if (await _products.SkuExistsAsync(sku, dto.Id))
+            return ServiceResult.Fail($"SKU '{sku}' is already used by another product.");
+
+        p.Name = dto.Name.Trim(); p.SKU = sku;
         p.UnitPrice = dto.UnitPrice; p.Category = dto.Category?.Trim();
         p.DefaultWarrantyMonths = dto.DefaultWarrantyMonths;
         p.LowStockThreshold = dto.LowStockThreshold;

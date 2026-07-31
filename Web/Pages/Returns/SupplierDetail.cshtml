@@ -1,0 +1,203 @@
+@page "/Returns/Supplier/{id:guid}"
+@model SimpleERP.Web.Pages.Returns.SupplierDetailModel
+@{
+    ViewData["Title"] = $"Purchase Return {Model.Return.ReturnNumber}";
+    var isActive = Model.Return.Status == "Active";
+}
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success") no-print">@Model.Msg</div>
+}
+
+<div class="no-print" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <a href="/Returns" class="btn btn-outline btn-sm">← Returns</a>
+    <a href="/Purchases/@Model.Return.PurchaseId" class="btn btn-outline btn-sm">Purchase @Model.Return.PurchaseNumber</a>
+    <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 Print</button>
+    @if (isActive)
+    {
+        <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Return.Id" style="margin-left:auto"
+              onsubmit="return confirm('Cancel this return? The goods will come back into stock and the debit note will be voided.')">
+            <button type="submit" class="btn btn-danger btn-sm">✕ Cancel Return</button>
+        </form>
+    }
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">
+
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+        <div>
+            <div style="font-size:20px;font-weight:800;color:#1a1a2e">Purchase Return</div>
+            <div style="color:#6b7280;font-size:12px">Goods sent back to the supplier</div>
+        </div>
+        <div style="text-align:right">
+            <div style="font-size:18px;font-weight:700;color:#2563eb">@Model.Return.ReturnNumber</div>
+            <div style="color:#9ca3af;font-size:12px">@Model.Return.ReturnDate.ToLocalTime().ToString("dd MMM yyyy")</div>
+            @if (!isActive)
+            {
+                <div style="color:#dc2626;font-weight:700;font-size:13px;margin-top:4px">⛔ CANCELLED</div>
+            }
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;padding:12px;background:#f9fafb;border-radius:6px">
+        <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">Supplier</div>
+            <div style="font-weight:600">@Model.Return.SupplierName</div>
+            <div style="font-size:12px;color:#6b7280">Against purchase @Model.Return.PurchaseNumber</div>
+        </div>
+        <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">Reason</div>
+            <div style="font-weight:600">@Model.Return.Reason</div>
+        </div>
+    </div>
+
+    <table style="margin-bottom:14px">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th style="text-align:center">Qty</th>
+                <th style="text-align:right">Billed at</th>
+                <th style="text-align:right">Debit</th>
+                <th style="text-align:right">Left stock at</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model.Return.Items)
+        {
+            <tr>
+                <td>
+                    <div style="font-weight:600">@item.ProductName</div>
+                    <div style="font-size:11px;color:#9ca3af">@item.SKU</div>
+                    @if (!string.IsNullOrEmpty(item.Notes))
+                    {
+                        <div style="font-size:11px;color:#4b5563">📝 @item.Notes</div>
+                    }
+                </td>
+                <td style="text-align:center">@item.Qty.ToString("N0")</td>
+                <td style="text-align:right;color:#6b7280">@item.UnitCost.ToString("N0")</td>
+                <td style="text-align:right;font-weight:600">@item.DebitAmount.ToString("N0")</td>
+                <td style="text-align:right;color:#6b7280">@item.CostAtReturn.ToString("N0")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <div style="max-width:280px;margin-left:auto">
+        <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6">
+            <span style="color:#6b7280">Debit subtotal</span><span>@Model.Return.SubTotal.ToString("N0")</span>
+        </div>
+        @if (Model.Return.TaxAmount > 0)
+        {
+            <div style="display:flex;justify-content:space-between;padding:4px 0">
+                <span style="color:#6b7280">DPP (tax base)</span><span>@Model.Return.TaxBase.ToString("N0")</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0">
+                <span style="color:#6b7280">
+                    PPN @((Model.Return.TaxRate * 100).ToString("0.##"))% reversed
+                    @if (Model.Return.IsTaxInclusive) { <span style="font-size:11px;color:#9ca3af">(included)</span> }
+                </span>
+                <span>@Model.Return.TaxAmount.ToString("N0")</span>
+            </div>
+        }
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1a1a2e;font-size:16px;font-weight:700">
+            <span>Total Debited</span><span>@Model.Return.GrandTotal.ToString("N0")</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0">
+            <span style="color:#6b7280">Inventory released</span>
+            <span style="color:#6b7280">@Model.Return.StockReleased.ToString("N0")</span>
+        </div>
+        @if (Model.Return.ValueDifference != 0)
+        {
+            <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px">
+                <span style="color:#9ca3af">Difference</span>
+                <span style="color:@(Model.Return.ValueDifference > 0 ? "#059669" : "#dc2626")">
+                    @Model.Return.ValueDifference.ToString("N0")
+                </span>
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Return.Notes))
+    {
+        <div style="margin-top:12px;padding:10px;background:#f9fafb;border-radius:6px;font-size:13px;color:#6b7280">
+            <strong>Notes:</strong> @Model.Return.Notes
+        </div>
+    }
+</div>
+
+<div class="no-print">
+    <div class="card">
+        <div class="card-title">📄 Debit Note</div>
+        @if (Model.Return.DebitNoteId == null)
+        {
+            <p style="color:#9ca3af;font-size:13px">No debit note on this return.</p>
+        }
+        else
+        {
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+                <span style="font-weight:700;font-size:15px;color:#2563eb">@Model.Return.DebitNoteNumber</span>
+                <span class="badge @(Model.Return.DebitNoteStatus == "Open" ? "warn"
+                                   : Model.Return.DebitNoteStatus == "Settled" ? "ok" : "gray")">
+                    @Model.Return.DebitNoteStatus
+                </span>
+            </div>
+            <div style="font-size:20px;font-weight:700;margin-bottom:8px">@Model.Return.GrandTotal.ToString("N0")</div>
+            @if (Model.Return.DebitNoteStatus == "Open")
+            {
+                <p style="font-size:12px;color:#6b7280;line-height:1.6">
+                    The supplier still owes this. Settle it on the
+                    <a href="/CreditNotes">Credit &amp; Debit Notes</a> page once it has been
+                    offset against a payable or refunded.
+                </p>
+            }
+            else if (Model.Return.DebitNoteStatus == "Settled")
+            {
+                <p style="font-size:12px;color:#6b7280;line-height:1.6">
+                    Already offset or refunded — which is why this return can no longer be cancelled.
+                </p>
+            }
+            else
+            {
+                <p style="font-size:12px;color:#6b7280;line-height:1.6">
+                    Voided along with this return.
+                </p>
+            }
+            <a href="/CreditNotes" class="btn btn-outline btn-sm" style="width:100%;justify-content:center">
+                Open notes register
+            </a>
+        }
+    </div>
+
+    <div class="card">
+        <div class="card-title">What This Return Did</div>
+        <ul style="font-size:12px;color:#6b7280;line-height:1.8;padding-left:18px">
+            <li>Issued @Model.Return.Items.Sum(i => i.Qty).ToString("N0") unit(s) out of stock,
+                releasing @Model.Return.StockReleased.ToString("N0") of inventory value.</li>
+            <li>Raised debit note @Model.Return.DebitNoteNumber for @Model.Return.GrandTotal.ToString("N0").</li>
+            <li>Left purchase @Model.Return.PurchaseNumber exactly as posted — its total and
+                payments are unchanged, by design.</li>
+        </ul>
+        @if (Model.Return.ValueDifference != 0)
+        {
+            <p style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5">
+                The debit and the inventory released differ by
+                @Math.Abs(Model.Return.ValueDifference).ToString("N0") because the moving-average
+                cost has moved since these units were received. Both figures are real; neither is
+                an error.
+            </p>
+        }
+        <div class="alert alert-info" style="margin:10px 0 0;font-size:11px;line-height:1.5">
+            Volume-based rebate already accrued on this purchase is <strong>not</strong> reduced
+            automatically — whether returned goods should still count towards a threshold is a
+            supplier-agreement question, still open. Check the purchase if rebate accrued on it.
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Recorded By</div>
+        <div style="font-size:13px">@Model.Return.CreatedBy</div>
+    </div>
+</div>
+</div>

@@ -12,6 +12,7 @@
     <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 Print</button>
     @if (Model.Purchase.Status == "Active")
     {
+        <a href="/Returns/Supplier/New/@Model.Purchase.Id" class="btn btn-warn btn-sm">↪ Return items</a>
         <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Purchase.Id" style="margin-left:auto"
               onsubmit="return confirm('Cancel this purchase? Received stock will be reversed.')">
             <button type="submit" class="btn btn-danger btn-sm">✕ Cancel Purchase</button>
@@ -194,6 +195,35 @@
                     <button type="submit" class="btn btn-success" style="width:100%">✓ Record Payment</button>
                 </form>
             }
+        </div>
+    }
+
+    @if (Model.Returns.Any())
+    {
+        <div class="card">
+            <div class="card-title">↪ Returns Against This Purchase</div>
+            <table>
+                <thead><tr><th>Return</th><th style="text-align:right">Debited</th><th style="text-align:center">Status</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.Returns)
+                {
+                    <tr>
+                        <td style="font-size:12px">
+                            <a href="/Returns/Supplier/@r.Id" style="color:#2563eb;font-weight:600">@r.ReturnNumber</a>
+                            <div style="color:#9ca3af;font-size:11px">@r.ReturnDate.ToLocalTime().ToString("dd-MMM-yy") · @r.LineCount line(s)</div>
+                        </td>
+                        <td style="text-align:right;font-weight:600">@r.GrandTotal.ToString("N0")</td>
+                        <td style="text-align:center;font-size:11px">
+                            <span class="badge @(r.Status == "Active" ? "ok" : "gray")">@r.Status</span>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+            <p style="font-size:11px;color:#9ca3af;margin-top:8px">
+                The purchase total above is unchanged by design — what the supplier owes back sits
+                on the debit note each return raised.
+            </p>
         </div>
     }
 
