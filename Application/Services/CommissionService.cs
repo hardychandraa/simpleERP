@@ -85,6 +85,74 @@ public class CommissionService : ICommissionService
     }
 
     /// <summary>
+    /// Claws back commission on a customer return (HC, 2026-07-31 — the salesperson doesn't
+    /// keep commission on revenue that came back).
+    ///
+    /// Never edits or voids the original accrual rows — a customer return can happen long
+    /// after a commission has already been paid out, and a paid row can't be touched. Instead
+    /// adds one negative reversal accrual per original (positive) accrual on the returned
+    /// line, sized to the SAME fraction of the line the return represents
+    /// (<c>creditAmount / netLineTotal</c> — exactly what <see cref="ReturnService"/> already
+    /// computed for the credit note). The reversal starts unpaid, so it nets off the
+    /// salesperson's next payout rather than silently forgiving what was already paid.
+    ///
+    /// The basis for each reversal is deliberately the ORIGINAL accrual's own amount, not
+    /// the line's current running total — that keeps repeated partial returns of the same
+    /// line correct without double-clawing: two returns each taking back 30% of a line
+    /// correctly claw back 30% + 30% = 60% of what was originally earned, not 30% of a
+    /// shrinking remainder. No SaveChanges — runs inside ReturnService's transaction.
+    /// </summary>
+    public async Task ClawBackForReturnAsync(Guid saleId,
+        IReadOnlyDictionary<Guid, (decimal CreditAmount, decimal NetLineTotal)> returnedLines, string user)
+    {
+        if (returnedLines.Count == 0) return;
+
+        var accruals = await _accruals.GetBySaleAsync(saleId);
+        var clawedBack = 0;
+
+        foreach (var group in accruals.Where(a => !a.IsVoided).GroupBy(a => a.SaleItemId))
+        {
+            if (!returnedLines.TryGetValue(group.Key, out var ret) || ret.NetLineTotal <= 0m) continue;
+            var fraction = ret.CreditAmount / ret.NetLineTotal;
+            if (fraction <= 0m) continue;
+
+            foreach (var original in group.Where(a => a.Amount > 0m))
+            {
+                var clawback = Math.Round(original.Amount * fraction, 2, MidpointRounding.AwayFromZero);
+                if (clawback <= 0m) continue;
+
+                await _accruals.AddAsync(new CommissionAccrual {
+                    Id = Guid.NewGuid(), SaleId = original.SaleId, SaleItemId = original.SaleItemId,
+                    PaymentRecordId = null, SalesPersonId = original.SalesPersonId,
+                    CommissionRuleId = original.CommissionRuleId,
+                    BaseAmount = -Math.Round(original.BaseAmount * fraction, 2, MidpointRounding.AwayFromZero),
+                    Rate = original.Rate, Amount = -clawback, AccrualDate = DateTime.UtcNow
+                });
+                clawedBack++;
+            }
+        }
+
+        if (clawedBack > 0)
+            await _audit.LogAsync(user, "Commission.ClawBackForReturn",
+                $"sale {saleId}: {clawedBack} accrual(s) reversed");
+    }
+
+    /// <summary>
+    /// True if any of the given sale lines already has a commission clawback reversal (a
+    /// negative-Amount accrual — no accrual is ever created with a negative amount except by
+    /// <see cref="ClawBackForReturnAsync"/>, so the sign alone is an unambiguous marker).
+    /// Used to block cancelling a return once its clawback has taken effect — the same
+    /// "don't unwind a real consequence" boundary <c>CancelCustomerReturnAsync</c> already
+    /// applies to a settled credit note.
+    /// </summary>
+    public async Task<bool> HasClawbackForSaleItemsAsync(Guid saleId, IEnumerable<Guid> saleItemIds)
+    {
+        var ids = saleItemIds.ToHashSet();
+        var accruals = await _accruals.GetBySaleAsync(saleId);
+        return accruals.Any(a => ids.Contains(a.SaleItemId) && a.Amount < 0m);
+    }
+
+    /// <summary>
     /// Picks the rule that applies to a line: those whose scoping matches, ranked by
     /// Priority then specificity (product beats category beats general), then name.
     /// </summary>

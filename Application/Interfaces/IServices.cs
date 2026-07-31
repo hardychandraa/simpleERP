@@ -196,6 +196,12 @@ public interface ICreditNoteService {
 public interface IFinancialReportService {
     /// <summary>Commercial P&amp;L over an inclusive date range.</summary>
     Task<ProfitAndLossDto> GetProfitAndLossAsync(DateTime from, DateTime to);
+    /// <summary>
+    /// Point-in-time position: inventory, AR, AP, unclaimed rebate and commission
+    /// payable. No date range — it's "where things stand now", read from current
+    /// balances rather than from a period's movements.
+    /// </summary>
+    Task<PositionSummaryDto> GetPositionSummaryAsync();
 }
 public interface IAppSettingsService {
     Task<AppSettingsDto> GetAsync();

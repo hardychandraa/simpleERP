@@ -32,7 +32,22 @@ public interface IInventoryLedgerRepository {
     Task<decimal> GetCurrentStockAsync(Guid productId, Guid branchId);
     Task<decimal> GetCurrentAvgCostAsync(Guid productId, Guid branchId);
     Task<List<InventoryLedger>> GetAllAsync(DateTime? from = null, DateTime? to = null);
+    /// <summary>
+    /// What the stock on hand is currently worth, for the Position Summary.
+    /// One grouped query rather than the per-product loop in
+    /// <c>InventoryService.GetAllStockLevelsAsync</c> — a position report must not
+    /// issue two round trips per product.
+    /// </summary>
+    Task<InventoryValuation> GetValuationAsync(Guid branchId);
 }
+
+/// <summary>
+/// Stock-on-hand valuation at a point in time. <paramref name="TotalValue"/> uses the
+/// same basis as the rest of the app — quantity on hand × the unit cost of the most
+/// recent stock-in — so the Position Summary agrees with the Inventory screen.
+/// Products whose stock has gone to zero contribute nothing and aren't counted.
+/// </summary>
+public record InventoryValuation(int ProductsInStock, decimal TotalValue);
 
 public interface ISaleRepository {
     Task<Sale?> GetByIdWithItemsAsync(Guid id);
@@ -57,7 +72,20 @@ public interface ISaleRepository {
     /// memory — a P&amp;L can span a full year, which GetAllAsync would materialise.
     /// </summary>
     Task<SalesPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to);
+    /// <summary>
+    /// Outstanding receivables as of now — the same population as
+    /// <see cref="GetDueSalesAsync"/>, aggregated in SQL instead of materialised.
+    /// Tax-inclusive, because a receivable is cash owed, not turnover.
+    /// </summary>
+    Task<ReceivablesTotals> GetReceivablesTotalAsync();
 }
+
+/// <summary>
+/// AR position. <paramref name="Overdue"/> is the slice already past its due date —
+/// the only ageing this app does today; real 30/60/90 buckets are a known gap.
+/// Both figures are tax-inclusive.
+/// </summary>
+public record ReceivablesTotals(int OpenInvoices, decimal Total, decimal Overdue);
 
 /// <summary>
 /// Period totals backing the P&amp;L report.
@@ -158,7 +186,15 @@ public interface IPurchaseRepository {
     /// caller adds the current line's qty itself.
     /// </summary>
     Task<decimal> GetPurchasedQtyAsync(Guid supplierId, Guid productId, DateTime? from, DateTime? to);
+    /// <summary>
+    /// Outstanding payables as of now — the AP mirror of
+    /// <see cref="ISaleRepository.GetReceivablesTotalAsync"/>, aggregated in SQL.
+    /// </summary>
+    Task<PayablesTotals> GetPayablesTotalAsync();
 }
+
+/// <summary>AP position, tax-inclusive. Mirrors <see cref="ReceivablesTotals"/>.</summary>
+public record PayablesTotals(int OpenPurchases, decimal Total, decimal Overdue);
 
 /// <summary>
 /// Period totals for the purchase side. <paramref name="NetPurchases"/> is ex-PPN
@@ -203,7 +239,28 @@ public interface IRebateAccrualRepository {
     Task<List<RebateAccrual>> GetAllAsync(Guid? supplierId = null, bool? outstandingOnly = null);
     /// <summary>Suppliers that currently have any outstanding accrual, with counts — the claim landing page.</summary>
     Task<List<RebateOutstandingBySupplier>> GetOutstandingSummaryAsync();
+    /// <summary>
+    /// Rebate earned in [from, to), voided accruals excluded — the P&amp;L's
+    /// Pendapatan Rebat line. Set-based, since a P&amp;L can span a year.
+    /// <c>InKindCount</c>/<c>LuckyDrawCount</c> are carried because those two reward
+    /// types accrue <c>Amount = 0</c> by design (unvaluable until settled), so a
+    /// zero cash figure alongside a non-zero count is meaningful, not a bug.
+    /// </summary>
+    Task<RebateAccrualPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to);
+    /// <summary>Unclaimed rebate as of now, across all suppliers — the Position Summary asset line.</summary>
+    Task<RebateAccrualPeriodTotals> GetOutstandingTotalAsync();
 }
+
+/// <summary>
+/// Rebate accrual rollup. <paramref name="CashAccrued"/> is gross of withholding:
+/// the 15% deduction happens at settlement and is a prepaid tax credit, not a cost
+/// of earning the rebate, so income is recognised at the gross figure.
+/// </summary>
+public record RebateAccrualPeriodTotals(
+    int     AccrualCount,
+    decimal CashAccrued,
+    int     InKindCount,
+    int     LuckyDrawCount);
 
 /// <summary>One supplier's outstanding-rebate rollup.</summary>
 public record RebateOutstandingBySupplier(
@@ -218,7 +275,27 @@ public interface IRebateRealizationRepository {
     Task AddAsync(RebateRealization realization);
     Task<RebateRealization?> GetByIdAsync(Guid id);
     Task<List<RebateRealization>> GetAllAsync(Guid? supplierId = null, DateTime? from = null, DateTime? to = null);
+    /// <summary>
+    /// Rebate actually settled in [from, to). Mostly a reconciliation memo — the P&amp;L
+    /// recognises rebate when it accrues — except for <c>LuckyDraw</c>, which accrues
+    /// zero because its value is unknowable until drawn, so it can only be recognised
+    /// here. Set-based.
+    /// </summary>
+    Task<RebateRealizationPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to);
 }
+
+/// <summary>
+/// Rebate settlement rollup. <paramref name="LuckyDrawGross"/> is separated out
+/// because it is the one slice the accrual side cannot see, so it is the only part
+/// of this record the P&amp;L adds to income — adding the rest would double-count
+/// rebate already recognised when it accrued.
+/// </summary>
+public record RebateRealizationPeriodTotals(
+    int     RealizationCount,
+    decimal Gross,
+    decimal Withholding,
+    decimal Net,
+    decimal LuckyDrawGross);
 
 public interface ICommissionRuleRepository {
     Task<CommissionRule?> GetByIdAsync(Guid id);
@@ -242,7 +319,22 @@ public interface ICommissionAccrualRepository {
     Task<List<CommissionAccrual>> GetAllAsync(Guid? salesPersonId = null, bool? unpaidOnly = null);
     /// <summary>Salespeople with any unpaid accrual, with counts and totals — the payout landing page.</summary>
     Task<List<CommissionUnpaidBySalesPerson>> GetUnpaidSummaryAsync();
+    /// <summary>
+    /// Commission earned in [from, to), voided accruals excluded — the P&amp;L's Komisi
+    /// Penjualan line. Note this is an <em>earned-on-collection</em> figure: an accrual's
+    /// date is when the money came in, not when the invoice was raised, so commission
+    /// in a period will not tie to that period's Penjualan. That is intended.
+    /// </summary>
+    Task<CommissionPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to);
+    /// <summary>Unpaid commission as of now — the Position Summary liability line.</summary>
+    Task<CommissionPeriodTotals> GetUnpaidTotalAsync();
 }
+
+/// <summary>
+/// Commission rollup. Gross — commission carries no withholding split today
+/// (unlike rebate); whether PPh 21 applies is an open question for the consultant.
+/// </summary>
+public record CommissionPeriodTotals(int AccrualCount, decimal Amount);
 
 /// <summary>One salesperson's unpaid-commission rollup.</summary>
 public record CommissionUnpaidBySalesPerson(

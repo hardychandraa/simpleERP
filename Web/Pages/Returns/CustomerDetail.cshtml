@@ -169,11 +169,14 @@
             <li>Raised credit note @Model.Return.CreditNoteNumber for @Model.Return.GrandTotal.ToString("N0").</li>
             <li>Left invoice @Model.Return.InvoiceNumber exactly as posted — its total and payments
                 are unchanged, by design.</li>
+            <li>Clawed back the commission earned on the returned units, if this invoice was
+                credited to a sales person.</li>
         </ul>
         <div class="alert alert-info" style="margin:10px 0 0;font-size:11px;line-height:1.5">
-            Commission already accrued on this invoice is <strong>not</strong> clawed back
-            automatically — whether a returned sale reduces commission is a policy question,
-            still open. Check the invoice if commission was earned on it.
+            The clawback is posted as a <strong>negative accrual</strong>, not by editing or
+            deleting what was already earned — so it nets off the sales person's next payout
+            even if the original commission has already been paid out. Because of that, this
+            return can no longer be cancelled once its clawback exists.
         </div>
     </div>
 

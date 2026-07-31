@@ -71,8 +71,14 @@ public class PurchaseService : IPurchaseService
                 $"'{supplier.Name}' already has an active purchase with document number " +
                 $"'{supplierDoc}'. Cancel that one first if this is a correction.");
 
-        var purchaseDate = dto.PurchaseDate?.Date ?? DateTime.UtcNow.Date;
-        if (purchaseDate > DateTime.UtcNow.Date.AddDays(1))
+        // Compared local-to-local, matching Sale's stricter guard (see SaleService.CreateAsync
+        // and decisions.md, 2026-07-31) — no grace day, and the no-date-supplied fallback is
+        // local "today" rather than the server's UTC calendar day, which trails local by up to
+        // 7 hours on this box and would otherwise backdate an unset date during the early
+        // morning.
+        var todayLocal   = DateTime.Now.Date;
+        var purchaseDate = dto.PurchaseDate?.Date ?? todayLocal;
+        if (purchaseDate > todayLocal)
             return ServiceResult<PurchaseDto>.Fail("Purchase date cannot be in the future.");
 
         // Validate every line before anything is written.

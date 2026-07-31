@@ -27,13 +27,14 @@
 </div>
 
 <div class="stats" style="grid-template-columns:repeat(3,1fr)">
-  <div class="stat blue"><div class="stat-lbl">Penjualan (excl. PPN)</div><div class="stat-val" style="font-size:18px">@Model.Report.Revenue.ToString("N0")</div></div>
-  <div class="stat orange"><div class="stat-lbl">HPP</div><div class="stat-val" style="font-size:18px">@Model.Report.Cogs.ToString("N0")</div></div>
+  <div class="stat blue"><div class="stat-lbl">Penjualan Bersih (excl. PPN)</div><div class="stat-val" style="font-size:18px">@Model.Report.NetRevenue.ToString("N0")</div></div>
+  <div class="stat orange"><div class="stat-lbl">HPP Bersih</div><div class="stat-val" style="font-size:18px">@Model.Report.NetCogs.ToString("N0")</div></div>
   <div class="stat green"><div class="stat-lbl">Laba Kotor</div><div class="stat-val" style="font-size:18px">@Model.Report.GrossProfit.ToString("N0")</div></div>
 </div>
-<div class="stats" style="grid-template-columns:repeat(2,1fr)">
-  <div class="stat red"><div class="stat-lbl">Biaya Usaha</div><div class="stat-val" style="font-size:18px">@Model.Report.OperatingExpenses.ToString("N0")</div></div>
+<div class="stats" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat red"><div class="stat-lbl">Biaya Usaha + Komisi</div><div class="stat-val" style="font-size:18px">@((Model.Report.OperatingExpenses + Model.Report.CommissionExpense).ToString("N0"))</div></div>
   <div class="stat @(Model.Report.OperatingProfit >= 0 ? "green" : "red")"><div class="stat-lbl">Laba Usaha</div><div class="stat-val" style="font-size:18px">@Model.Report.OperatingProfit.ToString("N0")</div></div>
+  <div class="stat @(Model.Report.NetProfit >= 0 ? "green" : "red")"><div class="stat-lbl">Laba Bersih</div><div class="stat-val" style="font-size:18px">@Model.Report.NetProfit.ToString("N0")</div></div>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -46,10 +47,37 @@
           <td style="padding:7px 0">Penjualan <span style="color:#9ca3af;font-size:11px">(excl. PPN)</span></td>
           <td style="text-align:right;font-weight:600">@Model.Report.Revenue.ToString("N0")</td>
         </tr>
+        @if (Model.Report.SalesReturnCount > 0)
+        {
+          <tr>
+            <td style="padding:4px 0 4px 14px;color:#dc2626;font-size:13px">
+              (&minus;) Retur Penjualan
+              <span style="color:#d1d5db;font-size:11px">×@Model.Report.SalesReturnCount</span>
+            </td>
+            <td style="text-align:right;color:#dc2626;font-size:13px">@Model.Report.SalesReturns.ToString("N0")</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0;border-top:1px solid #f3f4f6">Penjualan Bersih</td>
+            <td style="text-align:right;font-weight:600;border-top:1px solid #f3f4f6">@Model.Report.NetRevenue.ToString("N0")</td>
+          </tr>
+        }
         <tr>
           <td style="padding:7px 0;color:#dc2626">(&minus;) Harga Pokok Penjualan</td>
           <td style="text-align:right;font-weight:600;color:#dc2626">@Model.Report.Cogs.ToString("N0")</td>
         </tr>
+        @if (Model.Report.SalesReturnCogs != 0)
+        {
+          <tr>
+            <td style="padding:4px 0 4px 14px;color:#059669;font-size:13px" title="Cost of returned goods put back into stock, at the same cost the sale expensed">
+              (+) HPP atas Retur <span style="color:#9ca3af;font-size:11px">(dikembalikan ke stok)</span>
+            </td>
+            <td style="text-align:right;color:#059669;font-size:13px">@Model.Report.SalesReturnCogs.ToString("N0")</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0;border-top:1px solid #f3f4f6;color:#dc2626">HPP Bersih</td>
+            <td style="text-align:right;font-weight:600;border-top:1px solid #f3f4f6;color:#dc2626">@Model.Report.NetCogs.ToString("N0")</td>
+          </tr>
+        }
         <tr style="border-top:2px solid #1a1a2e">
           <td style="padding:9px 0;font-weight:700;font-size:15px">Laba Kotor</td>
           <td style="text-align:right;font-weight:700;font-size:15px;color:#059669">@Model.Report.GrossProfit.ToString("N0")</td>
@@ -93,6 +121,16 @@
           <td style="padding:7px 0;color:#dc2626;border-top:1px solid #f3f4f6">(&minus;) Total Biaya Usaha</td>
           <td style="text-align:right;font-weight:600;color:#dc2626;border-top:1px solid #f3f4f6">@Model.Report.OperatingExpenses.ToString("N0")</td>
         </tr>
+        <tr>
+          <td style="padding:7px 0;color:#dc2626" title="Commission accrued in this period. Earned on collection, so it follows the payment date, not the invoice date.">
+            (&minus;) Komisi Penjualan
+            @if (Model.Report.CommissionAccrualCount > 0)
+            {
+              <span style="color:#d1d5db;font-size:11px">×@Model.Report.CommissionAccrualCount</span>
+            }
+          </td>
+          <td style="text-align:right;font-weight:600;color:#dc2626">@Model.Report.CommissionExpense.ToString("N0")</td>
+        </tr>
         <tr style="border-top:2px solid #1a1a2e">
           <td style="padding:9px 0;font-weight:700;font-size:15px">Laba Usaha</td>
           <td style="text-align:right;font-weight:700;font-size:15px;color:@(Model.Report.OperatingProfit >= 0 ? "#059669" : "#dc2626")">
@@ -108,6 +146,63 @@
             <td style="text-align:right;color:#d97706;font-size:11px">@Model.Report.NonDeductibleExpenses.ToString("N0")</td>
           </tr>
         }
+
+        <tr>
+          <td colspan="2" style="padding:14px 0 4px;font-weight:700;font-size:13px;color:#6b7280;border-top:1px solid #f3f4f6">
+            Pendapatan / Beban Luar Usaha
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:5px 0 5px 14px;color:#6b7280;font-size:13px" title="Rebate earned from suppliers, gross of the 15% withholding">
+            (+) Pendapatan Rebat
+            @if (Model.Report.RebateAccrualCount > 0)
+            {
+              <span style="color:#d1d5db;font-size:11px">×@Model.Report.RebateAccrualCount</span>
+            }
+          </td>
+          <td style="text-align:right;color:#059669;font-size:13px">@Model.Report.RebateIncome.ToString("N0")</td>
+        </tr>
+        @if (Model.Report.RebateLuckyDrawRealized != 0)
+        {
+          <tr>
+            <td style="padding:2px 0 2px 28px;color:#9ca3af;font-size:11px">
+              of which Lucky Draw, recognised on settlement
+            </td>
+            <td style="text-align:right;color:#9ca3af;font-size:11px">@Model.Report.RebateLuckyDrawRealized.ToString("N0")</td>
+          </tr>
+        }
+        @if (Model.Report.RebateInKindCount > 0)
+        {
+          <tr>
+            <td colspan="2" style="padding:2px 0 2px 28px;color:#9ca3af;font-size:11px">
+              @Model.Report.RebateInKindCount in-kind reward@(Model.Report.RebateInKindCount == 1 ? "" : "s")
+              received &mdash; booked as stock, not income, so the benefit shows up in margin when sold
+            </td>
+          </tr>
+        }
+        @if (Model.Report.PurchaseReturnCount > 0)
+        {
+          <tr>
+            <td style="padding:5px 0 5px 14px;color:#6b7280;font-size:13px"
+                title="What the supplier credited back (@Model.Report.PurchaseReturnCredit.ToString("N0")) less the inventory value the goods left at (@Model.Report.PurchaseReturnStockValue.ToString("N0"))">
+              (&plusmn;) Selisih Retur Pembelian
+              <span style="color:#d1d5db;font-size:11px">×@Model.Report.PurchaseReturnCount</span>
+            </td>
+            <td style="text-align:right;font-size:13px;color:@(Model.Report.PurchaseReturnVariance >= 0 ? "#059669" : "#dc2626")">
+              @Model.Report.PurchaseReturnVariance.ToString("N0")
+            </td>
+          </tr>
+        }
+        <tr style="border-top:2px solid #1a1a2e">
+          <td style="padding:9px 0;font-weight:800;font-size:16px">Laba Bersih</td>
+          <td style="text-align:right;font-weight:800;font-size:16px;color:@(Model.Report.NetProfit >= 0 ? "#059669" : "#dc2626")">
+            @Model.Report.NetProfit.ToString("N0")
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:#6b7280;font-size:12px">Margin bersih</td>
+          <td style="text-align:right;color:#6b7280;font-size:12px">@Model.Report.NetMarginPct.ToString("N2")%</td>
+        </tr>
       </tbody>
     </table>
 
@@ -115,8 +210,8 @@
     {
       <div class="alert alert-warning" style="margin-top:16px;font-size:12px;line-height:1.6">
         <strong>This is not yet a complete P&amp;L.</strong>
-        It stops at Laba Usaha — the sections below have no data source in the system yet,
-        so no net profit figure is shown rather than showing a misleading one:
+        The sections below have no data source in the system yet, so they are named
+        rather than silently omitted:
         <ul style="margin:8px 0 0 18px;padding:0">
           @foreach (var s in Model.Report.PendingSections)
           {
@@ -135,6 +230,32 @@
           <td style="padding:7px 0">PPN Keluaran collected</td>
           <td style="text-align:right;font-weight:600">@Model.Report.TaxCollected.ToString("N0")</td>
         </tr>
+        @if (Model.Report.TaxOnSalesReturns != 0)
+        {
+          <tr>
+            <td style="padding:4px 0 4px 14px;color:#6b7280;font-size:13px">(&minus;) reversed by sales returns</td>
+            <td style="text-align:right;color:#dc2626;font-size:13px">@Model.Report.TaxOnSalesReturns.ToString("N0")</td>
+          </tr>
+        }
+        <tr>
+          <td style="padding:7px 0;border-top:1px solid #f3f4f6">PPN Masukan paid <span style="color:#9ca3af;font-size:11px">(reclaimable)</span></td>
+          <td style="text-align:right;font-weight:600;border-top:1px solid #f3f4f6">@Model.Report.TaxPaid.ToString("N0")</td>
+        </tr>
+        @if (Model.Report.TaxOnPurchaseReturns != 0)
+        {
+          <tr>
+            <td style="padding:4px 0 4px 14px;color:#6b7280;font-size:13px">(&minus;) reversed by purchase returns</td>
+            <td style="text-align:right;color:#dc2626;font-size:13px">@Model.Report.TaxOnPurchaseReturns.ToString("N0")</td>
+          </tr>
+        }
+        <tr style="border-top:2px solid #1a1a2e">
+          <td style="padding:9px 0;font-weight:700">
+            @(Model.Report.NetVatPosition >= 0 ? "PPN owed (Kurang Bayar)" : "PPN credit (Lebih Bayar)")
+          </td>
+          <td style="text-align:right;font-weight:700;color:@(Model.Report.NetVatPosition >= 0 ? "#dc2626" : "#059669")">
+            @Math.Abs(Model.Report.NetVatPosition).ToString("N0")
+          </td>
+        </tr>
         <tr>
           <td style="padding:7px 0;border-top:1px solid #f3f4f6">Total invoiced <span style="color:#9ca3af;font-size:11px">(incl. PPN)</span></td>
           <td style="text-align:right;font-weight:600;border-top:1px solid #f3f4f6">@Model.Report.GrossSales.ToString("N0")</td>
@@ -142,14 +263,16 @@
       </tbody>
     </table>
     <p style="font-size:11px;color:#6b7280;margin-top:14px;line-height:1.6">
-      PPN is shown as a memo line, not as income. It is collected on the government's
+      PPN is shown as a memo, not as income. It is collected on the government's
       behalf and owed onward, so including it in Penjualan would overstate turnover.
       <strong>Total invoiced</strong> is the tax-inclusive figure — use that one when
       tying this report back to cash received and outstanding receivables.
     </p>
     <p style="font-size:11px;color:#9ca3af;margin-top:10px;line-height:1.6">
-      PPN Masukan (input tax on purchases) is not included — it arrives with the
-      Purchase module, after which this becomes a true payable position.
+      The net PPN figure is <strong>indicative only</strong>: it is this period's output
+      tax less this period's input tax, and does not model credits carried forward from
+      earlier months. Your SPT Masa filing remains the consultant's work — this gives
+      them the inputs.
     </p>
   </div>
 
@@ -158,6 +281,9 @@
 <p style="font-size:11px;color:#9ca3af;margin-top:14px;line-height:1.6">
   Commercial basis, matching the SPT column of the annual statement. Fiscal corrections
   and PPh Badan remain your tax consultant's work — this report supplies the inputs.
-  Cancelled invoices are excluded; HPP uses each line's cost as captured at the moment
-  of sale, so later cost changes cannot restate historical margin.
+  Cancelled invoices, purchases and returns are excluded; HPP uses each line's cost as
+  captured at the moment of sale, so later cost changes cannot restate historical margin.
+  <strong>Rebate</strong> is recognised when it is earned and <strong>komisi</strong> when
+  it is collected on, so both follow their own timing rather than the invoice date — a
+  period's commission will not tie exactly to that period's Penjualan, by design.
 </p>

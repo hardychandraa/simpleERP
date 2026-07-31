@@ -39,15 +39,18 @@ public class ReturnService : IReturnService
     private readonly IBranchRepository         _branches;
     private readonly IAuditLogRepository       _audit;
     private readonly InventoryService          _inventory;
+    private readonly CommissionService         _commissions;
+    private readonly RebateService             _rebates;
     private readonly IUnitOfWork               _uow;
 
     public ReturnService(ICustomerReturnRepository customerReturns,
         ISupplierReturnRepository supplierReturns, ICreditNoteRepository notes,
         ISaleRepository sales, IPurchaseRepository purchases, IBranchRepository branches,
-        IAuditLogRepository audit, InventoryService inventory, IUnitOfWork uow)
+        IAuditLogRepository audit, InventoryService inventory,
+        CommissionService commissions, RebateService rebates, IUnitOfWork uow)
     { _customerReturns=customerReturns; _supplierReturns=supplierReturns; _notes=notes;
       _sales=sales; _purchases=purchases; _branches=branches; _audit=audit;
-      _inventory=inventory; _uow=uow; }
+      _inventory=inventory; _commissions=commissions; _rebates=rebates; _uow=uow; }
 
     // ══ Sales returns ══════════════════════════════════════════════════════════
 
@@ -117,6 +120,11 @@ public class ReturnService : IReturnService
         var returnId = Guid.NewGuid();
         var items    = new List<CustomerReturnItem>();
 
+        // Feeds the commission clawback below: for each returned line, exactly the credit
+        // and net-line figures already computed here, so the clawback uses the same fraction
+        // the customer was actually credited — not a separately re-derived one.
+        var returnedLines = new Dictionary<Guid, (decimal CreditAmount, decimal NetLineTotal)>();
+
         // Validate and price every line before anything is written.
         foreach (var input in dto.Items)
         {
@@ -135,7 +143,8 @@ public class ReturnService : IReturnService
                     $"{available:N2} of the {line.Qty:N2} sold is still returnable" +
                     (tally.Qty > 0 ? $" ({tally.Qty:N2} already returned)." : "."));
 
-            var netLine = line.LineTotal - line.AllocatedInvoiceDiscount;
+            var netLine  = line.LineTotal - line.AllocatedInvoiceDiscount;
+            var creditAmount = SliceCredit(netLine, line.Qty, input.Qty, available, tally.Amount);
 
             items.Add(new CustomerReturnItem {
                 Id               = Guid.NewGuid(),
@@ -144,11 +153,12 @@ public class ReturnService : IReturnService
                 ProductId        = line.ProductId,
                 Qty              = input.Qty,
                 UnitPrice        = line.UnitPrice,
-                CreditAmount     = SliceCredit(netLine, line.Qty, input.Qty, available, tally.Amount),
+                CreditAmount     = creditAmount,
                 CostAtSale       = line.CostAtSale,
                 Notes            = SanitiseText(input.Notes, 500),
                 Product          = line.Product
             });
+            returnedLines[line.Id] = (creditAmount, netLine);
         }
 
         var subTotal = items.Sum(i => i.CreditAmount);
@@ -202,6 +212,10 @@ public class ReturnService : IReturnService
             CreatedAt              = DateTime.UtcNow
         });
 
+        // The salesperson doesn't keep commission on revenue that came back — see
+        // CommissionService.ClawBackForReturnAsync for the fractional-reversal design.
+        await _commissions.ClawBackForReturnAsync(sale.Id, returnedLines, user);
+
         await _audit.LogAsync(user, "CustomerReturn.Create",
             $"{ret.ReturnNumber} | {sale.InvoiceNumber} | {items.Count} line(s) | {grandTotal:N0}");
 
@@ -224,6 +238,15 @@ public class ReturnService : IReturnService
                 $"Credit note {note.DocumentNumber} has already been settled — the customer " +
                 "has had the money or the credit. Cancelling the return now would leave that " +
                 "settlement unsupported; raise a fresh sale or debit note instead.");
+
+        // Same boundary as the settled-note check above: once commission has actually been
+        // clawed back for a line on this return, undoing the return would leave that
+        // clawback standing with nothing to justify it. See CommissionService.HasClawbackForSaleItemsAsync.
+        if (await _commissions.HasClawbackForSaleItemsAsync(ret.SaleId, ret.Items.Select(i => i.SaleItemId)))
+            return ServiceResult.Fail(
+                "Commission has already been clawed back against this return — cancelling it " +
+                "now would leave that clawback standing with nothing to justify it. Raise a " +
+                "fresh sale instead if this return was a mistake.");
 
         var branch = await _branches.GetDefaultAsync();
         if (branch == null) return ServiceResult.Fail("Default branch not found.");
@@ -412,6 +435,10 @@ public class ReturnService : IReturnService
             CreatedAt              = DateTime.UtcNow
         });
 
+        // Returned goods no longer count toward a Volume rebate threshold — see
+        // RebateService.ClawBackVolumeForReturnAsync for exactly what gets re-checked.
+        await _rebates.ClawBackVolumeForReturnAsync(purchase, items, user);
+
         await _audit.LogAsync(user, "SupplierReturn.Create",
             $"{ret.ReturnNumber} | {purchase.PurchaseNumber} | {items.Count} line(s) | {grandTotal:N0}");
 
@@ -434,6 +461,16 @@ public class ReturnService : IReturnService
                 $"Debit note {note.DocumentNumber} has already been settled — the supplier " +
                 "has already credited it. Cancelling the return now would leave that " +
                 "settlement unsupported; raise a fresh purchase instead.");
+
+        // Same boundary as the settled-note check above: once a Volume rebate accrual has
+        // actually been clawed back because of this return, undoing the return would leave
+        // that clawback standing with nothing to justify it. See
+        // RebateService.HasClawbackForPurchaseItemsAsync.
+        if (await _rebates.HasClawbackForPurchaseItemsAsync(ret.PurchaseId, ret.Items.Select(i => i.PurchaseItemId)))
+            return ServiceResult.Fail(
+                "Rebate has already been clawed back against this return — cancelling it now " +
+                "would leave that clawback standing with nothing to justify it. Raise a fresh " +
+                "purchase instead if this return was a mistake.");
 
         var branch = await _branches.GetDefaultAsync();
         if (branch == null) return ServiceResult.Fail("Default branch not found.");
@@ -487,13 +524,17 @@ public class ReturnService : IReturnService
 
     /// <summary>
     /// A return can't predate the document it reverses, and can't be in the future.
-    /// Returns the error message, or null and the resolved date.
+    /// Compared local-to-local, matching Sale's stricter guard — see decisions.md,
+    /// 2026-07-31. No grace day, and the fallback for no date supplied is local "today"
+    /// rather than the server's UTC calendar day. Returns the error message, or null and
+    /// the resolved date.
     /// </summary>
     private static string? ValidateReturnDate(DateTime? supplied, DateTime sourceDate,
         string sourceLabel, out DateTime returnDate)
     {
-        returnDate = supplied?.Date ?? DateTime.UtcNow.Date;
-        if (returnDate > DateTime.UtcNow.Date.AddDays(1))
+        var todayLocal = DateTime.Now.Date;
+        returnDate = supplied?.Date ?? todayLocal;
+        if (returnDate > todayLocal)
             return "Return date cannot be in the future.";
         if (returnDate < sourceDate.Date)
             return $"Return date cannot be before the {sourceLabel} date " +

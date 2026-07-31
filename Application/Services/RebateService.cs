@@ -200,6 +200,91 @@ public class RebateService : IRebateService
         }
     }
 
+    /// <summary>
+    /// Claws back Volume-condition rebate on a purchase return (HC, 2026-07-31 — a return
+    /// reduces how much was really bought, and returned goods shouldn't count toward a
+    /// supplier's threshold). Scoped deliberately to Volume: PriceDrop rebate is about the
+    /// price paid on the units kept, which a return doesn't change, so it's left alone.
+    ///
+    /// Re-checks each Volume accrual this purchase generated against the CURRENT cumulative
+    /// purchased qty for its product (via <see cref="IPurchaseRepository.GetPurchasedQtyAsync"/>,
+    /// which already nets out every return saved so far) minus this not-yet-saved return's own
+    /// quantity — i.e. "does the threshold still clear once this return lands." If not, the
+    /// original accrual is offset by a negative reversal row, never edited or deleted, so an
+    /// already-settled realization stays intact and the reversal nets off the next claim
+    /// instead of silently vanishing. Settled/voided accruals are left alone. No SaveChanges —
+    /// runs inside ReturnService's transaction.
+    ///
+    /// Deliberately conservative on scope: a flat, supplier-wide reward (no single product
+    /// to check, RewardType FixedCash/CreditNote with rule.ProductId null) is left standing —
+    /// there's no single "which product's return should void this" answer for it. A
+    /// ThresholdValue-only rule (no ThresholdQty) is also left standing — a return doesn't
+    /// change what the kept units cost, so a value threshold isn't pulled back by qty alone.
+    /// </summary>
+    public async Task ClawBackVolumeForReturnAsync(Purchase purchase,
+        IReadOnlyList<SupplierReturnItem> returnedItems, string user)
+    {
+        var accruals = await _accruals.GetByPurchaseAsync(purchase.Id);
+        var candidates = accruals.Where(a => !a.IsVoided && a.RebateRealizationId == null
+                                           && a.Rule != null
+                                           && a.Rule.ConditionType == RebateConditionType.Volume
+                                           && a.Rule.ThresholdQty.HasValue)
+                                  .ToList();
+        if (candidates.Count == 0) return;
+
+        var returnedQtyByProduct = returnedItems
+            .GroupBy(i => i.ProductId)
+            .ToDictionary(g => g.Key, g => g.Sum(i => i.Qty));
+
+        var voided = 0;
+        foreach (var accrual in candidates)
+        {
+            var rule = accrual.Rule!;
+
+            // Which product this accrual's continued validity hinges on.
+            Guid? productId = accrual.PurchaseItemId.HasValue
+                ? purchase.PurchaseItems.FirstOrDefault(i => i.Id == accrual.PurchaseItemId.Value)?.ProductId
+                : rule.ProductId;
+            if (productId == null) continue;   // supplier-wide flat reward — see doc comment
+
+            if (!returnedQtyByProduct.TryGetValue(productId.Value, out var returnedQty) || returnedQty <= 0m)
+                continue;
+
+            var cumulativeAfter = await _purchases.GetPurchasedQtyAsync(
+                purchase.SupplierId, productId.Value, rule.PeriodStart, rule.PeriodEnd) - returnedQty;
+            if (cumulativeAfter >= rule.ThresholdQty!.Value) continue;   // still clears it
+
+            await _accruals.AddAsync(new RebateAccrual {
+                Id = Guid.NewGuid(), RebateRuleId = accrual.RebateRuleId, SupplierId = accrual.SupplierId,
+                PurchaseId = accrual.PurchaseId, PurchaseItemId = accrual.PurchaseItemId,
+                RewardType = accrual.RewardType, Qty = -accrual.Qty, Amount = -accrual.Amount,
+                AccrualDate = DateTime.UtcNow
+            });
+            voided++;
+        }
+
+        if (voided > 0)
+            await _audit.LogAsync(user, "Rebate.ClawBackVolumeForReturn",
+                $"purchase {purchase.PurchaseNumber}: {voided} accrual(s) no longer clear their threshold");
+    }
+
+    /// <summary>
+    /// True if this purchase already has a Volume clawback reversal (a negative-Amount
+    /// accrual — no accrual is ever created with a negative amount except by
+    /// <see cref="ClawBackVolumeForReturnAsync"/>, so the sign alone is an unambiguous
+    /// marker) touching any of the given lines. Used to block cancelling a return once its
+    /// clawback has taken effect — the same "don't unwind a real consequence" boundary
+    /// <c>CancelSupplierReturnAsync</c> already applies to a settled debit note. Flat
+    /// (whole-purchase) reversals have no <c>PurchaseItemId</c> and block any return against
+    /// the purchase, since they aren't tied to one line.
+    /// </summary>
+    public async Task<bool> HasClawbackForPurchaseItemsAsync(Guid purchaseId, IEnumerable<Guid> purchaseItemIds)
+    {
+        var ids = purchaseItemIds.ToHashSet();
+        var accruals = await _accruals.GetByPurchaseAsync(purchaseId);
+        return accruals.Any(a => a.Amount < 0m && (a.PurchaseItemId == null || ids.Contains(a.PurchaseItemId.Value)));
+    }
+
     // ── Realization (own transaction) ──
 
     public async Task<ServiceResult> RealizeCashAsync(RealizeCashDto dto, string user)

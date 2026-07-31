@@ -1,0 +1,185 @@
+@page "/Reports/Position"
+@model SimpleERP.Web.Pages.Reports.PositionModel
+@{ ViewData["Title"] = "Position Summary"; }
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:18px" class="no-print">
+  <button onclick="window.print()" class="btn btn-outline btn-sm">🖨 Print Report</button>
+</div>
+
+<div style="text-align:center;margin-bottom:16px">
+  <div style="font-size:22px;font-weight:800;color:#1a1a2e">Ringkasan Posisi</div>
+  <div style="font-size:13px;color:#9ca3af">Position Summary</div>
+  <div style="color:#6b7280;margin-top:4px">
+    as of @Model.Report.AsOf.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
+  </div>
+</div>
+
+<div class="stats" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat blue">
+    <div class="stat-lbl">Total Aset Lancar</div>
+    <div class="stat-val" style="font-size:18px">@Model.Report.TotalAssets.ToString("N0")</div>
+  </div>
+  <div class="stat red">
+    <div class="stat-lbl">Total Kewajiban</div>
+    <div class="stat-val" style="font-size:18px">@Model.Report.TotalLiabilities.ToString("N0")</div>
+  </div>
+  <div class="stat @(Model.Report.NetPosition >= 0 ? "green" : "red")">
+    <div class="stat-lbl">Posisi Bersih</div>
+    <div class="stat-val" style="font-size:18px">@Model.Report.NetPosition.ToString("N0")</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+  <div class="card">
+    <div class="card-title">Aset — what the business holds</div>
+    <table style="width:100%;font-size:14px">
+      <tbody>
+        <tr>
+          <td style="padding:7px 0">
+            Persediaan <span style="color:#9ca3af;font-size:11px">(stock on hand)</span>
+            <div style="color:#9ca3af;font-size:11px">
+              @Model.Report.ProductsInStock product@(Model.Report.ProductsInStock == 1 ? "" : "s") in stock
+              &middot; <a href="/Inventory" class="no-print">Stock Levels →</a>
+            </div>
+          </td>
+          <td style="text-align:right;font-weight:600;vertical-align:top">@Model.Report.InventoryValue.ToString("N0")</td>
+        </tr>
+
+        <tr>
+          <td style="padding:7px 0;border-top:1px solid #f3f4f6">
+            Piutang Usaha <span style="color:#9ca3af;font-size:11px">(incl. PPN)</span>
+            <div style="color:#9ca3af;font-size:11px">
+              @Model.Report.OpenInvoices open invoice@(Model.Report.OpenInvoices == 1 ? "" : "s")
+              &middot; <a href="/Sales/Due" class="no-print">AR Due →</a>
+            </div>
+          </td>
+          <td style="text-align:right;font-weight:600;vertical-align:top;border-top:1px solid #f3f4f6">@Model.Report.ReceivablesGross.ToString("N0")</td>
+        </tr>
+        @if (Model.Report.ReceivablesOverdue > 0)
+        {
+          <tr>
+            <td style="padding:2px 0 2px 14px;color:#dc2626;font-size:11px">of which overdue</td>
+            <td style="text-align:right;color:#dc2626;font-size:11px">@Model.Report.ReceivablesOverdue.ToString("N0")</td>
+          </tr>
+        }
+        @if (Model.Report.OpenCreditNotes > 0)
+        {
+          <tr>
+            <td style="padding:4px 0 4px 14px;color:#dc2626;font-size:13px" title="Open credit notes owed back to customers">
+              (&minus;) Nota Kredit terbuka
+            </td>
+            <td style="text-align:right;color:#dc2626;font-size:13px">@Model.Report.OpenCreditNotes.ToString("N0")</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0">Piutang Bersih</td>
+            <td style="text-align:right;font-weight:600">@Model.Report.ReceivablesNet.ToString("N0")</td>
+          </tr>
+        }
+
+        <tr>
+          <td style="padding:7px 0;border-top:1px solid #f3f4f6">
+            Rebat belum diklaim
+            <div style="color:#9ca3af;font-size:11px">
+              @Model.Report.UnclaimedRebateCount cash accrual@(Model.Report.UnclaimedRebateCount == 1 ? "" : "s")
+              &middot; <a href="/Rebates" class="no-print">Rebates →</a>
+            </div>
+          </td>
+          <td style="text-align:right;font-weight:600;vertical-align:top;border-top:1px solid #f3f4f6">@Model.Report.UnclaimedRebate.ToString("N0")</td>
+        </tr>
+        @if (Model.Report.RebateInKindOutstanding > 0 || Model.Report.RebateLuckyDrawOutstanding > 0)
+        {
+          <tr>
+            <td colspan="2" style="padding:2px 0 2px 14px;color:#9ca3af;font-size:11px">
+              plus @Model.Report.RebateInKindOutstanding in-kind and
+              @Model.Report.RebateLuckyDrawOutstanding lucky-draw accrual@((Model.Report.RebateInKindOutstanding + Model.Report.RebateLuckyDrawOutstanding) == 1 ? "" : "s")
+              outstanding, carried without a cash value until settled
+            </td>
+          </tr>
+        }
+
+        <tr style="border-top:2px solid #1a1a2e">
+          <td style="padding:9px 0;font-weight:700;font-size:15px">Total Aset Lancar</td>
+          <td style="text-align:right;font-weight:700;font-size:15px;color:#059669">@Model.Report.TotalAssets.ToString("N0")</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Kewajiban — what the business owes</div>
+    <table style="width:100%;font-size:14px">
+      <tbody>
+        <tr>
+          <td style="padding:7px 0">
+            Utang Usaha <span style="color:#9ca3af;font-size:11px">(incl. PPN)</span>
+            <div style="color:#9ca3af;font-size:11px">
+              @Model.Report.OpenPurchases open purchase@(Model.Report.OpenPurchases == 1 ? "" : "s")
+              &middot; <a href="/Purchases/Due" class="no-print">AP Due →</a>
+            </div>
+          </td>
+          <td style="text-align:right;font-weight:600;vertical-align:top">@Model.Report.PayablesGross.ToString("N0")</td>
+        </tr>
+        @if (Model.Report.PayablesOverdue > 0)
+        {
+          <tr>
+            <td style="padding:2px 0 2px 14px;color:#dc2626;font-size:11px">of which overdue</td>
+            <td style="text-align:right;color:#dc2626;font-size:11px">@Model.Report.PayablesOverdue.ToString("N0")</td>
+          </tr>
+        }
+        @if (Model.Report.OpenDebitNotes > 0)
+        {
+          <tr>
+            <td style="padding:4px 0 4px 14px;color:#059669;font-size:13px" title="Open debit notes suppliers owe back to us">
+              (&minus;) Nota Debit terbuka
+            </td>
+            <td style="text-align:right;color:#059669;font-size:13px">@Model.Report.OpenDebitNotes.ToString("N0")</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0">Utang Bersih</td>
+            <td style="text-align:right;font-weight:600">@Model.Report.PayablesNet.ToString("N0")</td>
+          </tr>
+        }
+
+        <tr>
+          <td style="padding:7px 0;border-top:1px solid #f3f4f6">
+            Komisi terutang
+            <div style="color:#9ca3af;font-size:11px">
+              @Model.Report.CommissionPayableCount unpaid accrual@(Model.Report.CommissionPayableCount == 1 ? "" : "s")
+              &middot; <a href="/Commissions" class="no-print">Commissions →</a>
+            </div>
+          </td>
+          <td style="text-align:right;font-weight:600;vertical-align:top;border-top:1px solid #f3f4f6">@Model.Report.CommissionPayable.ToString("N0")</td>
+        </tr>
+
+        <tr style="border-top:2px solid #1a1a2e">
+          <td style="padding:9px 0;font-weight:700;font-size:15px">Total Kewajiban</td>
+          <td style="text-align:right;font-weight:700;font-size:15px;color:#dc2626">@Model.Report.TotalLiabilities.ToString("N0")</td>
+        </tr>
+        <tr style="border-top:2px solid #1a1a2e">
+          <td style="padding:9px 0;font-weight:800;font-size:16px">Posisi Bersih</td>
+          <td style="text-align:right;font-weight:800;font-size:16px;color:@(Model.Report.NetPosition >= 0 ? "#059669" : "#dc2626")">
+            @Model.Report.NetPosition.ToString("N0")
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert alert-warning" style="margin-top:16px;font-size:12px;line-height:1.6">
+      <strong>This is not a balance sheet (Neraca).</strong>
+      It shows the five balances SimpleERP can derive and prove from its own documents.
+      Cash at bank, fixed assets, capital, retained earnings and tax positions are not in
+      this system, so <em>Posisi Bersih</em> is a working-position indicator, not net worth
+      — and it is not expected to balance to zero.
+    </div>
+  </div>
+
+</div>
+
+<p style="font-size:11px;color:#9ca3af;margin-top:14px;line-height:1.6">
+  A point-in-time position, read live — there is no date filter, and re-opening this page
+  will show different numbers once anything moves. Receivables and payables are
+  tax-inclusive, because they are cash owed rather than turnover. Credit and debit notes
+  net off in aggregate, not against a specific invoice; unclaimed rebate is shown gross of
+  the 15% withholding, which is deducted when the claim actually settles.
+</p>

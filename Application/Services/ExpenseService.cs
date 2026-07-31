@@ -106,8 +106,9 @@ public class ExpenseService : IExpenseService
         if (dto.Amount <= 0)              return ServiceResult.Fail("Amount must be greater than zero.");
         if (dto.ExpenseDate == default)   return ServiceResult.Fail("Date is required.");
         // A future-dated expense is almost always a typo in the year field, and it
-        // would silently distort any period report that includes it.
-        if (dto.ExpenseDate.Date > DateTime.UtcNow.Date.AddDays(1))
+        // would silently distort any period report that includes it. Compared
+        // local-to-local, matching Sale's stricter guard — see decisions.md, 2026-07-31.
+        if (dto.ExpenseDate.Date > DateTime.Now.Date)
             return ServiceResult.Fail("Expense date cannot be in the future.");
 
         var cat = await _categories.GetByIdAsync(dto.CategoryId);

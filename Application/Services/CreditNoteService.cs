@@ -53,8 +53,12 @@ public class CreditNoteService : ICreditNoteService
         if (reason == null)  return ServiceResult.Fail("A reason for the note is required.");
         if (dto.Amount <= 0) return ServiceResult.Fail("Amount must be greater than zero.");
 
-        var noteDate = dto.NoteDate?.Date ?? DateTime.UtcNow.Date;
-        if (noteDate > DateTime.UtcNow.Date.AddDays(1))
+        // Compared local-to-local, matching Sale's stricter guard — see decisions.md,
+        // 2026-07-31. No grace day, and the fallback for no date supplied is local
+        // "today" rather than the server's UTC calendar day.
+        var todayLocal = DateTime.Now.Date;
+        var noteDate   = dto.NoteDate?.Date ?? todayLocal;
+        if (noteDate > todayLocal)
             return ServiceResult.Fail("Note date cannot be in the future.");
 
         var isCredit = dto.Type == CreditDebitType.Credit;

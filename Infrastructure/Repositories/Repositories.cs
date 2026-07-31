@@ -200,6 +200,26 @@ public class PurchaseRepository : IPurchaseRepository
         return q.OrderBy(p => p.DueDate).ThenBy(p => p.PurchaseDate).ToListAsync();
     }
 
+    public async Task<PayablesTotals> GetPayablesTotalAsync()
+    {
+        // AP mirror of SaleRepository.GetReceivablesTotalAsync — same shape, same cutoff.
+        var today = DateTime.UtcNow.Date;
+        var head = await _db.Purchases
+            .Where(p => p.Status == PurchaseStatus.Active
+                     && p.PaymentType != PaymentType.Cash
+                     && p.AmountPaid < p.GrandTotal)
+            .GroupBy(_ => 1)
+            .Select(g => new {
+                Count   = g.Count(),
+                Total   = g.Sum(p => (decimal?)(p.GrandTotal - p.AmountPaid)) ?? 0m,
+                Overdue = g.Where(p => p.DueDate != null && p.DueDate < today)
+                           .Sum(p => (decimal?)(p.GrandTotal - p.AmountPaid)) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        return new PayablesTotals(head?.Count ?? 0, head?.Total ?? 0m, head?.Overdue ?? 0m);
+    }
+
     public async Task<string> GeneratePurchaseNumberAsync()
     {
         // Same count-then-append shape as GenerateInvoiceNumberAsync, and the same
@@ -229,7 +249,21 @@ public class PurchaseRepository : IPurchaseRepository
                      && i.Purchase.Status == PurchaseStatus.Active);
         if (from.HasValue) q = q.Where(i => i.Purchase!.PurchaseDate >= from.Value);
         if (to.HasValue)   q = q.Where(i => i.Purchase!.PurchaseDate <= to.Value);
-        return await q.SumAsync(i => (decimal?)i.Qty) ?? 0m;
+        var purchased = await q.SumAsync(i => (decimal?)i.Qty) ?? 0m;
+
+        // Returned units no longer count toward a Volume threshold (HC, 2026-07-31 — see
+        // decisions.md). Windowed by the ORIGINAL purchase's date, not the return's own date,
+        // so a purchase's contribution to a period is corrected in the same period it was
+        // originally counted into, even if the return itself happens later.
+        var returnedQ = _db.SupplierReturnItems
+            .Where(i => i.ProductId == productId
+                     && i.Return!.Status == ReturnStatus.Active
+                     && i.Return.Purchase!.SupplierId == supplierId);
+        if (from.HasValue) returnedQ = returnedQ.Where(i => i.Return!.Purchase!.PurchaseDate >= from.Value);
+        if (to.HasValue)   returnedQ = returnedQ.Where(i => i.Return!.Purchase!.PurchaseDate <= to.Value);
+        var returned = await returnedQ.SumAsync(i => (decimal?)i.Qty) ?? 0m;
+
+        return purchased - returned;
     }
 
     public async Task<PurchasePeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to)
@@ -368,6 +402,43 @@ public class RebateAccrualRepository : IRebateAccrualRepository
             .ThenBy(r => r.SupplierName)
             .ToList();
     }
+
+    public Task<RebateAccrualPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to) =>
+        RollUpAsync(_db.RebateAccruals
+            .Where(a => a.AccrualDate >= from && a.AccrualDate < to && !a.IsVoided));
+
+    public Task<RebateAccrualPeriodTotals> GetOutstandingTotalAsync() =>
+        RollUpAsync(_db.RebateAccruals
+            .Where(a => a.RebateRealizationId == null && !a.IsVoided));
+
+    /// <summary>
+    /// Shared conditional-sum rollup for both the period (P&amp;L) and outstanding
+    /// (position) views — identical shape, different predicate. In-kind and lucky-draw
+    /// accruals are counted but excluded from the cash sum: both carry Amount = 0 by
+    /// design, so including them would be harmless today and silently wrong the moment
+    /// either ever gets a non-zero accrual.
+    /// </summary>
+    private static async Task<RebateAccrualPeriodTotals> RollUpAsync(IQueryable<RebateAccrual> q)
+    {
+        var head = await q
+            .GroupBy(_ => 1)
+            .Select(g => new {
+                Count = g.Count(a => a.RewardType != RebateRewardType.InKindGoods
+                                  && a.RewardType != RebateRewardType.LuckyDraw),
+                Cash  = g.Where(a => a.RewardType != RebateRewardType.InKindGoods
+                                  && a.RewardType != RebateRewardType.LuckyDraw)
+                         .Sum(a => (decimal?)a.Amount) ?? 0m,
+                InKind    = g.Count(a => a.RewardType == RebateRewardType.InKindGoods),
+                LuckyDraw = g.Count(a => a.RewardType == RebateRewardType.LuckyDraw)
+            })
+            .FirstOrDefaultAsync();
+
+        return new RebateAccrualPeriodTotals(
+            AccrualCount:   head?.Count     ?? 0,
+            CashAccrued:    head?.Cash      ?? 0m,
+            InKindCount:    head?.InKind    ?? 0,
+            LuckyDrawCount: head?.LuckyDraw ?? 0);
+    }
 }
 
 public class RebateRealizationRepository : IRebateRealizationRepository
@@ -391,6 +462,32 @@ public class RebateRealizationRepository : IRebateRealizationRepository
         if (from.HasValue)       q = q.Where(r => r.RealizationDate >= from.Value);
         if (to.HasValue)         q = q.Where(r => r.RealizationDate <= to.Value);
         return q.OrderByDescending(r => r.RealizationDate).ToListAsync();
+    }
+
+    public async Task<RebateRealizationPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to)
+    {
+        // Gross/Withholding/Net are nullable on the entity (a purely in-kind settlement
+        // has no cash figures at all), so every sum coalesces twice: once for "no rows
+        // matched" and once for "row matched but the column is null".
+        var head = await _db.RebateRealizations
+            .Where(r => r.RealizationDate >= from && r.RealizationDate < to)
+            .GroupBy(_ => 1)
+            .Select(g => new {
+                Count       = g.Count(),
+                Gross       = g.Sum(r => (decimal?)(r.GrossAmount       ?? 0m)) ?? 0m,
+                Withholding = g.Sum(r => (decimal?)(r.WithholdingAmount ?? 0m)) ?? 0m,
+                Net         = g.Sum(r => (decimal?)(r.NetAmount         ?? 0m)) ?? 0m,
+                LuckyDraw   = g.Where(r => r.RewardType == RebateRewardType.LuckyDraw)
+                               .Sum(r => (decimal?)(r.GrossAmount ?? 0m)) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        return new RebateRealizationPeriodTotals(
+            RealizationCount: head?.Count       ?? 0,
+            Gross:            head?.Gross       ?? 0m,
+            Withholding:      head?.Withholding ?? 0m,
+            Net:              head?.Net         ?? 0m,
+            LuckyDrawGross:   head?.LuckyDraw   ?? 0m);
     }
 }
 
@@ -472,6 +569,24 @@ public class CommissionAccrualRepository : ICommissionAccrualRepository
                 r.SalesPersonId, names.GetValueOrDefault(r.SalesPersonId, "?"), r.Count, r.Amount))
             .OrderByDescending(r => r.Amount).ThenBy(r => r.SalesPersonName)
             .ToList();
+    }
+
+    public Task<CommissionPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to) =>
+        RollUpAsync(_db.CommissionAccruals
+            .Where(a => a.AccrualDate >= from && a.AccrualDate < to && !a.IsVoided));
+
+    public Task<CommissionPeriodTotals> GetUnpaidTotalAsync() =>
+        RollUpAsync(_db.CommissionAccruals
+            .Where(a => a.CommissionPayoutId == null && !a.IsVoided));
+
+    private static async Task<CommissionPeriodTotals> RollUpAsync(IQueryable<CommissionAccrual> q)
+    {
+        var head = await q
+            .GroupBy(_ => 1)
+            .Select(g => new { Count = g.Count(), Amount = g.Sum(a => (decimal?)a.Amount) ?? 0m })
+            .FirstOrDefaultAsync();
+
+        return new CommissionPeriodTotals(head?.Count ?? 0, head?.Amount ?? 0m);
     }
 }
 
@@ -870,6 +985,37 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
         if (to.HasValue)   q = q.Where(l => l.TransactionDate <= to.Value);
         return q.OrderByDescending(l => l.TransactionDate).ToListAsync();
     }
+
+    public async Task<InventoryValuation> GetValuationAsync(Guid branchId)
+    {
+        // One grouped query with a correlated sub-select for the latest stock-in cost,
+        // rather than GetCurrentStockAsync + GetCurrentAvgCostAsync per product (which
+        // is two round trips each). The projection returns one row per product that has
+        // ever moved — bounded by the catalogue, not by ledger volume — and the final
+        // sum is done here so products sitting at zero stock can be excluded from the
+        // count without a second query.
+        var rows = await _db.InventoryLedgers
+            .Where(l => l.BranchId == branchId)
+            .GroupBy(l => l.ProductId)
+            .Select(g => new {
+                Qty  = g.Sum(l => l.QtyIn) - g.Sum(l => l.QtyOut),
+                Cost = _db.InventoryLedgers
+                          .Where(x => x.ProductId == g.Key && x.BranchId == branchId && x.QtyIn > 0)
+                          .OrderByDescending(x => x.TransactionDate)
+                          .Select(x => (decimal?)x.UnitCost)
+                          .FirstOrDefault()
+            })
+            .ToListAsync();
+
+        // Negative stock shouldn't happen (StockOutAsync guards it) but if it ever did,
+        // letting it subtract value here would quietly understate the position rather
+        // than showing the real quantity problem — so only positive stock is valued.
+        var held = rows.Where(r => r.Qty > 0).ToList();
+
+        return new InventoryValuation(
+            ProductsInStock: held.Count,
+            TotalValue:      held.Sum(r => r.Qty * (r.Cost ?? 0m)));
+    }
 }
 
 public class SaleRepository : ISaleRepository
@@ -963,6 +1109,27 @@ public class SaleRepository : ISaleRepository
         return q.OrderBy(s => s.DueDate)   // overdue first, then by due date
                 .ThenBy(s => s.SaleDate)
                 .ToListAsync();
+    }
+
+    public async Task<ReceivablesTotals> GetReceivablesTotalAsync()
+    {
+        // Same population as GetDueSalesAsync, summed in SQL. Cutoff is UTC "today" to
+        // match how DueDate is stored and how the Due screens already compare it.
+        var today = DateTime.UtcNow.Date;
+        var head = await _db.Sales
+            .Where(s => s.Status == SaleStatus.Active
+                     && s.PaymentType != PaymentType.Cash
+                     && s.AmountPaid < s.GrandTotal)
+            .GroupBy(_ => 1)
+            .Select(g => new {
+                Count   = g.Count(),
+                Total   = g.Sum(s => (decimal?)(s.GrandTotal - s.AmountPaid)) ?? 0m,
+                Overdue = g.Where(s => s.DueDate != null && s.DueDate < today)
+                           .Sum(s => (decimal?)(s.GrandTotal - s.AmountPaid)) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        return new ReceivablesTotals(head?.Count ?? 0, head?.Total ?? 0m, head?.Overdue ?? 0m);
     }
 
     public async Task<string> GenerateInvoiceNumberAsync()

@@ -11,11 +11,12 @@ public class AppSettings {
     public int PaperColumns { get; set; } = 80;
     public bool PrinterEnabled { get; set; } = false;
     /// <summary>
-    /// PPN rate as a fraction (0.10 = 10%). Deliberately configurable, not a constant —
-    /// Indonesian PPN has moved (10% → 11%) and will again. Confirm the current effective
-    /// rate with the tax consultant; 10% is only a seeded default.
+    /// PPN rate as a fraction (0.11 = 11%). Deliberately configurable, not a constant —
+    /// Indonesian PPN has moved (10% → 11%) and will again. Confirmed with the tax
+    /// consultant 2026-07-31; the DPP ("nilai lain") mechanism is still being checked —
+    /// see questions.md.
     /// </summary>
-    public decimal VatRate { get; set; } = 0.10m;
+    public decimal VatRate { get; set; } = 0.11m;
     /// <summary>
     /// Withholding rate deducted from a rebate settlement before it nets against the
     /// payable, as a fraction (0.15 = 15%). Configurable, not a constant: the real
