@@ -6,6 +6,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SimpleERP.Infrastructure.Repositories;
 
+/// <summary>
+/// The <c>yyyyMM</c> stamp every document number is prefixed with (INV-, PO-, CRN-, SRN-,
+/// CN-/DN-, STL-R-/STL-P-).
+///
+/// Taken from the **local** business day, not UTC. These generators previously used
+/// <c>DateTime.UtcNow</c>, which on a UTC+7 machine is still the previous day for the first
+/// seven hours of every local day — and on the 1st of a month, the previous *month*. A sale
+/// entered at 06:12 local on 1 August was therefore numbered <c>INV-202607-…</c> while the
+/// invoice, the list and the printed receipt all showed it as 1 August: an August transaction
+/// filed under July, which is exactly what breaks a month-end reconciliation against the tax
+/// consultant's records.
+///
+/// A document number labels a business event, so it follows the business's calendar. This is
+/// the same local-first reasoning the future-date guards use (see <c>SaleService.CreateAsync</c>);
+/// stored timestamps stay UTC and are unaffected.
+/// </summary>
+internal static class DocumentNumber
+{
+    public static string MonthStamp() => DateTime.Now.ToString("yyyyMM");
+}
+
 public class UnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _db;
@@ -226,7 +247,7 @@ public class PurchaseRepository : IPurchaseRepository
         // caveat: two documents posted in the same instant could collide. The unique
         // index on PurchaseNumber turns that into a failed save rather than a
         // duplicate, which on a two-person system is the right trade.
-        var prefix = $"PO-{DateTime.UtcNow:yyyyMM}";
+        var prefix = $"PO-{DocumentNumber.MonthStamp()}";
         var count  = await _db.Purchases.CountAsync(p => p.PurchaseNumber.StartsWith(prefix));
         return $"{prefix}-{count + 1:D4}";
     }
@@ -656,7 +677,7 @@ public class CustomerReturnRepository : ICustomerReturnRepository
         // Same count-then-append shape as GenerateInvoiceNumberAsync/GeneratePurchaseNumberAsync,
         // with the same caveat: two returns posted in the same instant could collide, and the
         // unique index turns that into a failed save rather than a duplicate number.
-        var prefix = $"CRN-{DateTime.UtcNow:yyyyMM}";
+        var prefix = $"CRN-{DocumentNumber.MonthStamp()}";
         var count  = await _db.CustomerReturns.CountAsync(r => r.ReturnNumber.StartsWith(prefix));
         return $"{prefix}-{count + 1:D4}";
     }
@@ -753,7 +774,7 @@ public class SupplierReturnRepository : ISupplierReturnRepository
 
     public async Task<string> GenerateReturnNumberAsync()
     {
-        var prefix = $"SRN-{DateTime.UtcNow:yyyyMM}";
+        var prefix = $"SRN-{DocumentNumber.MonthStamp()}";
         var count  = await _db.SupplierReturns.CountAsync(r => r.ReturnNumber.StartsWith(prefix));
         return $"{prefix}-{count + 1:D4}";
     }
@@ -852,7 +873,7 @@ public class CreditNoteRepository : ICreditNoteRepository
     {
         // Two independent sequences, so a credit note and a debit note raised in the same
         // month never share a number. Same count-then-append caveat as the other generators.
-        var prefix = $"{(type == CreditDebitType.Credit ? "CN" : "DN")}-{DateTime.UtcNow:yyyyMM}";
+        var prefix = $"{(type == CreditDebitType.Credit ? "CN" : "DN")}-{DocumentNumber.MonthStamp()}";
         var count  = await _db.CreditNotes.CountAsync(n => n.DocumentNumber.StartsWith(prefix));
         return $"{prefix}-{count + 1:D4}";
     }
@@ -899,7 +920,7 @@ public class PaymentBatchRepository : IPaymentBatchRepository
         // Two independent sequences so a received and a paid settlement in the same month
         // never share a number. Same count-then-append caveat as the other generators: a
         // collision becomes a failed save on the unique index, not a duplicate.
-        var prefix = $"STL-{(direction == PaymentBatchDirection.Received ? "R" : "P")}-{DateTime.UtcNow:yyyyMM}";
+        var prefix = $"STL-{(direction == PaymentBatchDirection.Received ? "R" : "P")}-{DocumentNumber.MonthStamp()}";
         var count  = await _db.PaymentBatches.CountAsync(b => b.BatchNumber.StartsWith(prefix));
         return $"{prefix}-{count + 1:D4}";
     }
@@ -1134,7 +1155,7 @@ public class SaleRepository : ISaleRepository
 
     public async Task<string> GenerateInvoiceNumberAsync()
     {
-        var prefix = $"INV-{DateTime.UtcNow:yyyyMM}";
+        var prefix = $"INV-{DocumentNumber.MonthStamp()}";
         var count  = await _db.Sales.CountAsync(s => s.InvoiceNumber.StartsWith(prefix));
         return $"{prefix}-{count + 1:D4}";
     }
