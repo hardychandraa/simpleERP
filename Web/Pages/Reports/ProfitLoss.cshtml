@@ -1,33 +1,45 @@
 @page "/Reports/ProfitLoss"
 @model SimpleERP.Web.Pages.Reports.ProfitLossModel
-@{ ViewData["Title"] = "Profit & Loss"; }
+@{ ViewData["Title"] = Localizer["Profit & Loss"].Value; }
+
+@* Localization note: the Indonesian domain terms below (Laba Rugi, Penjualan, HPP, Laba
+   Kotor/Usaha/Bersih, Biaya Usaha, Komisi Penjualan, Retur, Pendapatan Rebat, PPN
+   Keluaran/Masukan…) are deliberately left as bare literals and never routed through the
+   localizer — they are identical in both languages, because they are the terms staff, the
+   tax consultant and the printed paperwork already use. Only the English chrome and the
+   explanatory prose switch. *@
 
 <div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:18px" class="no-print">
   <form method="get" style="display:flex;gap:10px;align-items:flex-end">
     <div class="fg" style="margin:0">
-      <label>From</label>
+      <label>@Localizer["From"]</label>
       <input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")"/>
     </div>
     <div class="fg" style="margin:0">
-      <label>To</label>
+      <label>@Localizer["To"]</label>
       <input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")"/>
     </div>
-    <button type="submit" class="btn btn-primary">View</button>
+    <button type="submit" class="btn btn-primary">@Localizer["View"]</button>
   </form>
-  <button onclick="window.print()" class="btn btn-outline btn-sm">🖨 Print Report</button>
+  <button onclick="window.print()" class="btn btn-outline btn-sm">🖨 @Localizer["Print Report"]</button>
 </div>
 
 <div style="text-align:center;margin-bottom:16px">
+  @* Bilingual letterhead — see Position.cshtml for the same pattern. *@
   <div style="font-size:22px;font-weight:800;color:#1a1a2e">Laporan Laba Rugi</div>
   <div style="font-size:13px;color:#9ca3af">Profit &amp; Loss Statement</div>
   <div style="color:#6b7280;margin-top:4px">
     @Model.From.ToString("dd MMM yyyy") &ndash; @Model.To.ToString("dd MMM yyyy")
-    <span style="color:#9ca3af">· @Model.Report.InvoiceCount invoice@(Model.Report.InvoiceCount == 1 ? "" : "s")</span>
+    <span style="color:#9ca3af">&middot;
+      @(Model.Report.InvoiceCount == 1
+          ? Localizer["{0} invoice",  Model.Report.InvoiceCount]
+          : Localizer["{0} invoices", Model.Report.InvoiceCount])
+    </span>
   </div>
 </div>
 
 <div class="stats" style="grid-template-columns:repeat(3,1fr)">
-  <div class="stat blue"><div class="stat-lbl">Penjualan Bersih (excl. PPN)</div><div class="stat-val" style="font-size:18px">@Model.Report.NetRevenue.ToString("N0")</div></div>
+  <div class="stat blue"><div class="stat-lbl">Penjualan Bersih (@Localizer["excl. PPN"])</div><div class="stat-val" style="font-size:18px">@Model.Report.NetRevenue.ToString("N0")</div></div>
   <div class="stat orange"><div class="stat-lbl">HPP Bersih</div><div class="stat-val" style="font-size:18px">@Model.Report.NetCogs.ToString("N0")</div></div>
   <div class="stat green"><div class="stat-lbl">Laba Kotor</div><div class="stat-val" style="font-size:18px">@Model.Report.GrossProfit.ToString("N0")</div></div>
 </div>
@@ -44,7 +56,7 @@
     <table style="width:100%;font-size:14px">
       <tbody>
         <tr>
-          <td style="padding:7px 0">Penjualan <span style="color:#9ca3af;font-size:11px">(excl. PPN)</span></td>
+          <td style="padding:7px 0">Penjualan <span style="color:#9ca3af;font-size:11px">(@Localizer["excl. PPN"])</span></td>
           <td style="text-align:right;font-weight:600">@Model.Report.Revenue.ToString("N0")</td>
         </tr>
         @if (Model.Report.SalesReturnCount > 0)
@@ -68,7 +80,7 @@
         @if (Model.Report.SalesReturnCogs != 0)
         {
           <tr>
-            <td style="padding:4px 0 4px 14px;color:#059669;font-size:13px" title="Cost of returned goods put back into stock, at the same cost the sale expensed">
+            <td style="padding:4px 0 4px 14px;color:#059669;font-size:13px" title="@Localizer["Cost of returned goods put back into stock, at the same cost the sale expensed"]">
               (+) HPP atas Retur <span style="color:#9ca3af;font-size:11px">(dikembalikan ke stok)</span>
             </td>
             <td style="text-align:right;color:#059669;font-size:13px">@Model.Report.SalesReturnCogs.ToString("N0")</td>
@@ -83,7 +95,7 @@
           <td style="text-align:right;font-weight:700;font-size:15px;color:#059669">@Model.Report.GrossProfit.ToString("N0")</td>
         </tr>
         <tr>
-          <td style="padding:4px 0;color:#6b7280;font-size:12px">Margin</td>
+          <td style="padding:4px 0;color:#6b7280;font-size:12px">@Localizer["Margin"]</td>
           <td style="text-align:right;color:#6b7280;font-size:12px">@Model.Report.GrossMarginPct.ToString("N2")%</td>
         </tr>
 
@@ -96,7 +108,7 @@
         {
           <tr>
             <td colspan="2" style="padding:4px 0;color:#9ca3af;font-size:12px">
-              No expenses recorded in this period.
+              @Localizer["No expenses recorded in this period."]
             </td>
           </tr>
         }
@@ -110,7 +122,7 @@
                 <span style="color:#d1d5db;font-size:11px">×@line.EntryCount</span>
                 @if (!line.IsTaxDeductible)
                 {
-                  <span style="color:#d97706;font-size:10px;font-weight:600" title="Added back as a fiscal correction">non-ded.</span>
+                  <span style="color:#d97706;font-size:10px;font-weight:600" title="@Localizer["Added back as a fiscal correction"]">@Localizer["non-ded."]</span>
                 }
               </td>
               <td style="text-align:right;color:#dc2626;font-size:13px">@line.Amount.ToString("N0")</td>
@@ -122,7 +134,7 @@
           <td style="text-align:right;font-weight:600;color:#dc2626;border-top:1px solid #f3f4f6">@Model.Report.OperatingExpenses.ToString("N0")</td>
         </tr>
         <tr>
-          <td style="padding:7px 0;color:#dc2626" title="Commission accrued in this period. Earned on collection, so it follows the payment date, not the invoice date.">
+          <td style="padding:7px 0;color:#dc2626" title="@Localizer["Commission accrued in this period. Earned on collection, so it follows the payment date, not the invoice date."]">
             (&minus;) Komisi Penjualan
             @if (Model.Report.CommissionAccrualCount > 0)
             {
@@ -141,7 +153,7 @@
         {
           <tr>
             <td style="padding:4px 0;color:#d97706;font-size:11px">
-              of which non-deductible (fiscal add-back)
+              @Localizer["of which non-deductible (fiscal add-back)"]
             </td>
             <td style="text-align:right;color:#d97706;font-size:11px">@Model.Report.NonDeductibleExpenses.ToString("N0")</td>
           </tr>
@@ -153,7 +165,7 @@
           </td>
         </tr>
         <tr>
-          <td style="padding:5px 0 5px 14px;color:#6b7280;font-size:13px" title="Rebate earned from suppliers, gross of the 15% withholding">
+          <td style="padding:5px 0 5px 14px;color:#6b7280;font-size:13px" title="@Localizer["Rebate earned from suppliers, gross of the 15% withholding"]">
             (+) Pendapatan Rebat
             @if (Model.Report.RebateAccrualCount > 0)
             {
@@ -166,7 +178,7 @@
         {
           <tr>
             <td style="padding:2px 0 2px 28px;color:#9ca3af;font-size:11px">
-              of which Lucky Draw, recognised on settlement
+              @Localizer["of which Lucky Draw, recognised on settlement"]
             </td>
             <td style="text-align:right;color:#9ca3af;font-size:11px">@Model.Report.RebateLuckyDrawRealized.ToString("N0")</td>
           </tr>
@@ -175,8 +187,9 @@
         {
           <tr>
             <td colspan="2" style="padding:2px 0 2px 28px;color:#9ca3af;font-size:11px">
-              @Model.Report.RebateInKindCount in-kind reward@(Model.Report.RebateInKindCount == 1 ? "" : "s")
-              received &mdash; booked as stock, not income, so the benefit shows up in margin when sold
+              @(Model.Report.RebateInKindCount == 1
+                  ? Localizer["{0} in-kind reward received — booked as stock, not income, so the benefit shows up in margin when sold",  Model.Report.RebateInKindCount]
+                  : Localizer["{0} in-kind rewards received — booked as stock, not income, so the benefit shows up in margin when sold", Model.Report.RebateInKindCount])
             </td>
           </tr>
         }
@@ -184,7 +197,7 @@
         {
           <tr>
             <td style="padding:5px 0 5px 14px;color:#6b7280;font-size:13px"
-                title="What the supplier credited back (@Model.Report.PurchaseReturnCredit.ToString("N0")) less the inventory value the goods left at (@Model.Report.PurchaseReturnStockValue.ToString("N0"))">
+                title="@Localizer["What the supplier credited back ({0}) less the inventory value the goods left at ({1})", Model.Report.PurchaseReturnCredit.ToString("N0"), Model.Report.PurchaseReturnStockValue.ToString("N0")]">
               (&plusmn;) Selisih Retur Pembelian
               <span style="color:#d1d5db;font-size:11px">×@Model.Report.PurchaseReturnCount</span>
             </td>
@@ -209,9 +222,8 @@
     @if (!Model.Report.IsComplete)
     {
       <div class="alert alert-warning" style="margin-top:16px;font-size:12px;line-height:1.6">
-        <strong>This is not yet a complete P&amp;L.</strong>
-        The sections below have no data source in the system yet, so they are named
-        rather than silently omitted:
+        <strong>@Localizer["This is not yet a complete P&L."]</strong>
+        @Localizer["The sections below have no data source in the system yet, so they are named rather than silently omitted:"]
         <ul style="margin:8px 0 0 18px;padding:0">
           @foreach (var s in Model.Report.PendingSections)
           {
@@ -223,28 +235,28 @@
   </div>
 
   <div class="card">
-    <div class="card-title">PPN &amp; Reconciliation</div>
+    <div class="card-title">PPN &amp; @Localizer["Reconciliation"]</div>
     <table style="width:100%;font-size:14px">
       <tbody>
         <tr>
-          <td style="padding:7px 0">PPN Keluaran collected</td>
+          <td style="padding:7px 0">PPN Keluaran @Localizer["collected"]</td>
           <td style="text-align:right;font-weight:600">@Model.Report.TaxCollected.ToString("N0")</td>
         </tr>
         @if (Model.Report.TaxOnSalesReturns != 0)
         {
           <tr>
-            <td style="padding:4px 0 4px 14px;color:#6b7280;font-size:13px">(&minus;) reversed by sales returns</td>
+            <td style="padding:4px 0 4px 14px;color:#6b7280;font-size:13px">(&minus;) @Localizer["reversed by sales returns"]</td>
             <td style="text-align:right;color:#dc2626;font-size:13px">@Model.Report.TaxOnSalesReturns.ToString("N0")</td>
           </tr>
         }
         <tr>
-          <td style="padding:7px 0;border-top:1px solid #f3f4f6">PPN Masukan paid <span style="color:#9ca3af;font-size:11px">(reclaimable)</span></td>
+          <td style="padding:7px 0;border-top:1px solid #f3f4f6">PPN Masukan @Localizer["paid"] <span style="color:#9ca3af;font-size:11px">(@Localizer["reclaimable"])</span></td>
           <td style="text-align:right;font-weight:600;border-top:1px solid #f3f4f6">@Model.Report.TaxPaid.ToString("N0")</td>
         </tr>
         @if (Model.Report.TaxOnPurchaseReturns != 0)
         {
           <tr>
-            <td style="padding:4px 0 4px 14px;color:#6b7280;font-size:13px">(&minus;) reversed by purchase returns</td>
+            <td style="padding:4px 0 4px 14px;color:#6b7280;font-size:13px">(&minus;) @Localizer["reversed by purchase returns"]</td>
             <td style="text-align:right;color:#dc2626;font-size:13px">@Model.Report.TaxOnPurchaseReturns.ToString("N0")</td>
           </tr>
         }
@@ -257,33 +269,21 @@
           </td>
         </tr>
         <tr>
-          <td style="padding:7px 0;border-top:1px solid #f3f4f6">Total invoiced <span style="color:#9ca3af;font-size:11px">(incl. PPN)</span></td>
+          <td style="padding:7px 0;border-top:1px solid #f3f4f6">@Localizer["Total invoiced"] <span style="color:#9ca3af;font-size:11px">(@Localizer["incl. PPN"])</span></td>
           <td style="text-align:right;font-weight:600;border-top:1px solid #f3f4f6">@Model.Report.GrossSales.ToString("N0")</td>
         </tr>
       </tbody>
     </table>
     <p style="font-size:11px;color:#6b7280;margin-top:14px;line-height:1.6">
-      PPN is shown as a memo, not as income. It is collected on the government's
-      behalf and owed onward, so including it in Penjualan would overstate turnover.
-      <strong>Total invoiced</strong> is the tax-inclusive figure — use that one when
-      tying this report back to cash received and outstanding receivables.
+      @Localizer["PPN is shown as a memo, not as income. It is collected on the government's behalf and owed onward, so including it in Penjualan would overstate turnover. Total invoiced is the tax-inclusive figure — use that one when tying this report back to cash received and outstanding receivables."]
     </p>
     <p style="font-size:11px;color:#9ca3af;margin-top:10px;line-height:1.6">
-      The net PPN figure is <strong>indicative only</strong>: it is this period's output
-      tax less this period's input tax, and does not model credits carried forward from
-      earlier months. Your SPT Masa filing remains the consultant's work — this gives
-      them the inputs.
+      @Localizer["The net PPN figure is indicative only: it is this period's output tax less this period's input tax, and does not model credits carried forward from earlier months. Your SPT Masa filing remains the consultant's work — this gives them the inputs."]
     </p>
   </div>
 
 </div>
 
 <p style="font-size:11px;color:#9ca3af;margin-top:14px;line-height:1.6">
-  Commercial basis, matching the SPT column of the annual statement. Fiscal corrections
-  and PPh Badan remain your tax consultant's work — this report supplies the inputs.
-  Cancelled invoices, purchases and returns are excluded; HPP uses each line's cost as
-  captured at the moment of sale, so later cost changes cannot restate historical margin.
-  <strong>Rebate</strong> is recognised when it is earned and <strong>komisi</strong> when
-  it is collected on, so both follow their own timing rather than the invoice date — a
-  period's commission will not tie exactly to that period's Penjualan, by design.
+  @Localizer["Commercial basis, matching the SPT column of the annual statement. Fiscal corrections and PPh Badan remain your tax consultant's work — this report supplies the inputs. Cancelled invoices, purchases and returns are excluded; HPP uses each line's cost as captured at the moment of sale, so later cost changes cannot restate historical margin. Rebate is recognised when it is earned and komisi when it is collected on, so both follow their own timing rather than the invoice date — a period's commission will not tie exactly to that period's Penjualan, by design."]
 </p>

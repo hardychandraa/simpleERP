@@ -168,4 +168,75 @@
   <data name="Store Management System" xml:space="preserve"><value>Sistem Manajemen Toko</value></data>
   <data name="PostgreSQL · Auto-backup daily" xml:space="preserve"><value>PostgreSQL · Cadangan otomatis harian</value></data>
   <data name="Language" xml:space="preserve"><value>Bahasa</value></data>
+
+  <!-- ══ Shared across pages ═════════════════════════════════════════════ -->
+  <data name="Print Report" xml:space="preserve"><value>Cetak Laporan</value></data>
+  <data name="as of" xml:space="preserve"><value>per</value></data>
+  <data name="of which overdue" xml:space="preserve"><value>di antaranya jatuh tempo</value></data>
+  <data name="incl. PPN" xml:space="preserve"><value>termasuk PPN</value></data>
+  <data name="excl. PPN" xml:space="preserve"><value>tidak termasuk PPN</value></data>
+
+  <!--
+    Singular/plural pairs. English needs both forms; Indonesian does not mark plurals on
+    nouns, so each pair maps to the same translation. Keeping the pair (rather than an
+    "(s)" fudge) is what lets English stay correct without compromising Indonesian.
+  -->
+  <data name="{0} product in stock" xml:space="preserve"><value>{0} produk tersedia</value></data>
+  <data name="{0} products in stock" xml:space="preserve"><value>{0} produk tersedia</value></data>
+  <data name="{0} open invoice" xml:space="preserve"><value>{0} faktur terbuka</value></data>
+  <data name="{0} open invoices" xml:space="preserve"><value>{0} faktur terbuka</value></data>
+  <data name="{0} open purchase" xml:space="preserve"><value>{0} pembelian terbuka</value></data>
+  <data name="{0} open purchases" xml:space="preserve"><value>{0} pembelian terbuka</value></data>
+  <data name="{0} cash accrual" xml:space="preserve"><value>{0} akrual tunai</value></data>
+  <data name="{0} cash accruals" xml:space="preserve"><value>{0} akrual tunai</value></data>
+  <data name="{0} unpaid accrual" xml:space="preserve"><value>{0} akrual belum dibayar</value></data>
+  <data name="{0} unpaid accruals" xml:space="preserve"><value>{0} akrual belum dibayar</value></data>
+
+  <!-- ══ Reports / Position Summary ══════════════════════════════════════ -->
+  <!-- "Position Summary" and "Stock Levels" are NOT repeated here: they already exist in the
+       navigation block above, and a duplicate resx name is silently dropped (MSB3568), which
+       would leave one of the two uses untranslated. -->
+
+  <data name="what the business holds" xml:space="preserve"><value>apa yang dimiliki usaha</value></data>
+  <data name="what the business owes" xml:space="preserve"><value>apa yang menjadi kewajiban usaha</value></data>
+  <data name="stock on hand" xml:space="preserve"><value>stok tersedia</value></data>
+  <data name="AR Due" xml:space="preserve"><value>Piutang Jatuh Tempo</value></data>
+  <data name="AP Due" xml:space="preserve"><value>Utang Jatuh Tempo</value></data>
+  <data name="Open credit notes owed back to customers" xml:space="preserve"><value>Nota kredit terbuka yang masih menjadi hak pelanggan</value></data>
+  <data name="Open debit notes suppliers owe back to us" xml:space="preserve"><value>Nota debit terbuka yang masih menjadi hak kita dari pemasok</value></data>
+  <data name="plus {0} in-kind and {1} lucky-draw accrual(s) outstanding, carried without a cash value until settled" xml:space="preserve"><value>ditambah {0} akrual barang dan {1} akrual undian yang masih terbuka, dicatat tanpa nilai tunai sampai diselesaikan</value></data>
+  <data name="This is not a balance sheet (Neraca)." xml:space="preserve"><value>Ini bukan Neraca.</value></data>
+  <data name="It shows the five balances SimpleERP can derive and prove from its own documents. Cash at bank, fixed assets, capital, retained earnings and tax positions are not in this system, so Posisi Bersih is a working-position indicator, not net worth — and it is not expected to balance to zero." xml:space="preserve"><value>Laporan ini menampilkan lima saldo yang bisa diturunkan dan dibuktikan SimpleERP dari dokumennya sendiri. Kas di bank, aset tetap, modal, laba ditahan dan posisi pajak tidak ada di sistem ini, sehingga Posisi Bersih adalah indikator posisi kerja, bukan kekayaan bersih — dan memang tidak diharapkan menjadi nol.</value></data>
+  <data name="A point-in-time position, read live — there is no date filter, and re-opening this page will show different numbers once anything moves. Receivables and payables are tax-inclusive, because they are cash owed rather than turnover. Credit and debit notes net off in aggregate, not against a specific invoice; unclaimed rebate is shown gross of the 15% withholding, which is deducted when the claim actually settles." xml:space="preserve"><value>Posisi pada satu titik waktu, dibaca langsung — tidak ada filter tanggal, dan membuka ulang halaman ini akan menampilkan angka berbeda begitu ada transaksi. Piutang dan utang termasuk pajak, karena keduanya adalah kas yang terutang, bukan omzet. Nota kredit dan debit dikurangkan secara agregat, bukan terhadap faktur tertentu; rebat belum diklaim ditampilkan bruto sebelum potongan 15%, yang dipotong saat klaim benar-benar diselesaikan.</value></data>
+
+  <!-- ══ Reports / Profit & Loss ═════════════════════════════════════════ -->
+  <data name="From" xml:space="preserve"><value>Dari</value></data>
+  <data name="To" xml:space="preserve"><value>Sampai</value></data>
+  <data name="View" xml:space="preserve"><value>Tampilkan</value></data>
+  <data name="{0} invoice" xml:space="preserve"><value>{0} faktur</value></data>
+  <data name="{0} invoices" xml:space="preserve"><value>{0} faktur</value></data>
+  <data name="Margin" xml:space="preserve"><value>Margin</value></data>
+  <data name="No expenses recorded in this period." xml:space="preserve"><value>Tidak ada biaya yang dicatat pada periode ini.</value></data>
+  <data name="non-ded." xml:space="preserve"><value>non-ded.</value></data>
+  <data name="Added back as a fiscal correction" xml:space="preserve"><value>Dikoreksi kembali sebagai koreksi fiskal</value></data>
+  <data name="of which non-deductible (fiscal add-back)" xml:space="preserve"><value>di antaranya tidak dapat dibiayakan (koreksi fiskal)</value></data>
+  <data name="Cost of returned goods put back into stock, at the same cost the sale expensed" xml:space="preserve"><value>Biaya barang retur yang dikembalikan ke stok, pada biaya yang sama saat penjualan dibebankan</value></data>
+  <data name="Commission accrued in this period. Earned on collection, so it follows the payment date, not the invoice date." xml:space="preserve"><value>Komisi yang diakru pada periode ini. Diperoleh saat penagihan, jadi mengikuti tanggal pembayaran, bukan tanggal faktur.</value></data>
+  <data name="Rebate earned from suppliers, gross of the 15% withholding" xml:space="preserve"><value>Rebat yang diperoleh dari pemasok, bruto sebelum potongan 15%</value></data>
+  <data name="of which Lucky Draw, recognised on settlement" xml:space="preserve"><value>di antaranya Undian, diakui saat penyelesaian</value></data>
+  <data name="{0} in-kind reward received — booked as stock, not income, so the benefit shows up in margin when sold" xml:space="preserve"><value>{0} hadiah barang diterima — dicatat sebagai stok, bukan pendapatan, sehingga manfaatnya muncul di margin saat terjual</value></data>
+  <data name="{0} in-kind rewards received — booked as stock, not income, so the benefit shows up in margin when sold" xml:space="preserve"><value>{0} hadiah barang diterima — dicatat sebagai stok, bukan pendapatan, sehingga manfaatnya muncul di margin saat terjual</value></data>
+  <data name="What the supplier credited back ({0}) less the inventory value the goods left at ({1})" xml:space="preserve"><value>Nilai yang dikreditkan pemasok ({0}) dikurangi nilai persediaan saat barang keluar ({1})</value></data>
+  <data name="This is not yet a complete P&amp;L." xml:space="preserve"><value>Ini belum merupakan Laba Rugi yang lengkap.</value></data>
+  <data name="The sections below have no data source in the system yet, so they are named rather than silently omitted:" xml:space="preserve"><value>Bagian di bawah ini belum memiliki sumber data di sistem, jadi tetap disebutkan daripada dihilangkan diam-diam:</value></data>
+  <data name="Reconciliation" xml:space="preserve"><value>Rekonsiliasi</value></data>
+  <data name="collected" xml:space="preserve"><value>dipungut</value></data>
+  <data name="paid" xml:space="preserve"><value>dibayar</value></data>
+  <data name="reclaimable" xml:space="preserve"><value>dapat dikreditkan</value></data>
+  <data name="reversed by sales returns" xml:space="preserve"><value>dikoreksi oleh retur penjualan</value></data>
+  <data name="reversed by purchase returns" xml:space="preserve"><value>dikoreksi oleh retur pembelian</value></data>
+  <data name="Total invoiced" xml:space="preserve"><value>Total difakturkan</value></data>
+  <data name="PPN is shown as a memo, not as income. It is collected on the government's behalf and owed onward, so including it in Penjualan would overstate turnover. Total invoiced is the tax-inclusive figure — use that one when tying this report back to cash received and outstanding receivables." xml:space="preserve"><value>PPN ditampilkan sebagai memo, bukan pendapatan. PPN dipungut atas nama pemerintah dan wajib disetorkan, sehingga memasukkannya ke Penjualan akan melebih-lebihkan omzet. Total difakturkan adalah angka termasuk pajak — gunakan angka itu saat mencocokkan laporan ini dengan kas yang diterima dan piutang yang beredar.</value></data>
+  <data name="The net PPN figure is indicative only: it is this period's output tax less this period's input tax, and does not model credits carried forward from earlier months. Your SPT Masa filing remains the consultant's work — this gives them the inputs." xml:space="preserve"><value>Angka PPN bersih bersifat indikatif saja: ini adalah pajak keluaran periode ini dikurangi pajak masukan periode ini, dan belum memperhitungkan kredit yang dibawa dari bulan sebelumnya. Pelaporan SPT Masa tetap menjadi pekerjaan konsultan — laporan ini menyediakan datanya.</value></data>
+  <data name="Commercial basis, matching the SPT column of the annual statement. Fiscal corrections and PPh Badan remain your tax consultant's work — this report supplies the inputs. Cancelled invoices, purchases and returns are excluded; HPP uses each line's cost as captured at the moment of sale, so later cost changes cannot restate historical margin. Rebate is recognised when it is earned and komisi when it is collected on, so both follow their own timing rather than the invoice date — a period's commission will not tie exactly to that period's Penjualan, by design." xml:space="preserve"><value>Basis komersial, sesuai kolom SPT pada laporan tahunan. Koreksi fiskal dan PPh Badan tetap menjadi pekerjaan konsultan pajak Anda — laporan ini menyediakan datanya. Faktur, pembelian dan retur yang dibatalkan tidak dihitung; HPP memakai biaya tiap baris seperti yang dicatat pada saat penjualan, sehingga perubahan biaya di kemudian hari tidak bisa mengubah margin historis. Rebat diakui saat diperoleh dan komisi saat ditagihkan, jadi keduanya mengikuti waktunya sendiri, bukan tanggal faktur — komisi suatu periode memang tidak akan persis cocok dengan Penjualan periode itu.</value></data>
 </root>
