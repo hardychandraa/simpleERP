@@ -291,14 +291,19 @@
 </div>
 
 @section Scripts {
-@* The status strings inside dotPrint() are client-only (written after an async fetch) and so
-   belong to Phase C's JS-dictionary mechanism, not Phase A. Left in English on purpose. *@
 <script>
+// Client-only strings, sourced from the same resx keys the markup uses.
+const T = {
+    sending:    @Html.Raw(Json.Serialize(Localizer["Sending..."].Value)),
+    noPrinter:  @Html.Raw(Json.Serialize(Localizer["Could not reach printer service."].Value)),
+    printTo:    @Html.Raw(Json.Serialize(Localizer["Print to {0}", Model.AppSettings.PrinterName].Value))
+};
+
 async function dotPrint(saleId) {
     const btn = document.getElementById('btnDot');
     const status = document.getElementById('printStatus');
     btn.disabled = true;
-    btn.textContent = '⏳ Sending...';
+    btn.textContent = '⏳ ' + T.sending;
     status.style.display = 'none';
     try {
         const tok = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
@@ -310,11 +315,11 @@ async function dotPrint(saleId) {
         status.textContent = r.ok ? '✓ ' + d.message : '✗ ' + d.error;
     } catch(e) {
         status.className = 'alert alert-danger';
-        status.textContent = '✗ Could not reach printer service.';
+        status.textContent = '✗ ' + T.noPrinter;
     }
     status.style.display = 'block';
     btn.disabled = false;
-    btn.textContent = '🖨 @Localizer["Print to {0}", Model.AppSettings.PrinterName]';
+    btn.textContent = '🖨 ' + T.printTo;
 }
 </script>
 }

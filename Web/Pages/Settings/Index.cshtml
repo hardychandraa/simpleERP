@@ -136,9 +136,17 @@
 </form>
 
 @section Scripts {
-@* The status strings written by these two handlers are client-only and belong to Phase C's
-   JS-dictionary mechanism, not Phase A. Left in English on purpose. *@
 <script>
+// Client-only strings, sourced from the same resx keys the markup uses.
+const T = {
+    detecting:   @Html.Raw(Json.Serialize(Localizer["Detecting..."].Value)),
+    detect:      @Html.Raw(Json.Serialize(Localizer["Detect Printers"].Value)),
+    nonePrinter: @Html.Raw(Json.Serialize(Localizer["No printers found. Make sure the printer is installed in Windows (Control Panel → Devices and Printers)."].Value)),
+    loadFailed:  @Html.Raw(Json.Serialize(Localizer["Could not load printers."].Value)),
+    nameFirst:   @Html.Raw(Json.Serialize(Localizer["Enter a printer name first."].Value)),
+    saveFirst:   @Html.Raw(Json.Serialize(Localizer["Save Settings first, then open any invoice and click \"Print to [printer]\" to test."].Value))
+};
+
 // Detect installed Windows printers via the API
 async function detectPrinters() {
     const btn     = document.getElementById('btnDetect');
@@ -147,7 +155,7 @@ async function detectPrinters() {
     const errDiv  = document.getElementById('printerErr');
 
     btn.disabled    = true;
-    btn.textContent = '⏳ Detecting...';
+    btn.textContent = '⏳ ' + T.detecting;
     errDiv.style.display  = 'none';
     listDiv.style.display = 'none';
 
@@ -156,7 +164,7 @@ async function detectPrinters() {
         const printers = await resp.json();
 
         if (!printers || printers.length === 0) {
-            errDiv.textContent   = '⚠ No printers found. Make sure the printer is installed in Windows (Control Panel → Devices and Printers).';
+            errDiv.textContent   = '⚠ ' + T.nonePrinter;
             errDiv.style.display = 'block';
         } else {
             btnsDiv.innerHTML = '';
@@ -177,12 +185,12 @@ async function detectPrinters() {
             listDiv.style.display = 'block';
         }
     } catch (e) {
-        errDiv.textContent   = '✗ Could not load printers. ' + e.message;
+        errDiv.textContent   = '✗ ' + T.loadFailed + ' ' + e.message;
         errDiv.style.display = 'block';
     }
 
     btn.disabled    = false;
-    btn.textContent = '🔍 @Localizer["Detect Printers"]';
+    btn.textContent = '🔍 ' + T.detect;
 }
 
 // Save then test-print a simple line
@@ -193,14 +201,14 @@ async function testPrint() {
     const printerName = document.getElementById('printerNameInput').value.trim();
     if (!printerName) {
         btn.className     = 'alert alert-warning';
-        btn.textContent   = 'Enter a printer name first.';
+        btn.textContent   = T.nameFirst;
         btn.style.display = 'block';
         return;
     }
 
     // We'll just inform the user to save first, then use a real invoice to test
     btn.className     = 'alert alert-warning';
-    btn.textContent   = '💡 Save Settings first, then open any invoice and click "Print to [printer]" to test.';
+    btn.textContent   = '💡 ' + T.saveFirst;
     btn.style.display = 'block';
 }
 </script>

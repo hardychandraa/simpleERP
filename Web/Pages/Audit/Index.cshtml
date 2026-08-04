@@ -2,9 +2,14 @@
 @model SimpleERP.Web.Pages.Audit.IndexModel
 @{ ViewData["Title"] = Localizer["Audit Log"].Value; }
 <div class="card">
-  @* The Action code and Detail text below come from the audit records themselves and are
-     deliberately left as stored — translating them is Phase C, and an audit trail arguably
-     wants the literal recorded value anyway. *@
+  @* The Action code and Detail text below are deliberately NOT localized — HC's decision,
+     2026-08-01. They are written into the database and this entity is an immutable audit
+     trail, so localizing at write time would make the stored text depend on whichever
+     language the operator happened to have selected: a permanently mixed-language table
+     that could never be re-rendered in the other language. The values are mostly
+     structured data anyway (document numbers, names, amounts, `|`-separated fields), so
+     canonical English keeps them consistent and greppable. The page chrome around them
+     IS localized. *@
   <div class="card-title">@Localizer["Recent Activity (last 200 events)"]</div>
   <table>
     <thead><tr><th>@Localizer["Time"]</th><th>@Localizer["User"]</th><th>@Localizer["Action"]</th><th>@Localizer["Detail"]</th></tr></thead>

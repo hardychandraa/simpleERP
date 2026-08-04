@@ -242,6 +242,23 @@
 
 @section Scripts {
 <script>
+// Same JS dictionary mechanism as Sales/Create: these strings are written into the page by
+// script, so they come from the SAME resx keys the markup uses, escaped by Json.Serialize.
+const T = {
+    selectProduct:  @Html.Raw(Json.Serialize(Localizer["Please select a product."].Value)),
+    qtyPositive:    @Html.Raw(Json.Serialize(Localizer["Quantity must be greater than zero."].Value)),
+    costNegative:   @Html.Raw(Json.Serialize(Localizer["Cost cannot be negative."].Value)),
+    discNegative:   @Html.Raw(Json.Serialize(Localizer["Discount cannot be negative."].Value)),
+    discPctMax:     @Html.Raw(Json.Serialize(Localizer["Discount percent must be less than 100."].Value)),
+    discExceeds:    @Html.Raw(Json.Serialize(Localizer["Discount cannot equal or exceed unit cost."].Value)),
+    productMissing: @Html.Raw(Json.Serialize(Localizer["Product not found."].Value)),
+    needItem:       @Html.Raw(Json.Serialize(Localizer["Please add at least one item before posting."].Value)),
+    needSupplier:   @Html.Raw(Json.Serialize(Localizer["Please select a supplier."].Value)),
+    perUnit:        @Html.Raw(Json.Serialize(Localizer["/unit"].Value)),
+    offInvoice:     @Html.Raw(Json.Serialize(Localizer["off the invoice"].Value)),
+    included:       @Html.Raw(Json.Serialize(Localizer["included"].Value))
+};
+
 const PRODUCTS = @Html.Raw(JsonSerializer.Serialize(
     Model.AvailableProducts.Select(p => new {
         id = p.Id.ToString(),
@@ -319,7 +336,7 @@ function onDiscountInput() {
     const hint  = document.getElementById('discHint');
 
     hint.textContent = (isPct && val > 0 && cost > 0)
-        ? '= ' + fmt(Math.round((cost * val / 100) * 100) / 100) + ' /unit'
+        ? '= ' + fmt(Math.round((cost * val / 100) * 100) / 100) + ' ' + T.perUnit
         : '';
 }
 
@@ -333,12 +350,12 @@ function addItem() {
     const discIsPct = document.getElementById('inDiscMode').value === 'pct';
     const notes     = document.getElementById('inNotes').value.trim();
 
-    if (!prodId)       return showErr('addErr', 'Please select a product.');
-    if (qty <= 0)      return showErr('addErr', 'Quantity must be greater than zero.');
-    if (cost < 0)      return showErr('addErr', 'Cost cannot be negative.');
-    if (discInput < 0) return showErr('addErr', 'Discount cannot be negative.');
+    if (!prodId)       return showErr('addErr', T.selectProduct);
+    if (qty <= 0)      return showErr('addErr', T.qtyPositive);
+    if (cost < 0)      return showErr('addErr', T.costNegative);
+    if (discInput < 0) return showErr('addErr', T.discNegative);
     if (discIsPct && discInput >= 100)
-        return showErr('addErr', 'Discount percent must be less than 100.');
+        return showErr('addErr', T.discPctMax);
 
     // Resolve percent to a per-unit amount, mirroring the server so the preview
     // totals match what gets posted. The server recomputes it regardless.
@@ -346,10 +363,10 @@ function addItem() {
     const discAmt = discIsPct ? Math.round((cost * discInput / 100) * 100) / 100 : discInput;
 
     if (discAmt >= cost && cost > 0)
-        return showErr('addErr', 'Discount cannot equal or exceed unit cost.');
+        return showErr('addErr', T.discExceeds);
 
     const prod = PRODUCTS.find(p => p.id === prodId);
-    if (!prod) return showErr('addErr', 'Product not found.');
+    if (!prod) return showErr('addErr', T.productMissing);
 
     items.push({
         productId: prodId,
@@ -458,23 +475,23 @@ function syncSummary(sub, disc) {
     document.getElementById('sumInvDisc').textContent   = invDisc > 0 ? '-' + fmt(invDisc) : '—';
 
     document.getElementById('invDiscHint').textContent = (isPct && rawInput > 0 && lineNet > 0)
-        ? '= ' + fmt(invDisc) + ' off the invoice' : '';
+        ? '= ' + fmt(invDisc) + ' ' + T.offInvoice : '';
 
     document.getElementById('sumBase').textContent = fmt(base);
     document.getElementById('sumTax').textContent  = fmt(tax);
     document.getElementById('sumVatLabel').textContent =
-        VAT_RATE > 0 ? '(' + (VAT_RATE * 100).toFixed(2).replace(/\.?0+$/, '') + '%' + (taxIncl ? ', included' : '') + ')' : '';
+        VAT_RATE > 0 ? '(' + (VAT_RATE * 100).toFixed(2).replace(/\.?0+$/, '') + '%' + (taxIncl ? ', ' + T.included : '') + ')' : '';
     document.getElementById('sumTotal').textContent = fmt(grand);
 }
 
 document.getElementById('purchaseForm').addEventListener('submit', function(e) {
     if (items.length === 0) {
         e.preventDefault();
-        showErr('submitErr', 'Please add at least one item before posting.');
+        showErr('submitErr', T.needItem);
     }
     if (!document.getElementById('supplierSelect').value) {
         e.preventDefault();
-        showErr('submitErr', 'Please select a supplier.');
+        showErr('submitErr', T.needSupplier);
     }
 });
 

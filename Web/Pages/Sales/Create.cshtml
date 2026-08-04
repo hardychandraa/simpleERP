@@ -249,6 +249,28 @@
 
 @section Scripts {
 <script>
+// Every string this script writes into the page comes from the SAME resx keys the markup
+// uses — one source of truth per phrase, not a parallel JS-only translation table.
+// Json.Serialize (not manual quoting) does the escaping, so an Indonesian translation
+// containing a quote or backslash can't break out and corrupt this <script> block.
+const T = {
+    selectProduct:  @Html.Raw(Json.Serialize(Localizer["Please select a product."].Value)),
+    qtyPositive:    @Html.Raw(Json.Serialize(Localizer["Quantity must be greater than zero."].Value)),
+    priceNegative:  @Html.Raw(Json.Serialize(Localizer["Price cannot be negative."].Value)),
+    discNegative:   @Html.Raw(Json.Serialize(Localizer["Discount cannot be negative."].Value)),
+    discPctMax:     @Html.Raw(Json.Serialize(Localizer["Discount percent must be less than 100."].Value)),
+    discExceeds:    @Html.Raw(Json.Serialize(Localizer["Discount cannot equal or exceed price."].Value)),
+    productMissing: @Html.Raw(Json.Serialize(Localizer["Product not found."].Value)),
+    needReason:     @Html.Raw(Json.Serialize(Localizer["Price differs from master price ({0}). Please enter a price override reason."].Value)),
+    notEnough:      @Html.Raw(Json.Serialize(Localizer["Not enough stock. Available: {0}"].Value)),
+    needItem:       @Html.Raw(Json.Serialize(Localizer["Please add at least one item before creating the invoice."].Value)),
+    needCustomer:   @Html.Raw(Json.Serialize(Localizer["Please select a customer."].Value)),
+    perUnit:        @Html.Raw(Json.Serialize(Localizer["/unit"].Value)),
+    offInvoice:     @Html.Raw(Json.Serialize(Localizer["off the invoice"].Value)),
+    included:       @Html.Raw(Json.Serialize(Localizer["included"].Value)),
+    mo:             @Html.Raw(Json.Serialize(Localizer["mo"].Value))
+};
+
 // Product data from server (master prices stored for price-override detection)
 const PRODUCTS = @Html.Raw(JsonSerializer.Serialize(
     Model.AvailableProducts.Select(p => new {
@@ -330,7 +352,7 @@ function onDiscountInput() {
 
     if (isPct && val > 0 && price > 0) {
         const amt = Math.round((price * val / 100) * 100) / 100;
-        hint.textContent = '= ' + fmt(amt) + ' /unit';
+        hint.textContent = '= ' + fmt(amt) + ' ' + T.perUnit;
     } else {
         hint.textContent = '';
     }
@@ -348,32 +370,32 @@ function addItem() {
     const notes      = document.getElementById('inNotes').value.trim();
     const priceReason= document.getElementById('inPriceReason').value.trim();
 
-    if (!prodId)   return showErr('addErr', 'Please select a product.');
-    if (qty <= 0)  return showErr('addErr', 'Quantity must be greater than zero.');
-    if (price < 0) return showErr('addErr', 'Price cannot be negative.');
-    if (discInput < 0) return showErr('addErr', 'Discount cannot be negative.');
+    if (!prodId)   return showErr('addErr', T.selectProduct);
+    if (qty <= 0)  return showErr('addErr', T.qtyPositive);
+    if (price < 0) return showErr('addErr', T.priceNegative);
+    if (discInput < 0) return showErr('addErr', T.discNegative);
     if (discIsPct && discInput >= 100)
-        return showErr('addErr', 'Discount percent must be less than 100.');
+        return showErr('addErr', T.discPctMax);
 
     // Resolve percent to a per-unit amount, mirroring the server so the preview
     // totals match what actually gets posted. The server recomputes it regardless.
     const discPct = discIsPct ? discInput : null;
     const discAmt = discIsPct ? Math.round((price * discInput / 100) * 100) / 100 : discInput;
 
-    if (discAmt >= price && price > 0) return showErr('addErr', 'Discount cannot equal or exceed price.');
+    if (discAmt >= price && price > 0) return showErr('addErr', T.discExceeds);
 
     const prod = PRODUCTS.find(p => p.id === prodId);
-    if (!prod) return showErr('addErr', 'Product not found.');
+    if (!prod) return showErr('addErr', T.productMissing);
 
     // Price override requires reason
     const differs = Math.abs(price - prod.price) > 0.001;
     if (differs && !priceReason)
-        return showErr('addErr', `Price differs from master price (${fmt(prod.price)}). Please enter a price override reason.`);
+        return showErr('addErr', T.needReason.replace('{0}', fmt(prod.price)));
 
     // Check total qty for this product across all items
     const alreadyQty = items.filter(i => i.productId === prodId).reduce((s,i) => s + i.qty, 0);
     if (alreadyQty + qty > prod.stock)
-        return showErr('addErr', `Not enough stock. Available: ${fmt(prod.stock - alreadyQty)}`);
+        return showErr('addErr', T.notEnough.replace('{0}', fmt(prod.stock - alreadyQty)));
 
     items.push({
         productId:   prodId,
@@ -435,7 +457,7 @@ function render() {
                 ? '-' + fmt(item.disc) + (item.discPct ? `<br><small style="color:#9ca3af">(${item.discPct}%)</small>` : '')
                 : '—'}</td>
             <td style="text-align:right;font-weight:600">${fmt(item.total)}</td>
-            <td style="text-align:center">${item.warranty > 0 ? item.warranty + ' mo' : '—'}</td>
+            <td style="text-align:center">${item.warranty > 0 ? item.warranty + ' ' + T.mo : '—'}</td>
             <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(${i})">✕</button></td>
         </tr>`;
     });
@@ -501,24 +523,24 @@ function syncSummary(sub, disc) {
 
     const hint = document.getElementById('invDiscHint');
     hint.textContent = (isPct && rawInput > 0 && lineNet > 0)
-        ? '= ' + fmt(invDisc) + ' off the invoice'
+        ? '= ' + fmt(invDisc) + ' ' + T.offInvoice
         : '';
 
     document.getElementById('sumBase').textContent = fmt(base);
     document.getElementById('sumTax').textContent  = fmt(tax);
     document.getElementById('sumVatLabel').textContent =
-        VAT_RATE > 0 ? '(' + (VAT_RATE * 100).toFixed(2).replace(/\.?0+$/, '') + '%' + (taxIncl ? ', included' : '') + ')' : '';
+        VAT_RATE > 0 ? '(' + (VAT_RATE * 100).toFixed(2).replace(/\.?0+$/, '') + '%' + (taxIncl ? ', ' + T.included : '') + ')' : '';
     document.getElementById('sumTotal').textContent = fmt(grand);
 }
 
 document.getElementById('saleForm').addEventListener('submit', function(e) {
     if (items.length === 0) {
         e.preventDefault();
-        showErr('submitErr', 'Please add at least one item before creating the invoice.');
+        showErr('submitErr', T.needItem);
     }
     if (!document.querySelector('select[name="CustomerId"]').value) {
         e.preventDefault();
-        showErr('submitErr', 'Please select a customer.');
+        showErr('submitErr', T.needCustomer);
     }
 });
 

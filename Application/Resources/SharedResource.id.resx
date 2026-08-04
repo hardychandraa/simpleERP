@@ -1129,4 +1129,25 @@
   <data name="Unit price cannot be negative." xml:space="preserve"><value>Harga per unit tidak boleh negatif.</value></data>
   <data name="Volume thresholds cannot be negative." xml:space="preserve"><value>Ambang volume tidak boleh negatif.</value></data>
   <data name="Stock adjusted. New stock: {0}" xml:space="preserve"><value>Stok disesuaikan. Stok baru: {0}</value></data>
+  <!-- Phase C: client-only JS strings, rendered into a JS dictionary per page. -->
+  <data name="/unit" xml:space="preserve"><value>/unit</value></data>
+  <data name="Could not load printers." xml:space="preserve"><value>Tidak bisa memuat daftar printer.</value></data>
+  <data name="Could not reach printer service." xml:space="preserve"><value>Tidak bisa menghubungi layanan printer.</value></data>
+  <data name="Detecting..." xml:space="preserve"><value>Mendeteksi...</value></data>
+  <data name="Discount cannot equal or exceed price." xml:space="preserve"><value>Diskon tidak boleh sama dengan atau melebihi harga.</value></data>
+  <data name="Discount percent must be less than 100." xml:space="preserve"><value>Persentase diskon harus kurang dari 100.</value></data>
+  <data name="Enter a printer name first." xml:space="preserve"><value>Isi nama printer terlebih dahulu.</value></data>
+  <data name="mo" xml:space="preserve"><value>bln</value></data>
+  <data name="No printers found. Make sure the printer is installed in Windows (Control Panel → Devices and Printers)." xml:space="preserve"><value>Tidak ada printer ditemukan. Pastikan printer sudah terpasang di Windows (Control Panel → Devices and Printers).</value></data>
+  <data name="Not enough stock. Available: {0}" xml:space="preserve"><value>Stok tidak mencukupi. Tersedia: {0}</value></data>
+  <data name="off the invoice" xml:space="preserve"><value>dari faktur</value></data>
+  <data name="Please add at least one item before creating the invoice." xml:space="preserve"><value>Tambahkan minimal satu barang sebelum membuat faktur.</value></data>
+  <data name="Please add at least one item before posting." xml:space="preserve"><value>Tambahkan minimal satu barang sebelum memposting.</value></data>
+  <data name="Please select a customer." xml:space="preserve"><value>Pilih pelanggan terlebih dahulu.</value></data>
+  <data name="Please select a product." xml:space="preserve"><value>Pilih produk terlebih dahulu.</value></data>
+  <data name="Please select a supplier." xml:space="preserve"><value>Pilih pemasok terlebih dahulu.</value></data>
+  <data name="Price differs from master price ({0}). Please enter a price override reason." xml:space="preserve"><value>Harga berbeda dari harga master ({0}). Mohon isi alasan penggantian harga.</value></data>
+  <data name="Quantity must be greater than zero." xml:space="preserve"><value>Kuantitas harus lebih dari nol.</value></data>
+  <data name="Save Settings first, then open any invoice and click &quot;Print to [printer]&quot; to test." xml:space="preserve"><value>Simpan Pengaturan dulu, lalu buka faktur mana pun dan klik "Cetak ke [printer]" untuk menguji.</value></data>
+  <data name="Sending..." xml:space="preserve"><value>Mengirim...</value></data>
 </root>

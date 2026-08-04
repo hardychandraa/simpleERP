@@ -60,10 +60,15 @@
 </div>
 </div>
 @section Scripts {
-@* The three hint strings below are client-only (rebuilt in JS as the user types) and so
-   belong to Phase C's JS-dictionary mechanism, not Phase A. Left in English on purpose —
-   the server-rendered equivalent above is localized. *@
 <script>
+// These hints are rebuilt in JS as the user types, so they come from the same resx keys the
+// server-rendered equivalent above uses. {0} is substituted client-side.
+const T = {
+    willAdd:    @Html.Raw(Json.Serialize(Localizer["↑ Will add {0} units to stock"].Value)),
+    willRemove: @Html.Raw(Json.Serialize(Localizer["↓ Will remove {0} units from stock"].Value)),
+    noChange:   @Html.Raw(Json.Serialize(Localizer["No change"].Value))
+};
+
 // Live diff calculation
 document.querySelector('input[name="Input.QtyActual"]')?.addEventListener('input', function() {
     const sysStock = @Model.CurrentStock;
@@ -71,9 +76,9 @@ document.querySelector('input[name="Input.QtyActual"]')?.addEventListener('input
     const diff     = newVal - sysStock;
     const hint     = this.nextElementSibling;
     if (!hint) return;
-    if (diff > 0)       { hint.textContent=`↑ Will add ${diff.toFixed(2)} units`;  hint.style.color='#059669'; }
-    else if (diff < 0)  { hint.textContent=`↓ Will remove ${Math.abs(diff).toFixed(2)} units`; hint.style.color='#dc2626'; }
-    else                { hint.textContent='No change'; hint.style.color='#9ca3af'; }
+    if (diff > 0)       { hint.textContent=T.willAdd.replace('{0}', diff.toFixed(2));  hint.style.color='#059669'; }
+    else if (diff < 0)  { hint.textContent=T.willRemove.replace('{0}', Math.abs(diff).toFixed(2)); hint.style.color='#dc2626'; }
+    else                { hint.textContent=T.noChange; hint.style.color='#9ca3af'; }
 });
 </script>
 }
