@@ -1,6 +1,6 @@
 @page "/RebateRules/Edit"
 @model SimpleERP.Web.Pages.RebateRules.EditModel
-@{ ViewData["Title"] = Model.IsNew ? "New Rebate Rule" : "Edit Rebate Rule"; }
+@{ ViewData["Title"] = Model.IsNew ? Localizer["New Rebate Rule"].Value : Localizer["Edit Rebate Rule"].Value; }
 
 @if (Model.Error != null)
 {
@@ -11,135 +11,136 @@
     <input type="hidden" asp-for="Input.Id" />
 
     <div class="card">
-        <div class="card-title">@(Model.IsNew ? "➕ New Rebate Rule" : "✏️ Edit Rebate Rule")</div>
+        <div class="card-title">@(Model.IsNew ? $"➕ {Localizer["New Rebate Rule"].Value}" : $"✏️ {Localizer["Edit Rebate Rule"].Value}")</div>
 
         <div class="fg">
-            <label>Rule Name *</label>
-            <input type="text" asp-for="Input.Name" required maxlength="200" placeholder="e.g. Q3 volume rebate — AC units" />
+            <label>@Localizer["Rule Name"] *</label>
+            <input type="text" asp-for="Input.Name" required maxlength="200" placeholder="@Localizer["e.g. Q3 volume rebate — AC units"]" />
         </div>
 
         <div style="display:flex;gap:12px">
             <div class="fg" style="flex:1">
-                <label>Supplier *</label>
+                <label>@Localizer["Supplier"] *</label>
                 <select asp-for="Input.SupplierId" asp-items="Model.SupplierOptions" required>
-                    <option value="">— Select —</option>
+                    <option value="">— @Localizer["Select"] —</option>
                 </select>
             </div>
             <div class="fg" style="flex:1">
-                <label>Product</label>
+                <label>@Localizer["Product"]</label>
                 <select asp-for="Input.ProductId" asp-items="Model.ProductOptions">
-                    <option value="">— All products from this supplier —</option>
+                    <option value="">— @Localizer["All products from this supplier"] —</option>
                 </select>
             </div>
         </div>
     </div>
 
     <div class="card">
-        <div class="card-title">Condition — what earns the rebate</div>
+        <div class="card-title">@Localizer["Condition — what earns the rebate"]</div>
         <div class="fg">
-            <label>Trigger *</label>
+            <label>@Localizer["Trigger"] *</label>
             <select asp-for="Input.ConditionType" id="condType" onchange="syncCond()">
-                <option value="1">Volume — buying (enough of) the product</option>
-                <option value="2">Price drop — billed below a reference cost</option>
-                <option value="3">On-time payment — paying by the due date</option>
+                <option value="1">@Localizer["Volume — buying (enough of) the product"]</option>
+                <option value="2">@Localizer["Price drop — billed below a reference cost"]</option>
+                <option value="3">@Localizer["On-time payment — paying by the due date"]</option>
             </select>
         </div>
 
         <div id="cond-volume">
             <div style="display:flex;gap:12px">
                 <div class="fg" style="flex:1">
-                    <label>Min Quantity (period)</label>
-                    <input type="number" asp-for="Input.ThresholdQty" min="0" step="0.01" placeholder="blank = any qty" />
+                    <label>@Localizer["Min Quantity (period)"]</label>
+                    <input type="number" asp-for="Input.ThresholdQty" min="0" step="0.01" placeholder="@Localizer["blank = any qty"]" />
                 </div>
                 <div class="fg" style="flex:1">
-                    <label>Min Value (period)</label>
-                    <input type="number" asp-for="Input.ThresholdValue" min="0" step="0.01" placeholder="blank = no minimum" />
+                    <label>@Localizer["Min Value (period)"]</label>
+                    <input type="number" asp-for="Input.ThresholdValue" min="0" step="0.01" placeholder="@Localizer["blank = no minimum"]" />
                 </div>
             </div>
             <div style="font-size:11px;color:#9ca3af;margin-top:-4px">
-                Thresholds are cumulative across the period below, per product.
+                @Localizer["Thresholds are cumulative across the period below, per product."]
             </div>
         </div>
 
         <div id="cond-pricedrop" style="display:none">
             <div class="fg">
-                <label>Reference Cost (per unit)</label>
+                <label>@Localizer["Reference Cost (per unit)"]</label>
                 <input type="number" asp-for="Input.ReferenceCost" min="0" step="0.01" placeholder="0" />
                 <div style="font-size:11px;color:#9ca3af;margin-top:4px">
-                    Any line billed below this earns back the difference × quantity.
+                    @Localizer["Any line billed below this earns back the difference × quantity."]
                 </div>
             </div>
         </div>
 
         <div id="cond-ontime" style="display:none">
             <div class="fg">
-                <label>Grace Days</label>
+                <label>@Localizer["Grace Days"]</label>
                 <input type="number" asp-for="Input.OnTimePaymentDays" min="0" placeholder="0" />
                 <div style="font-size:11px;color:#9ca3af;margin-top:4px">
-                    Days after the due date still counted as on time. 0 = must pay on or before due.
+                    @Localizer["Days after the due date still counted as on time. 0 = must pay on or before due."]
                 </div>
             </div>
         </div>
 
         <div style="display:flex;gap:12px;border-top:1px solid #f3f4f6;padding-top:12px;margin-top:6px">
             <div class="fg" style="flex:1;margin-bottom:0">
-                <label>Period Start</label>
+                <label>@Localizer["Period Start"]</label>
                 <input type="date" asp-for="Input.PeriodStart" />
             </div>
             <div class="fg" style="flex:1;margin-bottom:0">
-                <label>Period End</label>
+                <label>@Localizer["Period End"]</label>
                 <input type="date" asp-for="Input.PeriodEnd" />
             </div>
         </div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:6px">Leave blank for an open-ended rule.</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:6px">@Localizer["Leave blank for an open-ended rule."]</div>
     </div>
 
     <div class="card">
-        <div class="card-title">Reward — what the supplier gives back</div>
+        <div class="card-title">@Localizer["Reward — what the supplier gives back"]</div>
         <div class="fg">
-            <label>Reward Type *</label>
+            <label>@Localizer["Reward Type"] *</label>
             <select asp-for="Input.RewardType" id="rewardType" onchange="syncReward()">
-                <option value="1">Percent discount — % of purchase value</option>
-                <option value="2">Fixed cash</option>
-                <option value="3">Credit note</option>
-                <option value="4">In-kind goods — free stock</option>
-                <option value="5">Lucky draw — value known only at settlement</option>
+                <option value="1">@Localizer["Percent discount — % of purchase value"]</option>
+                @* These two are exactly their enum's display name, so they reuse the EnumDisplay
+                   key rather than duplicating the text as a second free-text resource. *@
+                <option value="2">@Localizer[EnumDisplay.Key("RebateRewardType", "FixedCash")]</option>
+                <option value="3">@Localizer[EnumDisplay.Key("RebateRewardType", "CreditNote")]</option>
+                <option value="4">@Localizer["In-kind goods — free stock"]</option>
+                <option value="5">@Localizer["Lucky draw — value known only at settlement"]</option>
             </select>
         </div>
 
         <div id="reward-percent" class="fg">
-            <label>Discount %</label>
+            <label>@Localizer["Discount %"]</label>
             <input type="number" asp-for="Input.RewardRate" min="0" max="99.99" step="0.01" placeholder="0" />
         </div>
 
         <div id="reward-cash" class="fg" style="display:none">
-            <label>Cash / Credit Amount</label>
+            <label>@Localizer["Cash / Credit Amount"]</label>
             <input type="number" asp-for="Input.RewardAmount" min="0" step="0.01" placeholder="0" />
-            <div style="font-size:11px;color:#9ca3af;margin-top:4px">Accrued once per qualifying purchase.</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px">@Localizer["Accrued once per qualifying purchase."]</div>
         </div>
 
         <div id="reward-inkind" style="display:none">
             <div style="display:flex;gap:12px">
                 <div class="fg" style="flex:2">
-                    <label>Reward Product</label>
+                    <label>@Localizer["Reward Product"]</label>
                     <select asp-for="Input.RewardProductId" asp-items="Model.ProductOptions">
-                        <option value="">— Select —</option>
+                        <option value="">— @Localizer["Select"] —</option>
                     </select>
                 </div>
                 <div class="fg" style="flex:1">
-                    <label>Free Qty</label>
+                    <label>@Localizer["Free Qty"]</label>
                     <input type="number" asp-for="Input.RewardQty" min="0" step="0.01" placeholder="0" />
                 </div>
             </div>
             <div style="font-size:11px;color:#9ca3af;margin-top:-4px">
-                Received into stock at zero cost when claimed, pulling the moving-average cost down.
+                @Localizer["Received into stock at zero cost when claimed, pulling the moving-average cost down."]
             </div>
         </div>
 
         <div id="reward-luckydraw" style="display:none">
             <div class="alert alert-warning" style="font-size:12px;line-height:1.6">
-                A lucky-draw rebate accrues at zero — its value isn't known until the
-                supplier settles. You enter the settled amount later on the Rebates page.
+                @Localizer["A lucky-draw rebate accrues at zero — its value isn't known until the supplier settles. You enter the settled amount later on the Rebates page."]
             </div>
         </div>
     </div>
@@ -147,20 +148,19 @@
     <div class="card">
         <div class="fg" style="display:flex;align-items:center;gap:10px;margin-bottom:0">
             <input type="checkbox" asp-for="Input.IsActive" style="width:18px;height:18px;margin:0" />
-            <label style="margin:0">Active — applies to new purchases</label>
+            <label style="margin:0">@Localizer["Active — applies to new purchases"]</label>
         </div>
         @if (Model.InUse)
         {
             <div class="alert alert-warning" style="font-size:12px;line-height:1.6;margin-top:10px">
-                This rule has already accrued rebates, so it can't be deleted — untick
-                Active to retire it. Existing accruals keep their link to it.
+                @Localizer["This rule has already accrued rebates, so it can't be deleted — untick Active to retire it. Existing accruals keep their link to it."]
             </div>
         }
     </div>
 
     <div style="display:flex;gap:10px">
-        <button type="submit" class="btn btn-primary" style="padding:10px 32px">💾 Save</button>
-        <a href="/RebateRules" class="btn btn-outline">Cancel</a>
+        <button type="submit" class="btn btn-primary" style="padding:10px 32px">💾 @Localizer["Save"]</button>
+        <a href="/RebateRules" class="btn btn-outline">@Localizer["Cancel"]</a>
     </div>
 </form>
 

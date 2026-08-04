@@ -1,32 +1,32 @@
 @page "/Payments"
 @model SimpleERP.Web.Pages.Payments.IndexModel
-@{ ViewData["Title"] = "Due Payments"; }
+@{ ViewData["Title"] = Localizer["Due Payments"].Value; }
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
   <div>
-    <span style="font-size:13px;color:#6b7280">Total outstanding: </span>
+    <span style="font-size:13px;color:#6b7280">@Localizer["Total outstanding:"] </span>
     <span style="font-size:20px;font-weight:700;color:#dc2626">@Model.TotalOutstanding.ToString("N0")</span>
     @if (Model.OverdueCount > 0) {
       <span style="margin-left:12px;background:#fee2e2;color:#b91c1c;font-size:12px;font-weight:700;padding:3px 8px;border-radius:12px">
-        ⚠ @Model.OverdueCount overdue
+        ⚠ @Localizer["{0} overdue", Model.OverdueCount]
       </span>
     }
   </div>
 </div>
 
 <div class="card">
-  <div class="card-title">Outstanding Credit Sales — click View to record a payment</div>
+  <div class="card-title">@Localizer["Outstanding Credit Sales — click View to record a payment"]</div>
   <table>
     <thead>
       <tr>
-        <th>Invoice</th>
-        <th>Date</th>
-        <th>Customer</th>
-        <th>Term</th>
-        <th>Due Date</th>
-        <th>Total</th>
-        <th>Paid</th>
-        <th style="color:#dc2626">Balance Due</th>
+        <th>@Localizer["Invoice"]</th>
+        <th>@Localizer["Date"]</th>
+        <th>@Localizer["Customer"]</th>
+        <th>@Localizer["Term"]</th>
+        <th>@Localizer["Due Date"]</th>
+        <th>@Localizer["Total"]</th>
+        <th>@Localizer["Paid"]</th>
+        <th style="color:#dc2626">@Localizer["Balance Due"]</th>
         <th></th>
       </tr>
     </thead>
@@ -41,7 +41,7 @@
           @{
             // The term name is the real information here; "open credit" is what a credit
             // sale with no agreed term legitimately looks like.
-            var termLabel = string.IsNullOrEmpty(s.PaymentTermName) ? "Open credit" : s.PaymentTermName;
+            var termLabel = string.IsNullOrEmpty(s.PaymentTermName) ? Localizer["Open credit"].Value : s.PaymentTermName;
           }
           <span style="font-size:12px;color:#374151">@termLabel</span>
         </td>
@@ -59,11 +59,11 @@
         <td>@s.GrandTotal.ToString("N0")</td>
         <td>@s.AmountPaid.ToString("N0")</td>
         <td><span style="color:#dc2626;font-weight:700;font-size:14px">@s.BalanceDue.ToString("N0")</span></td>
-        <td><a href="/Sales/@s.Id" class="btn btn-primary btn-sm">View &amp; Pay</a></td>
+        <td><a href="/Sales/@s.Id" class="btn btn-primary btn-sm">@Localizer["View & Pay"]</a></td>
       </tr>
     }
     @if (!Model.Outstanding.Any()) {
-      <tr><td colspan="9" style="text-align:center;color:#059669;padding:28px;font-weight:600">✓ No outstanding dues! All customers are settled.</td></tr>
+      <tr><td colspan="9" style="text-align:center;color:#059669;padding:28px;font-weight:600">✓ @Localizer["No outstanding dues! All customers are settled."]</td></tr>
     }
     </tbody>
   </table>

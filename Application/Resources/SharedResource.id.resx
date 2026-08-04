@@ -231,7 +231,6 @@
   <data name="The sections below have no data source in the system yet, so they are named rather than silently omitted:" xml:space="preserve"><value>Bagian di bawah ini belum memiliki sumber data di sistem, jadi tetap disebutkan daripada dihilangkan diam-diam:</value></data>
   <data name="Reconciliation" xml:space="preserve"><value>Rekonsiliasi</value></data>
   <data name="collected" xml:space="preserve"><value>dipungut</value></data>
-  <data name="paid" xml:space="preserve"><value>dibayar</value></data>
   <data name="reclaimable" xml:space="preserve"><value>dapat dikreditkan</value></data>
   <data name="reversed by sales returns" xml:space="preserve"><value>dikoreksi oleh retur penjualan</value></data>
   <data name="reversed by purchase returns" xml:space="preserve"><value>dikoreksi oleh retur pembelian</value></data>
@@ -239,4 +238,682 @@
   <data name="PPN is shown as a memo, not as income. It is collected on the government's behalf and owed onward, so including it in Penjualan would overstate turnover. Total invoiced is the tax-inclusive figure — use that one when tying this report back to cash received and outstanding receivables." xml:space="preserve"><value>PPN ditampilkan sebagai memo, bukan pendapatan. PPN dipungut atas nama pemerintah dan wajib disetorkan, sehingga memasukkannya ke Penjualan akan melebih-lebihkan omzet. Total difakturkan adalah angka termasuk pajak — gunakan angka itu saat mencocokkan laporan ini dengan kas yang diterima dan piutang yang beredar.</value></data>
   <data name="The net PPN figure is indicative only: it is this period's output tax less this period's input tax, and does not model credits carried forward from earlier months. Your SPT Masa filing remains the consultant's work — this gives them the inputs." xml:space="preserve"><value>Angka PPN bersih bersifat indikatif saja: ini adalah pajak keluaran periode ini dikurangi pajak masukan periode ini, dan belum memperhitungkan kredit yang dibawa dari bulan sebelumnya. Pelaporan SPT Masa tetap menjadi pekerjaan konsultan — laporan ini menyediakan datanya.</value></data>
   <data name="Commercial basis, matching the SPT column of the annual statement. Fiscal corrections and PPh Badan remain your tax consultant's work — this report supplies the inputs. Cancelled invoices, purchases and returns are excluded; HPP uses each line's cost as captured at the moment of sale, so later cost changes cannot restate historical margin. Rebate is recognised when it is earned and komisi when it is collected on, so both follow their own timing rather than the invoice date — a period's commission will not tie exactly to that period's Penjualan, by design." xml:space="preserve"><value>Basis komersial, sesuai kolom SPT pada laporan tahunan. Koreksi fiskal dan PPh Badan tetap menjadi pekerjaan konsultan pajak Anda — laporan ini menyediakan datanya. Faktur, pembelian dan retur yang dibatalkan tidak dihitung; HPP memakai biaya tiap baris seperti yang dicatat pada saat penjualan, sehingga perubahan biaya di kemudian hari tidak bisa mengubah margin historis. Rebat diakui saat diperoleh dan komisi saat ditagihkan, jadi keduanya mengikuti waktunya sendiri, bukan tanggal faktur — komisi suatu periode memang tidak akan persis cocok dengan Penjualan periode itu.</value></data>
+  <!-- Phase A: page chrome for the remaining 49 pages under Web/Pages. -->
+  <data name="— each invoice stores its own due date at the time it was created, so posted invoices are unaffected. It cannot be deleted; untick Active to retire it." xml:space="preserve"><value>— setiap faktur menyimpan tanggal jatuh temponya sendiri saat dibuat, sehingga faktur yang sudah diposting tidak terpengaruh. Termin ini tidak bisa dihapus; hilangkan centang Aktif untuk menonaktifkannya.</value></data>
+  <data name="— the system will calculate the difference and record it in the ledger." xml:space="preserve"><value>— sistem akan menghitung selisihnya dan mencatatnya di buku besar.</value></data>
+  <data name=", not by editing or deleting what was already earned — so it nets off the sales person's next payout even if the original commission has already been paid out. Because of that, this return can no longer be cancelled once its clawback exists." xml:space="preserve"><value>, bukan dengan mengubah atau menghapus yang sudah diperoleh — sehingga otomatis mengurangi pembayaran komisi berikutnya meskipun komisi aslinya sudah dibayarkan. Karena itu, retur ini tidak bisa lagi dibatalkan setelah klaim baliknya ada.</value></data>
+  <data name="(+{0}d grace)" xml:space="preserve"><value>(+{0}h tenggang)</value></data>
+  <data name="(non-deductible)" xml:space="preserve"><value>(tidak dapat dibiayakan)</value></data>
+  <data name="{0} active purchase return" xml:space="preserve"><value>{0} retur pembelian aktif</value></data>
+  <data name="{0} active purchase returns" xml:space="preserve"><value>{0} retur pembelian aktif</value></data>
+  <data name="{0} active sales return" xml:space="preserve"><value>{0} retur penjualan aktif</value></data>
+  <data name="{0} active sales returns" xml:space="preserve"><value>{0} retur penjualan aktif</value></data>
+  <data name="{0} cash" xml:space="preserve"><value>{0} tunai</value></data>
+  <data name="{0} credit note" xml:space="preserve"><value>{0} nota kredit</value></data>
+  <data name="{0} day" xml:space="preserve"><value>{0} hari</value></data>
+  <data name="{0} day left" xml:space="preserve"><value>sisa {0} hari</value></data>
+  <data name="{0} days" xml:space="preserve"><value>{0} hari</value></data>
+  <data name="{0} days left" xml:space="preserve"><value>sisa {0} hari</value></data>
+  <data name="{0} line" xml:space="preserve"><value>{0} baris</value></data>
+  <data name="{0} lines" xml:space="preserve"><value>{0} baris</value></data>
+  <data name="{0} mo" xml:space="preserve"><value>{0} bln</value></data>
+  <data name="{0} overdue" xml:space="preserve"><value>{0} jatuh tempo</value></data>
+  <data name="{0} to {1}" xml:space="preserve"><value>{0} sampai {1}</value></data>
+  <data name="{0} unit" xml:space="preserve"><value>{0} unit</value></data>
+  <data name="{0} units" xml:space="preserve"><value>{0} unit</value></data>
+  <data name="{0}% discount" xml:space="preserve"><value>diskon {0}%</value></data>
+  <data name="{0}% withholding" xml:space="preserve"><value>potongan {0}%</value></data>
+  <data name="↑ Will add {0} units to stock" xml:space="preserve"><value>↑ Akan menambah {0} unit ke stok</value></data>
+  <data name="↓ Will remove {0} units from stock" xml:space="preserve"><value>↓ Akan mengurangi {0} unit dari stok</value></data>
+  <data name="≥ {0} value" xml:space="preserve"><value>≥ nilai {0}</value></data>
+  <data name="⚠ OVERDUE since {0}" xml:space="preserve"><value>⚠ JATUH TEMPO sejak {0}</value></data>
+  <data name="0 = due same day (COD)." xml:space="preserve"><value>0 = jatuh tempo hari yang sama (COD).</value></data>
+  <data name="132 columns — Wide paper (14 inch)" xml:space="preserve"><value>132 kolom — Kertas lebar (14 inci)</value></data>
+  <data name="80 columns — Narrow paper (8 inch)" xml:space="preserve"><value>80 kolom — Kertas sempit (8 inci)</value></data>
+  <data name="A lucky-draw rebate accrues at zero — its value isn't known until the supplier settles. You enter the settled amount later on the Rebates page." xml:space="preserve"><value>Rebat undian diakru dengan nilai nol — nilainya belum diketahui sampai pemasok menyelesaikannya. Anda memasukkan jumlah penyelesaiannya nanti di halaman Rebat.</value></data>
+  <data name="A note raised by a return can only be voided by cancelling that return, which reverses the goods movement at the same time." xml:space="preserve"><value>Nota yang diterbitkan oleh sebuah retur hanya bisa dibatalkan dengan membatalkan retur tersebut, yang sekaligus mengoreksi pergerakan barangnya.</value></data>
+  <data name="A return always starts from the document it reverses: open the" xml:space="preserve"><value>Retur selalu dimulai dari dokumen yang dikoreksinya: buka</value></data>
+  <data name="A rule scoped to a product beats one scoped to a category beats an all-products rule at the same priority." xml:space="preserve"><value>Aturan untuk satu produk mengalahkan aturan untuk satu kategori, yang mengalahkan aturan semua produk, pada prioritas yang sama.</value></data>
+  <data name="A statement lists every open PO for that supplier so several can be settled in one payment, netting off any debit notes they already owe back." xml:space="preserve"><value>Laporan menampilkan seluruh PO terbuka untuk pemasok itu sehingga beberapa bisa dilunasi dalam satu pembayaran, sekaligus memperhitungkan nota debit yang masih menjadi hak Anda.</value></data>
+  <data name="Accruals" xml:space="preserve"><value>Akrual</value></data>
+  <data name="Accrued once per qualifying purchase." xml:space="preserve"><value>Diakru sekali untuk setiap pembelian yang memenuhi syarat.</value></data>
+  <data name="Accrued Total" xml:space="preserve"><value>Total Diakru</value></data>
+  <data name="Action" xml:space="preserve"><value>Aksi</value></data>
+  <data name="Active" xml:space="preserve"><value>Aktif</value></data>
+  <data name="Active — applies to new collections" xml:space="preserve"><value>Aktif — berlaku untuk penagihan baru</value></data>
+  <data name="Active — applies to new purchases" xml:space="preserve"><value>Aktif — berlaku untuk pembelian baru</value></data>
+  <data name="Active — available when creating new purchases" xml:space="preserve"><value>Aktif — tersedia saat membuat pembelian baru</value></data>
+  <data name="Active — available when creating new sales" xml:space="preserve"><value>Aktif — tersedia saat membuat penjualan baru</value></data>
+  <data name="Active Products" xml:space="preserve"><value>Produk Aktif</value></data>
+  <data name="Active warranties only" xml:space="preserve"><value>Hanya garansi aktif</value></data>
+  <data name="Actual Physical Count" xml:space="preserve"><value>Hasil Hitung Fisik</value></data>
+  <data name="Add" xml:space="preserve"><value>Tambah</value></data>
+  <data name="Add Category" xml:space="preserve"><value>Tambah Kategori</value></data>
+  <data name="Add Customer" xml:space="preserve"><value>Tambah Pelanggan</value></data>
+  <data name="Add Items" xml:space="preserve"><value>Tambah Barang</value></data>
+  <data name="Add one" xml:space="preserve"><value>Tambah satu</value></data>
+  <data name="Add Payment Term" xml:space="preserve"><value>Tambah Termin Pembayaran</value></data>
+  <data name="Add Product" xml:space="preserve"><value>Tambah Produk</value></data>
+  <data name="Add Sales Person" xml:space="preserve"><value>Tambah Sales</value></data>
+  <data name="Address" xml:space="preserve"><value>Alamat</value></data>
+  <data name="Against invoice {0}" xml:space="preserve"><value>Terhadap faktur {0}</value></data>
+  <data name="Against purchase {0}" xml:space="preserve"><value>Terhadap pembelian {0}</value></data>
+  <data name="Alert at" xml:space="preserve"><value>Peringatan pada</value></data>
+  <data name="All" xml:space="preserve"><value>Semua</value></data>
+  <data name="All categories" xml:space="preserve"><value>Semua kategori</value></data>
+  <data name="All directions" xml:space="preserve"><value>Semua arah</value></data>
+  <data name="All open documents" xml:space="preserve"><value>Semua dokumen terbuka</value></data>
+  <data name="All products" xml:space="preserve"><value>Semua produk</value></data>
+  <data name="All products from this supplier" xml:space="preserve"><value>Semua produk dari pemasok ini</value></data>
+  <data name="All returns" xml:space="preserve"><value>Semua retur</value></data>
+  <data name="All Sales" xml:space="preserve"><value>Semua Penjualan</value></data>
+  <data name="All salespeople" xml:space="preserve"><value>Semua sales</value></data>
+  <data name="All statuses" xml:space="preserve"><value>Semua status</value></data>
+  <data name="All stock levels are above threshold." xml:space="preserve"><value>Semua level stok di atas ambang batas.</value></data>
+  <data name="All-time Outstanding Due" xml:space="preserve"><value>Total Piutang Sepanjang Waktu</value></data>
+  <data name="Already applied or refunded — which is why this return can no longer be cancelled." xml:space="preserve"><value>Sudah diterapkan atau dikembalikan — itulah sebabnya retur ini tidak bisa lagi dibatalkan.</value></data>
+  <data name="Already back" xml:space="preserve"><value>Sudah kembali</value></data>
+  <data name="Already offset or refunded — which is why this return can no longer be cancelled." xml:space="preserve"><value>Sudah diperhitungkan atau dikembalikan — itulah sebabnya retur ini tidak bisa lagi dibatalkan.</value></data>
+  <data name="Amount" xml:space="preserve"><value>Jumlah</value></data>
+  <data name="Amount already includes" xml:space="preserve"><value>Jumlah sudah termasuk</value></data>
+  <data name="Amount Owed" xml:space="preserve"><value>Jumlah Terutang</value></data>
+  <data name="Amount to collect" xml:space="preserve"><value>Jumlah yang ditagih</value></data>
+  <data name="Amount to pay" xml:space="preserve"><value>Jumlah yang dibayar</value></data>
+  <data name="Amounts outstanding on this account" xml:space="preserve"><value>Jumlah yang belum lunas pada akun ini</value></data>
+  <data name="Amounts payable to this supplier" xml:space="preserve"><value>Jumlah yang harus dibayar ke pemasok ini</value></data>
+  <data name="and use" xml:space="preserve"><value>lalu gunakan</value></data>
+  <data name="Any line billed below this earns back the difference × quantity." xml:space="preserve"><value>Setiap baris yang ditagih di bawah nilai ini menghasilkan rebat sebesar selisih × kuantitas.</value></data>
+  <data name="App Name" xml:space="preserve"><value>Nama Aplikasi</value></data>
+  <data name="Applied to / refunded" xml:space="preserve"><value>Diterapkan ke / dikembalikan</value></data>
+  <data name="Applies to" xml:space="preserve"><value>Berlaku untuk</value></data>
+  <data name="Apply Adjustment" xml:space="preserve"><value>Terapkan Penyesuaian</value></data>
+  <data name="Avg Cost" xml:space="preserve"><value>Biaya Rata-rata</value></data>
+  <data name="Back to Expenses" xml:space="preserve"><value>Kembali ke Biaya</value></data>
+  <data name="Back to the invoice" xml:space="preserve"><value>Kembali ke faktur</value></data>
+  <data name="Back to the purchase" xml:space="preserve"><value>Kembali ke pembelian</value></data>
+  <data name="Balance" xml:space="preserve"><value>Saldo</value></data>
+  <data name="Balance Due" xml:space="preserve"><value>Sisa Tagihan</value></data>
+  <data name="Balance Owed" xml:space="preserve"><value>Sisa Utang</value></data>
+  <data name="batch, expiry, condition…" xml:space="preserve"><value>batch, kedaluwarsa, kondisi…</value></data>
+  <data name="before offsetting the payable." xml:space="preserve"><value>sebelum diperhitungkan terhadap utang.</value></data>
+  <data name="below {0}" xml:space="preserve"><value>di bawah {0}</value></data>
+  <data name="Billed at" xml:space="preserve"><value>Ditagih pada</value></data>
+  <data name="blank = any qty" xml:space="preserve"><value>kosong = kuantitas berapa pun</value></data>
+  <data name="blank = no minimum" xml:space="preserve"><value>kosong = tanpa minimum</value></data>
+  <data name="Browser Print" xml:space="preserve"><value>Cetak Lewat Browser</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Batal</value></data>
+  <data name="Cancel note" xml:space="preserve"><value>Batalkan nota</value></data>
+  <data name="Cancel Purchase" xml:space="preserve"><value>Batalkan Pembelian</value></data>
+  <data name="Cancel Return" xml:space="preserve"><value>Batalkan Retur</value></data>
+  <data name="Cancel Sale" xml:space="preserve"><value>Batalkan Penjualan</value></data>
+  <data name="Cancel this note?" xml:space="preserve"><value>Batalkan nota ini?</value></data>
+  <data name="Cancel this purchase? Received stock will be reversed." xml:space="preserve"><value>Batalkan pembelian ini? Stok yang sudah diterima akan dikoreksi.</value></data>
+  <data name="Cancel this return? The goods will be taken back out of stock and the credit note voided." xml:space="preserve"><value>Batalkan retur ini? Barang akan dikeluarkan kembali dari stok dan nota kreditnya dibatalkan.</value></data>
+  <data name="Cancel this return? The goods will come back into stock and the debit note will be voided." xml:space="preserve"><value>Batalkan retur ini? Barang akan kembali masuk stok dan nota debitnya dibatalkan.</value></data>
+  <data name="Cancel this sale? Stock will be reversed." xml:space="preserve"><value>Batalkan penjualan ini? Stok akan dikoreksi.</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>Dibatalkan</value></data>
+  <data name="Cannot be before the invoice date." xml:space="preserve"><value>Tidak boleh lebih awal dari tanggal faktur.</value></data>
+  <data name="Cannot be before the purchase date." xml:space="preserve"><value>Tidak boleh lebih awal dari tanggal pembelian.</value></data>
+  <data name="Cash — paid now" xml:space="preserve"><value>Tunai — dibayar sekarang</value></data>
+  <data name="Cash / Credit Amount" xml:space="preserve"><value>Jumlah Tunai / Kredit</value></data>
+  <data name="Cash In (Sales + Collections)" xml:space="preserve"><value>Kas Masuk (Penjualan + Penagihan)</value></data>
+  <data name="Cash Sales" xml:space="preserve"><value>Penjualan Tunai</value></data>
+  <data name="Cash sales revenue" xml:space="preserve"><value>Pendapatan penjualan tunai</value></data>
+  <data name="cat: {0}" xml:space="preserve"><value>kat: {0}</value></data>
+  <data name="Categories" xml:space="preserve"><value>Kategori</value></data>
+  <data name="Categories with expenses recorded against them can't be deleted." xml:space="preserve"><value>Kategori yang sudah memiliki catatan biaya tidak bisa dihapus.</value></data>
+  <data name="Category" xml:space="preserve"><value>Kategori</value></data>
+  <data name="Clawed back the commission earned on the returned units, if this invoice was credited to a sales person." xml:space="preserve"><value>Menarik kembali komisi atas unit yang diretur, bila faktur ini diatribusikan ke seorang sales.</value></data>
+  <data name="Clear" xml:space="preserve"><value>Bersihkan</value></data>
+  <data name="Click a printer name to select it:" xml:space="preserve"><value>Klik nama printer untuk memilihnya:</value></data>
+  <data name="Collect now" xml:space="preserve"><value>Tagih sekarang</value></data>
+  <data name="Collected later" xml:space="preserve"><value>Ditagih kemudian</value></data>
+  <data name="Commission Accrued" xml:space="preserve"><value>Komisi Diakru</value></data>
+  <data name="Commission accrues automatically as sales are collected. Pay a salesperson out here — one payout settles all their unpaid accruals." xml:space="preserve"><value>Komisi diakru otomatis seiring penjualan tertagih. Bayarkan ke sales di sini — satu pembayaran melunasi semua akrual mereka yang belum dibayar.</value></data>
+  <data name="Commission is a percentage of revenue (ex-PPN), earned when payment is collected — a credit sale accrues in slices as it's paid. When more than one rule matches a line, the highest priority wins. Settle accruals on the" xml:space="preserve"><value>Komisi adalah persentase dari pendapatan (di luar PPN), diperoleh saat pembayaran tertagih — penjualan kredit diakru bertahap seiring pembayarannya. Bila lebih dari satu aturan cocok untuk satu baris, prioritas tertinggi yang menang. Selesaikan akrual di halaman</value></data>
+  <data name="Commission Payouts" xml:space="preserve"><value>Pembayaran Komisi</value></data>
+  <data name="Condition" xml:space="preserve"><value>Kondisi</value></data>
+  <data name="Condition — what earns the rebate" xml:space="preserve"><value>Kondisi — apa yang menghasilkan rebat</value></data>
+  <data name="Confirm Payment" xml:space="preserve"><value>Konfirmasi Pembayaran</value></data>
+  <data name="Confirm stock adjustment? This cannot be undone." xml:space="preserve"><value>Konfirmasi penyesuaian stok? Tindakan ini tidak bisa dibatalkan.</value></data>
+  <data name="Confirm the current effective rate with your tax consultant — this is a configurable default, not tax advice." xml:space="preserve"><value>Konfirmasikan tarif yang berlaku saat ini dengan konsultan pajak Anda — ini hanya nilai bawaan yang bisa diatur, bukan nasihat perpajakan.</value></data>
+  <data name="Controls dropdown position." xml:space="preserve"><value>Mengatur urutan tampil di dropdown.</value></data>
+  <data name="Cost restocked" xml:space="preserve"><value>Biaya yang dikembalikan ke stok</value></data>
+  <data name="Cost will update the Moving Average for this product." xml:space="preserve"><value>Biaya akan memperbarui Rata-rata Bergerak untuk produk ini.</value></data>
+  <data name="Costs already include" xml:space="preserve"><value>Biaya sudah termasuk</value></data>
+  <data name="Counted from the supplier's invoice date, not from today." xml:space="preserve"><value>Dihitung dari tanggal faktur pemasok, bukan dari hari ini.</value></data>
+  <data name="Counterparty" xml:space="preserve"><value>Pihak Lawan</value></data>
+  <data name="Create Invoice" xml:space="preserve"><value>Buat Faktur</value></data>
+  <data name="Create one" xml:space="preserve"><value>Buat satu</value></data>
+  <data name="Credit" xml:space="preserve"><value>Kredit</value></data>
+  <data name="Credit — pay later" xml:space="preserve"><value>Kredit — dibayar kemudian</value></data>
+  <data name="Credit / unit" xml:space="preserve"><value>Kredit / unit</value></data>
+  <data name="Credit &amp; Debit Notes" xml:space="preserve"><value>Nota Kredit &amp; Debit</value></data>
+  <data name="Credit Note" xml:space="preserve"><value>Nota Kredit</value></data>
+  <data name="Credit note — we owe a customer" xml:space="preserve"><value>Nota kredit — kita berutang ke pelanggan</value></data>
+  <data name="Credit Notes — reduce what they owe" xml:space="preserve"><value>Nota Kredit — mengurangi tagihan mereka</value></data>
+  <data name="Credit only" xml:space="preserve"><value>Hanya kredit</value></data>
+  <data name="Credit per unit comes from what the customer was actually charged on that line — net of its own discount and its share of any invoice discount — not from the list price." xml:space="preserve"><value>Kredit per unit berasal dari yang benar-benar ditagihkan ke pelanggan pada baris itu — setelah diskon baris dan bagian diskon fakturnya — bukan dari harga daftar.</value></data>
+  <data name="Credit Preview" xml:space="preserve"><value>Pratinjau Kredit</value></data>
+  <data name="Credit subtotal" xml:space="preserve"><value>Subtotal kredit</value></data>
+  <data name="Credit Term" xml:space="preserve"><value>Termin Kredit</value></data>
+  <data name="Credit terms available when creating a sale. Due date is calculated as sale date + due days and stored on the invoice — so editing a term here never changes invoices that are already posted." xml:space="preserve"><value>Termin kredit yang tersedia saat membuat penjualan. Tanggal jatuh tempo dihitung sebagai tanggal penjualan + jumlah hari, lalu disimpan pada faktur — sehingga mengubah termin di sini tidak pernah mengubah faktur yang sudah diposting.</value></data>
+  <data name="Credited" xml:space="preserve"><value>Dikreditkan</value></data>
+  <data name="Credited to customers" xml:space="preserve"><value>Dikreditkan ke pelanggan</value></data>
+  <data name="Credited with existing sales" xml:space="preserve"><value>Diatribusikan pada penjualan yang sudah ada</value></data>
+  <data name="Customer" xml:space="preserve"><value>Pelanggan</value></data>
+  <data name="Date" xml:space="preserve"><value>Tanggal</value></data>
+  <data name="Days after the due date still counted as on time. 0 = must pay on or before due." xml:space="preserve"><value>Jumlah hari setelah jatuh tempo yang masih dihitung tepat waktu. 0 = harus dibayar paling lambat pada tanggal jatuh tempo.</value></data>
+  <data name="Deactivate this product?" xml:space="preserve"><value>Nonaktifkan produk ini?</value></data>
+  <data name="Debit" xml:space="preserve"><value>Debit</value></data>
+  <data name="Debit / unit" xml:space="preserve"><value>Debit / unit</value></data>
+  <data name="Debit Note" xml:space="preserve"><value>Nota Debit</value></data>
+  <data name="Debit note — a supplier owes us" xml:space="preserve"><value>Nota debit — pemasok berutang ke kita</value></data>
+  <data name="Debit Notes — reduce what you pay" xml:space="preserve"><value>Nota Debit — mengurangi yang Anda bayar</value></data>
+  <data name="Debit only" xml:space="preserve"><value>Hanya debit</value></data>
+  <data name="Debit Preview" xml:space="preserve"><value>Pratinjau Debit</value></data>
+  <data name="Debit subtotal" xml:space="preserve"><value>Subtotal debit</value></data>
+  <data name="Debited" xml:space="preserve"><value>Didebit</value></data>
+  <data name="Debited to suppliers" xml:space="preserve"><value>Didebit ke pemasok</value></data>
+  <data name="Deducted from a rebate settlement before it offsets the payable. The supplier sheet shows 15%; confirm the legal basis with your consultant." xml:space="preserve"><value>Dipotong dari penyelesaian rebat sebelum diperhitungkan terhadap utang. Lembar pemasok menunjukkan 15%; konfirmasikan dasar hukumnya dengan konsultan Anda.</value></data>
+  <data name="Deductible" xml:space="preserve"><value>Dapat dibiayakan</value></data>
+  <data name="Default Credit Term" xml:space="preserve"><value>Termin Kredit Bawaan</value></data>
+  <data name="Default Term" xml:space="preserve"><value>Termin Bawaan</value></data>
+  <data name="Default Warranty (months)" xml:space="preserve"><value>Garansi Bawaan (bulan)</value></data>
+  <data name="Defaults to today. Backdate it to enter a sale that was written up earlier — a future date isn't accepted." xml:space="preserve"><value>Bawaannya hari ini. Mundurkan tanggalnya untuk memasukkan penjualan yang dibuat lebih awal — tanggal di masa depan tidak diterima.</value></data>
+  <data name="Delete" xml:space="preserve"><value>Hapus</value></data>
+  <data name="Delete category {0}?" xml:space="preserve"><value>Hapus kategori {0}?</value></data>
+  <data name="Delete payment term {0}?" xml:space="preserve"><value>Hapus termin pembayaran {0}?</value></data>
+  <data name="Delete rule {0}?" xml:space="preserve"><value>Hapus aturan {0}?</value></data>
+  <data name="Delete sales person {0}?" xml:space="preserve"><value>Hapus sales {0}?</value></data>
+  <data name="Delete supplier {0}?" xml:space="preserve"><value>Hapus pemasok {0}?</value></data>
+  <data name="Delete this {0} expense of {1}?" xml:space="preserve"><value>Hapus biaya {0} sebesar {1} ini?</value></data>
+  <data name="Description" xml:space="preserve"><value>Keterangan</value></data>
+  <data name="Detail" xml:space="preserve"><value>Detail</value></data>
+  <data name="Detect Printers" xml:space="preserve"><value>Deteksi Printer</value></data>
+  <data name="Difference" xml:space="preserve"><value>Selisih</value></data>
+  <data name="Direction" xml:space="preserve"><value>Arah</value></data>
+  <data name="Disc" xml:space="preserve"><value>Disk</value></data>
+  <data name="Discount" xml:space="preserve"><value>Diskon</value></data>
+  <data name="Discount %" xml:space="preserve"><value>Diskon %</value></data>
+  <data name="Document Discount" xml:space="preserve"><value>Diskon Dokumen</value></data>
+  <data name="Dot-Matrix Printer" xml:space="preserve"><value>Printer Dot-Matrix</value></data>
+  <data name="Due" xml:space="preserve"><value>Jatuh tempo</value></data>
+  <data name="Due by {0}" xml:space="preserve"><value>Jatuh tempo {0}</value></data>
+  <data name="Due by customer" xml:space="preserve"><value>Tagihan per pelanggan</value></data>
+  <data name="Due Date" xml:space="preserve"><value>Tanggal Jatuh Tempo</value></data>
+  <data name="Due Days" xml:space="preserve"><value>Hari Jatuh Tempo</value></data>
+  <data name="Due Payments by Customer" xml:space="preserve"><value>Tagihan per Pelanggan</value></data>
+  <data name="Due Sales" xml:space="preserve"><value>Penjualan Kredit</value></data>
+  <data name="Due sales revenue (invoiced)" xml:space="preserve"><value>Pendapatan penjualan kredit (difakturkan)</value></data>
+  <data name="e.g. 021-12345678" xml:space="preserve"><value>mis. 021-12345678</value></data>
+  <data name="e.g. 08123456789" xml:space="preserve"><value>mis. 08123456789</value></data>
+  <data name="e.g. Agreed price correction on Jan delivery" xml:space="preserve"><value>mis. Koreksi harga yang disepakati atas pengiriman Januari</value></data>
+  <data name="e.g. Asuransi" xml:space="preserve"><value>mis. Asuransi</value></data>
+  <data name="e.g. Bank transfer ref 88213, covers July statement" xml:space="preserve"><value>mis. Transfer bank ref 88213, untuk tagihan Juli</value></data>
+  <data name="e.g. Budi" xml:space="preserve"><value>mis. Budi</value></data>
+  <data name="e.g. Budi — 2.5% all sales" xml:space="preserve"><value>mis. Budi — 2,5% semua penjualan</value></data>
+  <data name="e.g. Cash, transfer..." xml:space="preserve"><value>mis. Tunai, transfer...</value></data>
+  <data name="e.g. Damaged in transit, wrong model sent" xml:space="preserve"><value>mis. Rusak dalam pengiriman, model salah kirim</value></data>
+  <data name="e.g. EPSON LX-300+" xml:space="preserve"><value>mis. EPSON LX-300+</value></data>
+  <data name="e.g. Faulty unit, wrong item shipped" xml:space="preserve"><value>mis. Unit rusak, barang salah kirim</value></data>
+  <data name="e.g. Jl. Sudirman No. 1, Jakarta" xml:space="preserve"><value>mis. Jl. Sudirman No. 1, Jakarta</value></data>
+  <data name="e.g. John Doe" xml:space="preserve"><value>mis. Budi Santoso</value></data>
+  <data name="e.g. John Doe, Samsung, INV-202501..." xml:space="preserve"><value>mis. Budi Santoso, Samsung, INV-202501...</value></data>
+  <data name="e.g. Physical count on 22-Apr-2026, damaged items removed" xml:space="preserve"><value>mis. Hitung fisik 22-Apr-2026, barang rusak dikeluarkan</value></data>
+  <data name="e.g. PT Sumber Makmur" xml:space="preserve"><value>mis. PT Sumber Makmur</value></data>
+  <data name="e.g. Q3 volume rebate — AC units" xml:space="preserve"><value>mis. Rebat volume Q3 — unit AC</value></data>
+  <data name="e.g. SAM-A55" xml:space="preserve"><value>mis. SAM-A55</value></data>
+  <data name="e.g. Samsung Galaxy A55" xml:space="preserve"><value>mis. Samsung Galaxy A55</value></data>
+  <data name="e.g. Smartphone" xml:space="preserve"><value>mis. Smartphone</value></data>
+  <data name="e.g. Special customer rate, clearance..." xml:space="preserve"><value>mis. Harga khusus pelanggan, cuci gudang...</value></data>
+  <data name="e.g. TOP 14" xml:space="preserve"><value>mis. TOP 14</value></data>
+  <data name="e.g. Transfer received 30 Jul, covers July statement" xml:space="preserve"><value>mis. Transfer diterima 30 Jul, untuk tagihan Juli</value></data>
+  <data name="e.g. Transfer, cheque..." xml:space="preserve"><value>mis. Transfer, cek...</value></data>
+  <data name="Edit" xml:space="preserve"><value>Ubah</value></data>
+  <data name="Edit Commission Rule" xml:space="preserve"><value>Ubah Aturan Komisi</value></data>
+  <data name="Edit Customer" xml:space="preserve"><value>Ubah Pelanggan</value></data>
+  <data name="Edit Expense" xml:space="preserve"><value>Ubah Biaya</value></data>
+  <data name="Edit Payment Term" xml:space="preserve"><value>Ubah Termin Pembayaran</value></data>
+  <data name="Edit Product" xml:space="preserve"><value>Ubah Produk</value></data>
+  <data name="Edit Rebate Rule" xml:space="preserve"><value>Ubah Aturan Rebat</value></data>
+  <data name="Edit Sales Person" xml:space="preserve"><value>Ubah Sales</value></data>
+  <data name="Edit Supplier" xml:space="preserve"><value>Ubah Pemasok</value></data>
+  <data name="editable in" xml:space="preserve"><value>dapat diubah di</value></data>
+  <data name="Effective Window (optional)" xml:space="preserve"><value>Masa Berlaku (opsional)</value></data>
+  <data name="Enable dot-matrix printing" xml:space="preserve"><value>Aktifkan pencetakan dot-matrix</value></data>
+  <data name="End of Day Report" xml:space="preserve"><value>Laporan Tutup Hari</value></data>
+  <data name="Entries" xml:space="preserve"><value>Entri</value></data>
+  <data name="Error" xml:space="preserve"><value>Kesalahan</value></data>
+  <data name="Estimated due date:" xml:space="preserve"><value>Perkiraan jatuh tempo:</value></data>
+  <data name="Every line is received into stock in one transaction." xml:space="preserve"><value>Setiap baris diterima ke stok dalam satu transaksi.</value></data>
+  <data name="Everything on invoice {0} has already been returned." xml:space="preserve"><value>Seluruh isi faktur {0} sudah diretur.</value></data>
+  <data name="Everything on purchase {0} has already been returned." xml:space="preserve"><value>Seluruh isi pembelian {0} sudah diretur.</value></data>
+  <data name="Expense Categories" xml:space="preserve"><value>Kategori Biaya</value></data>
+  <data name="Expired" xml:space="preserve"><value>Kedaluwarsa</value></data>
+  <data name="Expires" xml:space="preserve"><value>Berakhir</value></data>
+  <data name="Filter" xml:space="preserve"><value>Saring</value></data>
+  <data name="Fixed amount off the invoice, or a percentage of the total" xml:space="preserve"><value>Potongan nominal tetap dari faktur, atau persentase dari total</value></data>
+  <data name="Fixed amount off the whole invoice, or a percentage of the total" xml:space="preserve"><value>Potongan nominal tetap dari seluruh faktur, atau persentase dari total</value></data>
+  <data name="Fixed amount per unit, or a percentage of unit cost" xml:space="preserve"><value>Nominal tetap per unit, atau persentase dari biaya per unit</value></data>
+  <data name="Fixed amount per unit, or a percentage of unit price" xml:space="preserve"><value>Nominal tetap per unit, atau persentase dari harga per unit</value></data>
+  <data name="For adjustments with no goods behind them — a price dispute, a billing error, a rebate credited against the payable. A note for returned goods is raised automatically by the" xml:space="preserve"><value>Untuk penyesuaian tanpa pergerakan barang — sengketa harga, kesalahan penagihan, atau rebat yang dikreditkan terhadap utang. Nota untuk barang retur diterbitkan otomatis oleh</value></data>
+  <data name="Free Qty" xml:space="preserve"><value>Kuantitas Gratis</value></data>
+  <data name="From Purchase" xml:space="preserve"><value>Dari Pembelian</value></data>
+  <data name="Full Name" xml:space="preserve"><value>Nama Lengkap</value></data>
+  <data name="Fully paid" xml:space="preserve"><value>Lunas</value></data>
+  <data name="Fully paid. No balance remaining." xml:space="preserve"><value>Lunas. Tidak ada sisa tagihan.</value></data>
+  <data name="fully returned" xml:space="preserve"><value>sudah diretur seluruhnya</value></data>
+  <data name="future sales only" xml:space="preserve"><value>penjualan berikutnya saja</value></data>
+  <data name="Go Home" xml:space="preserve"><value>Ke Beranda</value></data>
+  <data name="Goods Coming Back" xml:space="preserve"><value>Barang yang Kembali</value></data>
+  <data name="Goods Going Back" xml:space="preserve"><value>Barang yang Dikembalikan</value></data>
+  <data name="Goods returned by the customer" xml:space="preserve"><value>Barang yang diretur oleh pelanggan</value></data>
+  <data name="Goods sent back to the supplier" xml:space="preserve"><value>Barang yang dikembalikan ke pemasok</value></data>
+  <data name="Grace Days" xml:space="preserve"><value>Hari Tenggang</value></data>
+  <data name="Grand Total" xml:space="preserve"><value>Total Keseluruhan</value></data>
+  <data name="Gross" xml:space="preserve"><value>Bruto</value></data>
+  <data name="Gross being collected" xml:space="preserve"><value>Bruto yang ditagih</value></data>
+  <data name="Gross being paid" xml:space="preserve"><value>Bruto yang dibayar</value></data>
+  <data name="Has accrued commission" xml:space="preserve"><value>Memiliki komisi terakru</value></data>
+  <data name="Has accrued rebates" xml:space="preserve"><value>Memiliki rebat terakru</value></data>
+  <data name="Has posted purchases" xml:space="preserve"><value>Memiliki pembelian terposting</value></data>
+  <data name="Higher wins when rules overlap." xml:space="preserve"><value>Nilai lebih tinggi menang bila aturan bertumpuk.</value></data>
+  <data name="in outstanding cash rebate, unrelated to these purchases. Rebate reconciles on its own cycle against the supplier's sheet — settle it on the" xml:space="preserve"><value>dalam rebat tunai yang belum diklaim, tidak terkait dengan pembelian ini. Rebat direkonsiliasi dengan siklusnya sendiri terhadap lembar pemasok — selesaikan di halaman</value></data>
+  <data name="in use" xml:space="preserve"><value>terpakai</value></data>
+  <data name="In-Kind" xml:space="preserve"><value>Barang</value></data>
+  <data name="In-kind goods — free stock" xml:space="preserve"><value>Barang gratis — stok cuma-cuma</value></data>
+  <data name="Inactive" xml:space="preserve"><value>Nonaktif</value></data>
+  <data name="included" xml:space="preserve"><value>termasuk</value></data>
+  <data name="Inventory Ledger" xml:space="preserve"><value>Buku Besar Persediaan</value></data>
+  <data name="Inventory released" xml:space="preserve"><value>Persediaan yang dilepas</value></data>
+  <data name="Invoice" xml:space="preserve"><value>Faktur</value></data>
+  <data name="Invoice {0}" xml:space="preserve"><value>Faktur {0}</value></data>
+  <data name="Invoice Date" xml:space="preserve"><value>Tanggal Faktur</value></data>
+  <data name="Invoice Discount" xml:space="preserve"><value>Diskon Faktur</value></data>
+  <data name="Invoice Footer Text" xml:space="preserve"><value>Teks Kaki Faktur</value></data>
+  <data name="Invoice, customer, or phone..." xml:space="preserve"><value>Faktur, pelanggan, atau telepon...</value></data>
+  <data name="Invoices" xml:space="preserve"><value>Faktur</value></data>
+  <data name="Issued {0} unit out of stock, releasing {1} of inventory value." xml:space="preserve"><value>Mengeluarkan {0} unit dari stok, melepas nilai persediaan sebesar {1}.</value></data>
+  <data name="Issued {0} units out of stock, releasing {1} of inventory value." xml:space="preserve"><value>Mengeluarkan {0} unit dari stok, melepas nilai persediaan sebesar {1}.</value></data>
+  <data name="itself, so it reverses the stock at the same time." xml:space="preserve"><value>itu sendiri, sehingga stoknya ikut dikoreksi sekaligus.</value></data>
+  <data name="Leave blank for an open-ended rule." xml:space="preserve"><value>Kosongkan untuk aturan tanpa batas waktu.</value></data>
+  <data name="Left invoice {0} exactly as posted — its total and payments are unchanged, by design." xml:space="preserve"><value>Membiarkan faktur {0} persis seperti saat diposting — total dan pembayarannya tidak berubah, memang begitu rancangannya.</value></data>
+  <data name="Left purchase {0} exactly as posted — its total and payments are unchanged, by design." xml:space="preserve"><value>Membiarkan pembelian {0} persis seperti saat diposting — total dan pembayarannya tidak berubah, memang begitu rancangannya.</value></data>
+  <data name="Left stock at" xml:space="preserve"><value>Keluar stok pada</value></data>
+  <data name="Less credit notes" xml:space="preserve"><value>Dikurangi nota kredit</value></data>
+  <data name="Less debit notes" xml:space="preserve"><value>Dikurangi nota debit</value></data>
+  <data name="Lets an entry be traced back to the paper record." xml:space="preserve"><value>Memungkinkan entri ditelusuri kembali ke bukti fisiknya.</value></data>
+  <data name="Line discount" xml:space="preserve"><value>Diskon baris</value></data>
+  <data name="Line note" xml:space="preserve"><value>Catatan baris</value></data>
+  <data name="Line Notes" xml:space="preserve"><value>Catatan Baris</value></data>
+  <data name="Line Total" xml:space="preserve"><value>Total Baris</value></data>
+  <data name="Lines" xml:space="preserve"><value>Baris</value></data>
+  <data name="Lines returning" xml:space="preserve"><value>Baris yang diretur</value></data>
+  <data name="Low / Out of Stock" xml:space="preserve"><value>Stok Menipis / Habis</value></data>
+  <data name="Low Alert" xml:space="preserve"><value>Peringatan Stok</value></data>
+  <data name="Low Stock Alert Threshold" xml:space="preserve"><value>Ambang Peringatan Stok Menipis</value></data>
+  <data name="Low Stock Threshold" xml:space="preserve"><value>Ambang Stok Menipis</value></data>
+  <data name="Lucky draw — value known only at settlement" xml:space="preserve"><value>Undian — nilainya baru diketahui saat penyelesaian</value></data>
+  <data name="Manage Categories" xml:space="preserve"><value>Kelola Kategori</value></data>
+  <data name="Manage Rules" xml:space="preserve"><value>Kelola Aturan</value></data>
+  <data name="Manage the list under" xml:space="preserve"><value>Kelola daftarnya di</value></data>
+  <data name="Manage these under" xml:space="preserve"><value>Kelola ini di</value></data>
+  <data name="Manage under" xml:space="preserve"><value>Kelola di</value></data>
+  <data name="marks categories your consultant adds back as a fiscal correction (e.g. tax penalties) — SimpleERP still reports them as real commercial costs, but shows the total separately on the P&amp;L so the correction is visible during the year rather than at year end." xml:space="preserve"><value>menandai kategori yang dikoreksi kembali oleh konsultan Anda sebagai koreksi fiskal (mis. denda pajak) — SimpleERP tetap melaporkannya sebagai biaya komersial yang nyata, tetapi menampilkan totalnya terpisah di Laba Rugi agar koreksinya terlihat sepanjang tahun, bukan hanya di akhir tahun.</value></data>
+  <data name="Matched against the sale date. Leave blank for an open-ended rule." xml:space="preserve"><value>Dicocokkan dengan tanggal penjualan. Kosongkan untuk aturan tanpa batas waktu.</value></data>
+  <data name="Min Quantity (period)" xml:space="preserve"><value>Kuantitas Minimum (periode)</value></data>
+  <data name="Min Value (period)" xml:space="preserve"><value>Nilai Minimum (periode)</value></data>
+  <data name="Most small dot-matrix printers use 80 columns. Check your printer manual if unsure." xml:space="preserve"><value>Sebagian besar printer dot-matrix kecil memakai 80 kolom. Periksa buku manual printer Anda bila ragu.</value></data>
+  <data name="must match exactly how Windows sees it" xml:space="preserve"><value>harus sama persis dengan yang terbaca di Windows</value></data>
+  <data name="My Store" xml:space="preserve"><value>Toko Saya</value></data>
+  <data name="Name" xml:space="preserve"><value>Nama</value></data>
+  <data name="negative accrual" xml:space="preserve"><value>akrual negatif</value></data>
+  <data name="Net" xml:space="preserve"><value>Neto</value></data>
+  <data name="Net received" xml:space="preserve"><value>Neto diterima</value></data>
+  <data name="Net to transfer" xml:space="preserve"><value>Neto yang ditransfer</value></data>
+  <data name="Nets off accounts payable" xml:space="preserve"><value>Mengurangi utang usaha</value></data>
+  <data name="Nets off accounts receivable" xml:space="preserve"><value>Mengurangi piutang usaha</value></data>
+  <data name="New Commission Rule" xml:space="preserve"><value>Aturan Komisi Baru</value></data>
+  <data name="New Customer" xml:space="preserve"><value>Pelanggan Baru</value></data>
+  <data name="New Product" xml:space="preserve"><value>Produk Baru</value></data>
+  <data name="New Rebate Rule" xml:space="preserve"><value>Aturan Rebat Baru</value></data>
+  <data name="New Rule" xml:space="preserve"><value>Aturan Baru</value></data>
+  <data name="New Supplier" xml:space="preserve"><value>Pemasok Baru</value></data>
+  <data name="No" xml:space="preserve"><value>Tidak</value></data>
+  <data name="No audit events yet." xml:space="preserve"><value>Belum ada catatan audit.</value></data>
+  <data name="No change" xml:space="preserve"><value>Tidak ada perubahan</value></data>
+  <data name="No commission rules yet." xml:space="preserve"><value>Belum ada aturan komisi.</value></data>
+  <data name="No credit note on this return." xml:space="preserve"><value>Tidak ada nota kredit pada retur ini.</value></data>
+  <data name="No customers yet." xml:space="preserve"><value>Belum ada pelanggan.</value></data>
+  <data name="No debit note on this return." xml:space="preserve"><value>Tidak ada nota debit pada retur ini.</value></data>
+  <data name="No entries found." xml:space="preserve"><value>Tidak ada entri ditemukan.</value></data>
+  <data name="No items yet — select a product above and click Add." xml:space="preserve"><value>Belum ada barang — pilih produk di atas lalu klik Tambah.</value></data>
+  <data name="No notes match." xml:space="preserve"><value>Tidak ada nota yang cocok.</value></data>
+  <data name="No outstanding cash rebates." xml:space="preserve"><value>Tidak ada rebat tunai yang belum diklaim.</value></data>
+  <data name="No outstanding due payments!" xml:space="preserve"><value>Tidak ada tagihan yang belum lunas!</value></data>
+  <data name="No outstanding dues! All customers are settled." xml:space="preserve"><value>Tidak ada tagihan tertunggak! Semua pelanggan sudah lunas.</value></data>
+  <data name="No payment terms yet. Add one above." xml:space="preserve"><value>Belum ada termin pembayaran. Tambahkan di atas.</value></data>
+  <data name="No payments collected today." xml:space="preserve"><value>Tidak ada pembayaran yang ditagih hari ini.</value></data>
+  <data name="No payouts recorded yet." xml:space="preserve"><value>Belum ada pembayaran yang dicatat.</value></data>
+  <data name="No products found." xml:space="preserve"><value>Tidak ada produk ditemukan.</value></data>
+  <data name="No products yet." xml:space="preserve"><value>Belum ada produk.</value></data>
+  <data name="No purchase returns. Start one from a" xml:space="preserve"><value>Belum ada retur pembelian. Mulai dari sebuah</value></data>
+  <data name="No purchases found." xml:space="preserve"><value>Tidak ada pembelian ditemukan.</value></data>
+  <data name="No rebate rules yet." xml:space="preserve"><value>Belum ada aturan rebat.</value></data>
+  <data name="No results for &quot;{0}&quot;." xml:space="preserve"><value>Tidak ada hasil untuk "{0}".</value></data>
+  <data name="No sales found." xml:space="preserve"><value>Tidak ada penjualan ditemukan.</value></data>
+  <data name="No sales people yet. Add one above." xml:space="preserve"><value>Belum ada sales. Tambahkan di atas.</value></data>
+  <data name="No sales recorded for this date." xml:space="preserve"><value>Tidak ada penjualan yang tercatat pada tanggal ini.</value></data>
+  <data name="No sales returns. Start one from an" xml:space="preserve"><value>Belum ada retur penjualan. Mulai dari sebuah</value></data>
+  <data name="No sales yet." xml:space="preserve"><value>Belum ada penjualan.</value></data>
+  <data name="No settlements recorded yet." xml:space="preserve"><value>Belum ada penyelesaian yang dicatat.</value></data>
+  <data name="No suppliers yet." xml:space="preserve"><value>Belum ada pemasok.</value></data>
+  <data name="No unpaid commission." xml:space="preserve"><value>Tidak ada komisi yang belum dibayar.</value></data>
+  <data name="No warranties match &quot;{0}&quot;." xml:space="preserve"><value>Tidak ada garansi yang cocok dengan "{0}".</value></data>
+  <data name="No warranty records found." xml:space="preserve"><value>Tidak ada catatan garansi ditemukan.</value></data>
+  <data name="Non-deductible" xml:space="preserve"><value>Tidak dapat dibiayakan</value></data>
+  <data name="none" xml:space="preserve"><value>tidak ada</value></data>
+  <data name="none (unattributed)" xml:space="preserve"><value>tidak ada (tanpa atribusi)</value></data>
+  <data name="Note" xml:space="preserve"><value>Nota</value></data>
+  <data name="Note date" xml:space="preserve"><value>Tanggal nota</value></data>
+  <data name="Notes" xml:space="preserve"><value>Catatan</value></data>
+  <data name="Notes (optional)" xml:space="preserve"><value>Catatan (opsional)</value></data>
+  <data name="Notes:" xml:space="preserve"><value>Catatan:</value></data>
+  <data name="Nothing outstanding for {0} in this period." xml:space="preserve"><value>Tidak ada tagihan tertunggak untuk {0} pada periode ini.</value></data>
+  <data name="Nothing outstanding to suppliers." xml:space="preserve"><value>Tidak ada utang ke pemasok.</value></data>
+  <data name="Number" xml:space="preserve"><value>Nomor</value></data>
+  <data name="Off" xml:space="preserve"><value>Nonaktifkan</value></data>
+  <data name="On-time payment — paying by the due date" xml:space="preserve"><value>Pembayaran tepat waktu — dibayar sebelum jatuh tempo</value></data>
+  <data name="Open credit" xml:space="preserve"><value>Kredit terbuka</value></data>
+  <data name="Open credit — owed to customers" xml:space="preserve"><value>Kredit terbuka — terutang ke pelanggan</value></data>
+  <data name="open credit (no fixed due date)" xml:space="preserve"><value>kredit terbuka (tanpa tanggal jatuh tempo tetap)</value></data>
+  <data name="Open debit — owed by suppliers" xml:space="preserve"><value>Debit terbuka — terutang oleh pemasok</value></data>
+  <data name="Open Invoices" xml:space="preserve"><value>Faktur Terbuka</value></data>
+  <data name="Open notes register" xml:space="preserve"><value>Buka daftar nota</value></data>
+  <data name="Open POs" xml:space="preserve"><value>PO Terbuka</value></data>
+  <data name="Optional" xml:space="preserve"><value>Opsional</value></data>
+  <data name="Optional remarks..." xml:space="preserve"><value>Keterangan opsional...</value></data>
+  <data name="Optional. Manage under" xml:space="preserve"><value>Opsional. Kelola di</value></data>
+  <data name="Optional..." xml:space="preserve"><value>Opsional...</value></data>
+  <data name="or the" xml:space="preserve"><value>atau</value></data>
+  <data name="Outstanding" xml:space="preserve"><value>Belum diselesaikan</value></data>
+  <data name="Outstanding — Cash / Credit" xml:space="preserve"><value>Belum Diselesaikan — Tunai / Kredit</value></data>
+  <data name="Outstanding — In-Kind Goods" xml:space="preserve"><value>Belum Diselesaikan — Barang Gratis</value></data>
+  <data name="Outstanding — Lucky Draw" xml:space="preserve"><value>Belum Diselesaikan — Undian</value></data>
+  <data name="Outstanding Credit Sales — click View to record a payment" xml:space="preserve"><value>Penjualan Kredit Belum Lunas — klik Lihat untuk mencatat pembayaran</value></data>
+  <data name="Outstanding Due" xml:space="preserve"><value>Tagihan Belum Lunas</value></data>
+  <data name="Outstanding:" xml:space="preserve"><value>Belum lunas:</value></data>
+  <data name="OVERDUE" xml:space="preserve"><value>JATUH TEMPO</value></data>
+  <data name="page once it has been applied to an invoice or refunded." xml:space="preserve"><value>setelah diterapkan ke sebuah faktur atau dikembalikan.</value></data>
+  <data name="page once it has been offset against a payable or refunded." xml:space="preserve"><value>setelah diperhitungkan terhadap utang atau dikembalikan.</value></data>
+  <data name="page, not here." xml:space="preserve"><value>, bukan di sini.</value></data>
+  <data name="page." xml:space="preserve"><value>.</value></data>
+  <data name="Paid" xml:space="preserve"><value>Dibayar</value></data>
+  <data name="Paid (at sale)" xml:space="preserve"><value>Dibayar (saat penjualan)</value></data>
+  <data name="Paper Width" xml:space="preserve"><value>Lebar Kertas</value></data>
+  <data name="Pay now" xml:space="preserve"><value>Bayar sekarang</value></data>
+  <data name="Pay Out" xml:space="preserve"><value>Bayarkan</value></data>
+  <data name="Pay out {0} to {1}?" xml:space="preserve"><value>Bayarkan {0} kepada {1}?</value></data>
+  <data name="Pay salespeople out on the" xml:space="preserve"><value>Bayarkan komisi sales di halaman</value></data>
+  <data name="Pay Supplier" xml:space="preserve"><value>Bayar Pemasok</value></data>
+  <data name="Payables by Supplier" xml:space="preserve"><value>Utang per Pemasok</value></data>
+  <data name="Payment" xml:space="preserve"><value>Pembayaran</value></data>
+  <data name="payment due date has passed." xml:space="preserve"><value>tanggal jatuh tempo pembayaran telah lewat.</value></data>
+  <data name="Payment due:" xml:space="preserve"><value>Jatuh tempo pembayaran:</value></data>
+  <data name="Payment History" xml:space="preserve"><value>Riwayat Pembayaran</value></data>
+  <data name="Payment notes (optional)" xml:space="preserve"><value>Catatan pembayaran (opsional)</value></data>
+  <data name="Payment Type" xml:space="preserve"><value>Jenis Pembayaran</value></data>
+  <data name="Payments Collected Today" xml:space="preserve"><value>Pembayaran yang Ditagih Hari Ini</value></data>
+  <data name="Payout History" xml:space="preserve"><value>Riwayat Pembayaran</value></data>
+  <data name="People already credited with a sale can't be deleted — set them inactive instead, so they stop appearing on new sales while existing invoices (and the commission calculated from them) keep showing their name." xml:space="preserve"><value>Orang yang sudah diatribusikan pada sebuah penjualan tidak bisa dihapus — nonaktifkan saja, sehingga namanya berhenti muncul pada penjualan baru sementara faktur yang sudah ada (dan komisi yang dihitung darinya) tetap menampilkan namanya.</value></data>
+  <data name="Percent discount — % of purchase value" xml:space="preserve"><value>Diskon persentase — % dari nilai pembelian</value></data>
+  <data name="Percent of revenue (ex-PPN)." xml:space="preserve"><value>Persentase dari pendapatan (di luar PPN).</value></data>
+  <data name="Period End" xml:space="preserve"><value>Akhir Periode</value></data>
+  <data name="Period Start" xml:space="preserve"><value>Awal Periode</value></data>
+  <data name="Phone" xml:space="preserve"><value>Telepon</value></data>
+  <data name="Physical Count Adjustment" xml:space="preserve"><value>Penyesuaian Hitung Fisik</value></data>
+  <data name="PO no., supplier doc, supplier..." xml:space="preserve"><value>No. PO, dokumen pemasok, pemasok...</value></data>
+  <data name="PO Number" xml:space="preserve"><value>Nomor PO</value></data>
+  <data name="Post Purchase &amp; Receive Stock" xml:space="preserve"><value>Posting Pembelian &amp; Terima Stok</value></data>
+  <data name="Post Return" xml:space="preserve"><value>Posting Retur</value></data>
+  <data name="Posting issues the goods out of stock and raises a debit note against the supplier. The purchase itself is left exactly as it was." xml:space="preserve"><value>Memposting akan mengeluarkan barang dari stok dan menerbitkan nota debit terhadap pemasok. Pembeliannya sendiri dibiarkan persis seperti semula.</value></data>
+  <data name="Posting restocks the goods at the cost they were sold at and raises a credit note. The invoice itself is left exactly as it was." xml:space="preserve"><value>Memposting akan mengembalikan barang ke stok pada biaya saat dijual dan menerbitkan nota kredit. Fakturnya sendiri dibiarkan persis seperti semula.</value></data>
+  <data name="PPN Rate (%)" xml:space="preserve"><value>Tarif PPN (%)</value></data>
+  <data name="Pre-selected on a new purchase. Only a default — the term actually used is stored on each purchase, so changing this never moves the due date of a document already posted." xml:space="preserve"><value>Terpilih otomatis pada pembelian baru. Hanya nilai bawaan — termin yang benar-benar dipakai disimpan pada setiap pembelian, sehingga mengubahnya tidak pernah menggeser tanggal jatuh tempo dokumen yang sudah diposting.</value></data>
+  <data name="Price" xml:space="preserve"><value>Harga</value></data>
+  <data name="Price adj:" xml:space="preserve"><value>Penyesuaian harga:</value></data>
+  <data name="Price drop — billed below a reference cost" xml:space="preserve"><value>Penurunan harga — ditagih di bawah biaya acuan</value></data>
+  <data name="Price Override Reason" xml:space="preserve"><value>Alasan Penggantian Harga</value></data>
+  <data name="Prices already include" xml:space="preserve"><value>Harga sudah termasuk</value></data>
+  <data name="Print" xml:space="preserve"><value>Cetak</value></data>
+  <data name="Print statement" xml:space="preserve"><value>Cetak laporan</value></data>
+  <data name="Print to {0}" xml:space="preserve"><value>Cetak ke {0}</value></data>
+  <data name="Printer Name" xml:space="preserve"><value>Nama Printer</value></data>
+  <data name="Priority" xml:space="preserve"><value>Prioritas</value></data>
+  <data name="Product" xml:space="preserve"><value>Produk</value></data>
+  <data name="Product Name" xml:space="preserve"><value>Nama Produk</value></data>
+  <data name="Purchase" xml:space="preserve"><value>Pembelian</value></data>
+  <data name="Purchase {0}" xml:space="preserve"><value>Pembelian {0}</value></data>
+  <data name="Purchase Return" xml:space="preserve"><value>Retur Pembelian</value></data>
+  <data name="Purchase Return — {0}" xml:space="preserve"><value>Retur Pembelian — {0}</value></data>
+  <data name="Purchase Return {0}" xml:space="preserve"><value>Retur Pembelian {0}</value></data>
+  <data name="Purchase Returns" xml:space="preserve"><value>Retur Pembelian</value></data>
+  <data name="Put {0} unit back into stock, valued at the cost it was sold at ({1})." xml:space="preserve"><value>Mengembalikan {0} unit ke stok, dinilai pada biaya saat dijual ({1}).</value></data>
+  <data name="Put {0} units back into stock, valued at the cost they were sold at ({1})." xml:space="preserve"><value>Mengembalikan {0} unit ke stok, dinilai pada biaya saat dijual ({1}).</value></data>
+  <data name="Qty" xml:space="preserve"><value>Kuantitas</value></data>
+  <data name="Qty In" xml:space="preserve"><value>Kuantitas Masuk</value></data>
+  <data name="Qty Out" xml:space="preserve"><value>Kuantitas Keluar</value></data>
+  <data name="Quantity" xml:space="preserve"><value>Kuantitas</value></data>
+  <data name="Raise a Note" xml:space="preserve"><value>Terbitkan Nota</value></data>
+  <data name="Raise Note" xml:space="preserve"><value>Terbitkan Nota</value></data>
+  <data name="Raised credit note {0} for {1}." xml:space="preserve"><value>Menerbitkan nota kredit {0} sebesar {1}.</value></data>
+  <data name="Raised debit note {0} for {1}." xml:space="preserve"><value>Menerbitkan nota debit {0} sebesar {1}.</value></data>
+  <data name="Rate" xml:space="preserve"><value>Tarif</value></data>
+  <data name="Rate (%)" xml:space="preserve"><value>Tarif (%)</value></data>
+  <data name="Reason" xml:space="preserve"><value>Alasan</value></data>
+  <data name="Rebate Claims" xml:space="preserve"><value>Klaim Rebat</value></data>
+  <data name="rebate on this purchase had a minimum quantity that this return drops it below, that accrual is reversed automatically by a negative accrual — never edited or deleted, so an already-settled claim stays intact and the reversal nets off the next one. Price-drop rebate is left alone: a return doesn't change what the units you kept were billed at. Because of that, this return can no longer be cancelled once a clawback exists." xml:space="preserve"><value>pada pembelian ini memiliki kuantitas minimum yang kini tidak lagi terpenuhi karena retur ini, akrual tersebut otomatis dikoreksi dengan akrual negatif — tidak pernah diubah atau dihapus, sehingga klaim yang sudah diselesaikan tetap utuh dan koreksinya mengurangi klaim berikutnya. Rebat penurunan harga tidak diusik: retur tidak mengubah harga yang ditagihkan atas unit yang Anda simpan. Karena itu, retur ini tidak bisa lagi dibatalkan setelah ada klaim balik.</value></data>
+  <data name="Rebate Withholding (%)" xml:space="preserve"><value>Potongan Rebat (%)</value></data>
+  <data name="Rebates accrue automatically as purchases are posted and paid. Settle them here when the supplier reconciles. Cash settlements net through a" xml:space="preserve"><value>Rebat diakru otomatis seiring pembelian diposting dan dibayar. Selesaikan di sini saat pemasok melakukan rekonsiliasi. Penyelesaian tunai dihitung neto setelah</value></data>
+  <data name="Rebates Accrued" xml:space="preserve"><value>Rebat Diakru</value></data>
+  <data name="Receipt / invoice number (optional)" xml:space="preserve"><value>Nomor kuitansi / faktur (opsional)</value></data>
+  <data name="Receive" xml:space="preserve"><value>Terima</value></data>
+  <data name="Receive Goods" xml:space="preserve"><value>Terima Barang</value></data>
+  <data name="Receive Stock (Purchase)" xml:space="preserve"><value>Terima Stok (Pembelian)</value></data>
+  <data name="Receive these free goods into stock now?" xml:space="preserve"><value>Terima barang gratis ini ke stok sekarang?</value></data>
+  <data name="Received" xml:space="preserve"><value>Diterima</value></data>
+  <data name="Received into stock at zero cost when claimed, pulling the moving-average cost down." xml:space="preserve"><value>Diterima ke stok dengan biaya nol saat diklaim, sehingga menurunkan biaya rata-rata bergerak.</value></data>
+  <data name="Receiving stocks the goods in at zero cost, pulling the product's moving-average cost down." xml:space="preserve"><value>Menerima barang akan memasukkannya ke stok dengan biaya nol, sehingga menurunkan biaya rata-rata bergerak produk.</value></data>
+  <data name="Recent Activity (last 200 events)" xml:space="preserve"><value>Aktivitas Terkini (200 kejadian terakhir)</value></data>
+  <data name="Recent Sales" xml:space="preserve"><value>Penjualan Terkini</value></data>
+  <data name="Record Expense" xml:space="preserve"><value>Catat Biaya</value></data>
+  <data name="Record Payment" xml:space="preserve"><value>Catat Pembayaran</value></data>
+  <data name="Record Settlement" xml:space="preserve"><value>Catat Penyelesaian</value></data>
+  <data name="Recorded By" xml:space="preserve"><value>Dicatat Oleh</value></data>
+  <data name="Ref" xml:space="preserve"><value>Ref</value></data>
+  <data name="Reference" xml:space="preserve"><value>Referensi</value></data>
+  <data name="Reference Cost (per unit)" xml:space="preserve"><value>Biaya Acuan (per unit)</value></data>
+  <data name="Reference No." xml:space="preserve"><value>No. Referensi</value></data>
+  <data name="Register" xml:space="preserve"><value>Daftar</value></data>
+  <data name="Request:" xml:space="preserve"><value>Permintaan:</value></data>
+  <data name="Required" xml:space="preserve"><value>Wajib</value></data>
+  <data name="Reset" xml:space="preserve"><value>Atur Ulang</value></data>
+  <data name="Restocked at" xml:space="preserve"><value>Dikembalikan ke stok pada</value></data>
+  <data name="Return" xml:space="preserve"><value>Retur</value></data>
+  <data name="Return date" xml:space="preserve"><value>Tanggal retur</value></data>
+  <data name="Return Details" xml:space="preserve"><value>Rincian Retur</value></data>
+  <data name="Return items" xml:space="preserve"><value>Retur barang</value></data>
+  <data name="Return No." xml:space="preserve"><value>No. Retur</value></data>
+  <data name="Return no., document, name..." xml:space="preserve"><value>No. retur, dokumen, nama...</value></data>
+  <data name="Return qty" xml:space="preserve"><value>Kuantitas retur</value></data>
+  <data name="Returned units no longer count towards a supplier's volume threshold. If a" xml:space="preserve"><value>Unit yang diretur tidak lagi dihitung terhadap ambang volume pemasok. Jika aturan rebat</value></data>
+  <data name="Returns Against This Invoice" xml:space="preserve"><value>Retur Terhadap Faktur Ini</value></data>
+  <data name="Returns Against This Purchase" xml:space="preserve"><value>Retur Terhadap Pembelian Ini</value></data>
+  <data name="Revenue Breakdown" xml:space="preserve"><value>Rincian Pendapatan</value></data>
+  <data name="reversed" xml:space="preserve"><value>dikoreksi</value></data>
+  <data name="Reward" xml:space="preserve"><value>Imbalan</value></data>
+  <data name="Reward — what the supplier gives back" xml:space="preserve"><value>Imbalan — apa yang diberikan pemasok</value></data>
+  <data name="Reward Product" xml:space="preserve"><value>Produk Imbalan</value></data>
+  <data name="Reward Type" xml:space="preserve"><value>Jenis Imbalan</value></data>
+  <data name="Rule" xml:space="preserve"><value>Aturan</value></data>
+  <data name="Rule Name" xml:space="preserve"><value>Nama Aturan</value></data>
+  <data name="Sale Date" xml:space="preserve"><value>Tanggal Penjualan</value></data>
+  <data name="sale has an unpaid balance totalling" xml:space="preserve"><value>penjualan memiliki saldo belum lunas sebesar</value></data>
+  <data name="Sale Info" xml:space="preserve"><value>Info Penjualan</value></data>
+  <data name="sale is" xml:space="preserve"><value>penjualan</value></data>
+  <data name="Sale Notes" xml:space="preserve"><value>Catatan Penjualan</value></data>
+  <data name="Sales" xml:space="preserve"><value>Penjualan</value></data>
+  <data name="sales are" xml:space="preserve"><value>penjualan</value></data>
+  <data name="sales have unpaid balances totalling" xml:space="preserve"><value>penjualan memiliki saldo belum lunas sebesar</value></data>
+  <data name="Sales Person" xml:space="preserve"><value>Sales</value></data>
+  <data name="Sales Return" xml:space="preserve"><value>Retur Penjualan</value></data>
+  <data name="Sales Return — {0}" xml:space="preserve"><value>Retur Penjualan — {0}</value></data>
+  <data name="Sales Return {0}" xml:space="preserve"><value>Retur Penjualan {0}</value></data>
+  <data name="Sales Returns" xml:space="preserve"><value>Retur Penjualan</value></data>
+  <data name="Sales Today" xml:space="preserve"><value>Penjualan Hari Ini</value></data>
+  <data name="same day" xml:space="preserve"><value>hari yang sama</value></data>
+  <data name="Save" xml:space="preserve"><value>Simpan</value></data>
+  <data name="Save Product" xml:space="preserve"><value>Simpan Produk</value></data>
+  <data name="Save Settings" xml:space="preserve"><value>Simpan Pengaturan</value></data>
+  <data name="Saves settings first, then sends a test page to the printer." xml:space="preserve"><value>Menyimpan pengaturan dulu, lalu mengirim halaman uji ke printer.</value></data>
+  <data name="Scope" xml:space="preserve"><value>Cakupan</value></data>
+  <data name="Scope — leave a field blank for &quot;all&quot;" xml:space="preserve"><value>Cakupan — kosongkan sebuah kolom untuk "semua"</value></data>
+  <data name="Search" xml:space="preserve"><value>Cari</value></data>
+  <data name="Search customer, product, invoice, or phone" xml:space="preserve"><value>Cari pelanggan, produk, faktur, atau telepon</value></data>
+  <data name="Search name, phone, address..." xml:space="preserve"><value>Cari nama, telepon, alamat...</value></data>
+  <data name="Search name, SKU, category..." xml:space="preserve"><value>Cari nama, SKU, kategori...</value></data>
+  <data name="Select" xml:space="preserve"><value>Pilih</value></data>
+  <data name="select a category" xml:space="preserve"><value>pilih kategori</value></data>
+  <data name="Select customer" xml:space="preserve"><value>Pilih pelanggan</value></data>
+  <data name="Select product" xml:space="preserve"><value>Pilih produk</value></data>
+  <data name="Select supplier" xml:space="preserve"><value>Pilih pemasok</value></data>
+  <data name="Selling Price" xml:space="preserve"><value>Harga Jual</value></data>
+  <data name="Send Test Print" xml:space="preserve"><value>Kirim Cetak Uji</value></data>
+  <data name="serial number, condition, etc." xml:space="preserve"><value>nomor seri, kondisi, dll.</value></data>
+  <data name="Set up printer" xml:space="preserve"><value>Atur printer</value></data>
+  <data name="Settle" xml:space="preserve"><value>Selesaikan</value></data>
+  <data name="Settle (gross agreed with supplier)" xml:space="preserve"><value>Selesaikan (bruto yang disepakati dengan pemasok)</value></data>
+  <data name="Settle outstanding rebates on the" xml:space="preserve"><value>Selesaikan rebat yang belum diklaim di halaman</value></data>
+  <data name="Settled" xml:space="preserve"><value>Selesai</value></data>
+  <data name="Settled amount (from supplier)" xml:space="preserve"><value>Jumlah penyelesaian (dari pemasok)</value></data>
+  <data name="Settlement History" xml:space="preserve"><value>Riwayat Penyelesaian</value></data>
+  <data name="Settling records the whole outstanding cash balance for that supplier as one settlement, matching how the supplier reconciliation sheet batches them." xml:space="preserve"><value>Penyelesaian mencatat seluruh saldo rebat tunai pemasok itu sebagai satu penyelesaian, sesuai cara lembar rekonsiliasi pemasok mengelompokkannya.</value></data>
+  <data name="SimpleERP sends raw ESC/P bytes directly to your printer — no print dialog, one click. Works with any Epson-compatible dot-matrix printer installed in Windows (USB, LPT, or Serial — Windows handles the connection, just pick the name below)." xml:space="preserve"><value>SimpleERP mengirim byte ESC/P mentah langsung ke printer Anda — tanpa dialog cetak, cukup satu klik. Bekerja dengan printer dot-matrix apa pun yang kompatibel dengan Epson dan terpasang di Windows (USB, LPT, atau Serial — Windows yang menangani koneksinya, Anda cukup memilih namanya di bawah).</value></data>
+  <data name="SKU" xml:space="preserve"><value>SKU</value></data>
+  <data name="Sold" xml:space="preserve"><value>Terjual</value></data>
+  <data name="Sold at" xml:space="preserve"><value>Dijual pada</value></data>
+  <data name="Sold by {0}" xml:space="preserve"><value>Dijual oleh {0}</value></data>
+  <data name="Something went wrong" xml:space="preserve"><value>Terjadi kesalahan</value></data>
+  <data name="Sort" xml:space="preserve"><value>Urutan</value></data>
+  <data name="Sort Order" xml:space="preserve"><value>Urutan Tampil</value></data>
+  <data name="Source" xml:space="preserve"><value>Sumber</value></data>
+  <data name="standalone" xml:space="preserve"><value>berdiri sendiri</value></data>
+  <data name="Standing agreements that earn a rebate from a supplier. Volume and price-drop rules accrue when a purchase is posted; on-time-payment rules accrue when a purchase is paid on time. Outstanding accruals are settled on the" xml:space="preserve"><value>Perjanjian tetap yang menghasilkan rebat dari pemasok. Aturan volume dan penurunan harga diakru saat pembelian diposting; aturan pembayaran tepat waktu diakru saat pembelian dibayar tepat waktu. Akrual yang belum diselesaikan dilunasi di halaman</value></data>
+  <data name="start" xml:space="preserve"><value>awal</value></data>
+  <data name="Statement — {0}" xml:space="preserve"><value>Laporan — {0}</value></data>
+  <data name="Statement &amp; Collect" xml:space="preserve"><value>Laporan &amp; Tagih</value></data>
+  <data name="Statement &amp; Pay" xml:space="preserve"><value>Laporan &amp; Bayar</value></data>
+  <data name="Statement of Account" xml:space="preserve"><value>Laporan Rekening</value></data>
+  <data name="Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Still owed:" xml:space="preserve"><value>Masih terutang:</value></data>
+  <data name="Stk:" xml:space="preserve"><value>Stok:</value></data>
+  <data name="Stock" xml:space="preserve"><value>Stok</value></data>
+  <data name="Stock Adjustment" xml:space="preserve"><value>Penyesuaian Stok</value></data>
+  <data name="Stock is always valued ex-PPN either way — input VAT is reclaimed, not a cost of the goods." xml:space="preserve"><value>Stok selalu dinilai di luar PPN, apa pun pilihannya — PPN Masukan dapat dikreditkan, bukan biaya barang.</value></data>
+  <data name="Stock Value" xml:space="preserve"><value>Nilai Stok</value></data>
+  <data name="Store / Business Name" xml:space="preserve"><value>Nama Toko / Usaha</value></data>
+  <data name="Store Information" xml:space="preserve"><value>Informasi Toko</value></data>
+  <data name="Street address..." xml:space="preserve"><value>Alamat jalan...</value></data>
+  <data name="Subtotal" xml:space="preserve"><value>Subtotal</value></data>
+  <data name="Summary" xml:space="preserve"><value>Ringkasan</value></data>
+  <data name="Supplier" xml:space="preserve"><value>Pemasok</value></data>
+  <data name="Supplier / PO ref..." xml:space="preserve"><value>Pemasok / ref PO...</value></data>
+  <data name="Supplier Doc" xml:space="preserve"><value>Dokumen Pemasok</value></data>
+  <data name="Supplier Doc No." xml:space="preserve"><value>No. Dokumen Pemasok</value></data>
+  <data name="Supplier Invoice" xml:space="preserve"><value>Faktur Pemasok</value></data>
+  <data name="Supplier invoice received into stock" xml:space="preserve"><value>Faktur pemasok yang diterima ke stok</value></data>
+  <data name="Suppliers with posted purchases can't be deleted — set them inactive instead. Their purchase history, outstanding payables and rebate records all hang off them." xml:space="preserve"><value>Pemasok yang sudah memiliki pembelian terposting tidak bisa dihapus — nonaktifkan saja. Riwayat pembelian, utang yang belum lunas, dan catatan rebatnya semua bergantung padanya.</value></data>
+  <data name="System Stock" xml:space="preserve"><value>Stok Sistem</value></data>
+  <data name="Tax" xml:space="preserve"><value>Pajak</value></data>
+  <data name="tax base" xml:space="preserve"><value>dasar pengenaan pajak</value></data>
+  <data name="Tax deductible" xml:space="preserve"><value>Dapat dibiayakan</value></data>
+  <data name="TBD" xml:space="preserve"><value>Belum ditentukan</value></data>
+  <data name="Tel:" xml:space="preserve"><value>Telp:</value></data>
+  <data name="Term" xml:space="preserve"><value>Termin</value></data>
+  <data name="Terms already used by a sale can't be deleted — set them inactive instead, so they stop appearing on new sales while existing invoices still show them." xml:space="preserve"><value>Termin yang sudah dipakai oleh sebuah penjualan tidak bisa dihapus — nonaktifkan saja, sehingga berhenti muncul pada penjualan baru sementara faktur yang sudah ada tetap menampilkannya.</value></data>
+  <data name="Thank you for your purchase!" xml:space="preserve"><value>Terima kasih atas pembelian Anda!</value></data>
+  <data name="The clawback is posted as a" xml:space="preserve"><value>Klaim balik dicatat sebagai</value></data>
+  <data name="The debit and the inventory released differ by {0} because the moving-average cost has moved since these units were received. Both figures are real; neither is an error." xml:space="preserve"><value>Nilai debit dan persediaan yang dilepas berbeda sebesar {0} karena biaya rata-rata bergerak telah berubah sejak unit ini diterima. Kedua angka itu nyata; tidak ada yang keliru.</value></data>
+  <data name="The debit is what the supplier billed for that line, net of discounts. Stock leaves at its current moving-average cost, which is a different number once other batches have moved the average — both are recorded on the posted return." xml:space="preserve"><value>Nilai debit adalah yang ditagihkan pemasok untuk baris itu, setelah diskon. Stok keluar pada biaya rata-rata bergerak saat ini, yang menjadi angka berbeda begitu batch lain menggeser rata-ratanya — keduanya dicatat pada retur yang diposting.</value></data>
+  <data name="The invoice total above is unchanged by design — what the customer is owed sits on the credit note each return raised." xml:space="preserve"><value>Total faktur di atas memang sengaja tidak diubah — hak pelanggan tercatat pada nota kredit yang diterbitkan setiap retur.</value></data>
+  <data name="The number printed on their paperwork. Rebate settlements are matched back to it later." xml:space="preserve"><value>Nomor yang tercetak pada dokumen mereka. Penyelesaian rebat dicocokkan kembali ke nomor ini nanti.</value></data>
+  <data name="The PPN rate applied to new sales. Each sale stores the rate it was created with, so changing this never alters invoices that are already posted. Official Faktur Pajak is issued separately by your tax consultant via Coretax — SimpleERP only calculates and reports the amounts." xml:space="preserve"><value>Tarif PPN yang diterapkan pada penjualan baru. Setiap penjualan menyimpan tarif saat dibuat, sehingga mengubah nilai ini tidak pernah mengubah faktur yang sudah diposting. Faktur Pajak resmi diterbitkan terpisah oleh konsultan pajak Anda melalui Coretax — SimpleERP hanya menghitung dan melaporkan jumlahnya.</value></data>
+  <data name="The purchase total above is unchanged by design — what the supplier owes back sits on the debit note each return raised." xml:space="preserve"><value>Total pembelian di atas memang sengaja tidak diubah — kewajiban pemasok tercatat pada nota debit yang diterbitkan setiap retur.</value></data>
+  <data name="The same product may appear on more than one line — two batches at two prices is normal, and each is costed in order." xml:space="preserve"><value>Produk yang sama boleh muncul di lebih dari satu baris — dua batch dengan dua harga adalah hal wajar, dan masing-masing dihitung biayanya berurutan.</value></data>
+  <data name="The supplier still owes this. Settle it on the" xml:space="preserve"><value>Pemasok masih berutang atas ini. Selesaikan di halaman</value></data>
+  <data name="Their doc:" xml:space="preserve"><value>Dokumen mereka:</value></data>
+  <data name="Their invoice number" xml:space="preserve"><value>Nomor faktur mereka</value></data>
+  <data name="Their ref" xml:space="preserve"><value>Ref mereka</value></data>
+  <data name="there. Posting a return restocks (or issues) the goods and raises a credit or debit note — the original document is never edited." xml:space="preserve"><value>di sana. Memposting retur akan mengembalikan (atau mengeluarkan) barang dan menerbitkan nota kredit atau debit — dokumen aslinya tidak pernah diubah.</value></data>
+  <data name="This action is permanent and logged in the audit trail. Only use after a physical stock count." xml:space="preserve"><value>Tindakan ini permanen dan tercatat di jejak audit. Gunakan hanya setelah hitung fisik stok.</value></data>
+  <data name="This credit is still owed to the customer. Settle it on the" xml:space="preserve"><value>Kredit ini masih menjadi hak pelanggan. Selesaikan di halaman</value></data>
+  <data name="This information appears on every printed invoice." xml:space="preserve"><value>Informasi ini muncul di setiap faktur yang dicetak.</value></data>
+  <data name="This person is credited with existing sales, so they can't be deleted — untick Active to retire them. Renaming here updates every invoice that shows their name, since attribution is stored as a link, not a copy." xml:space="preserve"><value>Orang ini sudah diatribusikan pada penjualan yang ada, sehingga tidak bisa dihapus — hilangkan centang Aktif untuk menonaktifkannya. Mengganti nama di sini akan memperbarui setiap faktur yang menampilkan namanya, karena atribusi disimpan sebagai tautan, bukan salinan.</value></data>
+  <data name="This rule has already accrued commission, so it can't be deleted — untick Active to retire it. Existing accruals keep their link to it." xml:space="preserve"><value>Aturan ini sudah menghasilkan akrual komisi, sehingga tidak bisa dihapus — hilangkan centang Aktif untuk menonaktifkannya. Akrual yang sudah ada tetap tertaut padanya.</value></data>
+  <data name="This rule has already accrued rebates, so it can't be deleted — untick Active to retire it. Existing accruals keep their link to it." xml:space="preserve"><value>Aturan ini sudah menghasilkan akrual rebat, sehingga tidak bisa dihapus — hilangkan centang Aktif untuk menonaktifkannya. Akrual yang sudah ada tetap tertaut padanya.</value></data>
+  <data name="This supplier also has" xml:space="preserve"><value>Pemasok ini juga memiliki</value></data>
+  <data name="This supplier has posted purchases, so they can't be deleted — untick Active to retire them." xml:space="preserve"><value>Pemasok ini sudah memiliki pembelian terposting, sehingga tidak bisa dihapus — hilangkan centang Aktif untuk menonaktifkannya.</value></data>
+  <data name="This term is used by existing sales. Changing the due days affects" xml:space="preserve"><value>Termin ini dipakai oleh penjualan yang sudah ada. Mengubah jumlah hari jatuh tempo memengaruhi</value></data>
+  <data name="Thresholds are cumulative across the period below, per product." xml:space="preserve"><value>Ambang batas bersifat kumulatif sepanjang periode di bawah, per produk.</value></data>
+  <data name="Ticking a note settles it in full as part of this collection — the goods movement behind it already happened when the return was posted." xml:space="preserve"><value>Mencentang sebuah nota akan menyelesaikannya penuh sebagai bagian dari penagihan ini — pergerakan barang di baliknya sudah terjadi saat retur diposting.</value></data>
+  <data name="Ticking a note settles it in full as part of this payment — the goods movement behind it already happened when the return was posted." xml:space="preserve"><value>Mencentang sebuah nota akan menyelesaikannya penuh sebagai bagian dari pembayaran ini — pergerakan barang di baliknya sudah terjadi saat retur diposting.</value></data>
+  <data name="Time" xml:space="preserve"><value>Waktu</value></data>
+  <data name="today" xml:space="preserve"><value>hari ini</value></data>
+  <data name="Today Cash In" xml:space="preserve"><value>Kas Masuk Hari Ini</value></data>
+  <data name="Today Revenue" xml:space="preserve"><value>Pendapatan Hari Ini</value></data>
+  <data name="Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Total Cash In Hand" xml:space="preserve"><value>Total Kas di Tangan</value></data>
+  <data name="Total Credited" xml:space="preserve"><value>Total Dikreditkan</value></data>
+  <data name="Total Debited" xml:space="preserve"><value>Total Didebit</value></data>
+  <data name="Total Due" xml:space="preserve"><value>Total Tagihan</value></data>
+  <data name="Total for period" xml:space="preserve"><value>Total periode ini</value></data>
+  <data name="Total outstanding" xml:space="preserve"><value>Total belum lunas</value></data>
+  <data name="Total outstanding:" xml:space="preserve"><value>Total belum lunas:</value></data>
+  <data name="Total Owed" xml:space="preserve"><value>Total Utang</value></data>
+  <data name="Total Owed:" xml:space="preserve"><value>Total utang:</value></data>
+  <data name="Total Revenue" xml:space="preserve"><value>Total Pendapatan</value></data>
+  <data name="Total Sales" xml:space="preserve"><value>Total Penjualan</value></data>
+  <data name="Total Stock Value:" xml:space="preserve"><value>Total Nilai Stok:</value></data>
+  <data name="Trigger" xml:space="preserve"><value>Pemicu</value></data>
+  <data name="Type" xml:space="preserve"><value>Jenis</value></data>
+  <data name="Unit Cost" xml:space="preserve"><value>Biaya per Unit</value></data>
+  <data name="Unit Price" xml:space="preserve"><value>Harga per Unit</value></data>
+  <data name="Unpaid" xml:space="preserve"><value>Belum dibayar</value></data>
+  <data name="Unpaid Commission" xml:space="preserve"><value>Komisi Belum Dibayar</value></data>
+  <data name="Unticked: PPN is added on top of the prices entered. Ticked: the prices entered already contain PPN, and it's extracted from them." xml:space="preserve"><value>Tidak dicentang: PPN ditambahkan di atas harga yang dimasukkan. Dicentang: harga yang dimasukkan sudah mengandung PPN, dan PPN dipisahkan darinya.</value></data>
+  <data name="up to {0}" xml:space="preserve"><value>maksimal {0}</value></data>
+  <data name="Update" xml:space="preserve"><value>Perbarui</value></data>
+  <data name="Use this when a physical stock count differs from the system. Enter the" xml:space="preserve"><value>Gunakan ini bila hasil hitung fisik berbeda dari sistem. Masukkan</value></data>
+  <data name="Used by existing sales" xml:space="preserve"><value>Dipakai oleh penjualan yang sudah ada</value></data>
+  <data name="User" xml:space="preserve"><value>Pengguna</value></data>
+  <data name="View &amp; Pay" xml:space="preserve"><value>Lihat &amp; Bayar</value></data>
+  <data name="View All" xml:space="preserve"><value>Lihat Semua</value></data>
+  <data name="View by Invoice" xml:space="preserve"><value>Lihat per Faktur</value></data>
+  <data name="View by Purchase" xml:space="preserve"><value>Lihat per Pembelian</value></data>
+  <data name="View overdue" xml:space="preserve"><value>Lihat yang jatuh tempo</value></data>
+  <data name="Voided" xml:space="preserve"><value>Dibatalkan</value></data>
+  <data name="Voided along with this return." xml:space="preserve"><value>Dibatalkan bersama retur ini.</value></data>
+  <data name="Volume" xml:space="preserve"><value>Volume</value></data>
+  <data name="Volume — buying (enough of) the product" xml:space="preserve"><value>Volume — membeli produk (dalam jumlah tertentu)</value></data>
+  <data name="Warranties found:" xml:space="preserve"><value>Garansi ditemukan:</value></data>
+  <data name="Warranty (months)" xml:space="preserve"><value>Garansi (bulan)</value></data>
+  <data name="Warranty Lookup" xml:space="preserve"><value>Pencarian Garansi</value></data>
+  <data name="Warranty until {0}" xml:space="preserve"><value>Garansi sampai {0}</value></data>
+  <data name="Warranty(mo)" xml:space="preserve"><value>Garansi(bln)</value></data>
+  <data name="What This Return Did" xml:space="preserve"><value>Apa yang Dilakukan Retur Ini</value></data>
+  <data name="What was it for?" xml:space="preserve"><value>Untuk apa biaya ini?</value></data>
+  <data name="Who gets credited with a sale. Selecting one on an invoice is optional — walk-in sales can stay unattributed. Deliberately separate from system logins: whoever closes the deal isn't always whoever types the invoice." xml:space="preserve"><value>Siapa yang mendapat kredit atas sebuah penjualan. Memilihnya pada faktur bersifat opsional — penjualan langsung boleh tanpa atribusi. Sengaja dipisahkan dari login sistem: yang menutup transaksi tidak selalu yang mengetik fakturnya.</value></data>
+  <data name="Withholding" xml:space="preserve"><value>Potongan</value></data>
+  <data name="Yes" xml:space="preserve"><value>Ya</value></data>
 </root>

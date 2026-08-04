@@ -1,7 +1,7 @@
 @page
 @model SimpleERP.Web.Pages.Sales.CreateModel
 @using System.Text.Json
-@{ ViewData["Title"] = "New Sale"; }
+@{ ViewData["Title"] = Localizer["New Sale"].Value; }
 
 @if (Model.Error != null)
 {
@@ -13,90 +13,91 @@
 
         <!-- Left: header fields -->
         <div class="card" style="margin-bottom:0">
-            <div class="card-title">Sale Info</div>
+            <div class="card-title">@Localizer["Sale Info"]</div>
             <div class="fg">
-                <label>Customer *</label>
+                <label>@Localizer["Customer"] *</label>
                 <select asp-for="CustomerId" asp-items="Model.CustomerOptions" required>
-                    <option value="">— Select customer —</option>
+                    <option value="">— @Localizer["Select customer"] —</option>
                 </select>
             </div>
             <div class="fg">
-                <label>Sale Date *</label>
+                <label>@Localizer["Sale Date"] *</label>
                 <input type="date" asp-for="SaleDate" id="saleDateInput" required
                        max="@DateTime.Now.Date.ToString("yyyy-MM-dd")"
                        value="@((Model.SaleDate ?? DateTime.Now.Date).ToString("yyyy-MM-dd"))"
                        onchange="updateDueDatePreview()" />
                 <div style="font-size:11px;color:#9ca3af;margin-top:4px">
-                    Defaults to today. Backdate it to enter a sale that was written up earlier —
-                    a future date isn't accepted.
+                    @Localizer["Defaults to today. Backdate it to enter a sale that was written up earlier — a future date isn't accepted."]
                 </div>
             </div>
             <div class="fg">
-                <label>Sales Person</label>
+                <label>@Localizer["Sales Person"]</label>
                 <select asp-for="SalesPersonId">
-                    <option value="">— none (unattributed) —</option>
+                    <option value="">— @Localizer["none (unattributed)"] —</option>
                     @foreach (var p in Model.SalesPersonOptions)
                     {
                         <option value="@p.Id">@p.Name</option>
                     }
                 </select>
                 <div style="font-size:11px;color:#9ca3af;margin-top:4px">
-                    Optional. Manage under <a href="/SalesPersons">Sales People</a>.
+                    @Localizer["Optional. Manage under"] <a href="/SalesPersons">@Localizer["Sales People"]</a>.
                 </div>
             </div>
             <div class="fg">
-                <label>Payment Type</label>
+                <label>@Localizer["Payment Type"]</label>
                 <select asp-for="PaymentType" id="paymentTypeSelect" onchange="onPaymentTypeChange()">
-                    <option value="1">Cash — paid now</option>
-                    <option value="2">Credit — pay later</option>
+                    <option value="1">@Localizer["Cash — paid now"]</option>
+                    <option value="2">@Localizer["Credit — pay later"]</option>
                 </select>
             </div>
             <div class="fg" id="paymentTermRow" style="display:none">
-                <label>Credit Term</label>
+                <label>@Localizer["Credit Term"]</label>
                 <select asp-for="PaymentTermId" id="paymentTermSelect" onchange="updateDueDatePreview()">
-                    <option value="">— open credit (no fixed due date) —</option>
+                    <option value="">— @Localizer["open credit (no fixed due date)"] —</option>
                     @foreach (var t in Model.TermOptions)
                     {
                         <option value="@t.Id" data-days="@t.DueDays">
-                            @t.Name (@(t.DueDays == 0 ? "same day" : $"{t.DueDays} days"))
+                            @t.Name (@(t.DueDays == 0
+                                ? Localizer["same day"]
+                                : t.DueDays == 1 ? Localizer["{0} day", t.DueDays] : Localizer["{0} days", t.DueDays]))
                         </option>
                     }
                 </select>
                 <div style="font-size:11px;color:#9ca3af;margin-top:4px">
-                    Manage these under <a href="/PaymentTerms">Payment Terms</a>.
+                    @Localizer["Manage these under"] <a href="/PaymentTerms">@Localizer["Payment Terms"]</a>.
                 </div>
             </div>
             <div id="dueDatePreview" style="display:none;margin-top:6px">
-                <span style="font-size:13px;color:#6b7280">Estimated due date: </span>
+                <span style="font-size:13px;color:#6b7280">@Localizer["Estimated due date:"] </span>
                 <span id="dueDateText" style="font-weight:600;color:#d97706"></span>
             </div>
             <div class="fg" style="margin-top:10px;display:flex;align-items:center;gap:10px">
                 <input type="checkbox" asp-for="IsTaxInclusive" id="taxInclusiveCheck"
                        style="width:18px;height:18px;margin:0" onchange="render()" />
                 <label for="taxInclusiveCheck" style="margin:0;white-space:nowrap">
-                    Prices already include PPN
+                    @* PPN stays bare — identical in both languages. *@
+                    @Localizer["Prices already include"] PPN
                 </label>
             </div>
             <div style="font-size:11px;color:#9ca3af;margin:-4px 0 10px 28px">
-                Unticked: PPN is added on top of the prices entered.
-                Ticked: the prices entered already contain PPN, and it's extracted from them.
+                @Localizer["Unticked: PPN is added on top of the prices entered. Ticked: the prices entered already contain PPN, and it's extracted from them."]
             </div>
             <div class="fg" style="margin-top:10px">
-                <label>Sale Notes</label>
-                <input type="text" asp-for="Notes" maxlength="500" placeholder="Optional remarks..." />
+                <label>@Localizer["Sale Notes"]</label>
+                <input type="text" asp-for="Notes" maxlength="500" placeholder="@Localizer["Optional remarks..."]" />
             </div>
         </div>
 
         <!-- Right: live summary + submit -->
         <div class="card" style="margin-bottom:0">
-            <div class="card-title">Summary</div>
+            <div class="card-title">@Localizer["Summary"]</div>
             <table style="font-size:14px;width:100%">
                 <tr>
-                    <td style="padding:6px 0;color:#6b7280">Subtotal</td>
+                    <td style="padding:6px 0;color:#6b7280">@Localizer["Subtotal"]</td>
                     <td style="text-align:right;font-weight:600" id="sumSub">0</td>
                 </tr>
                 <tr>
-                    <td style="padding:6px 0;color:#dc2626">Line discount</td>
+                    <td style="padding:6px 0;color:#dc2626">@Localizer["Line discount"]</td>
                     <td style="text-align:right;color:#dc2626" id="sumDisc">—</td>
                 </tr>
             </table>
@@ -104,13 +105,13 @@
             <!-- Whole-invoice discount: spread across lines pro-rata on save, so
                  per-line margin, commission and returns stay correct. -->
             <div style="border-top:1px solid #f3f4f6;padding-top:10px;margin-top:4px">
-                <label style="font-size:12px;color:#6b7280">Invoice Discount</label>
+                <label style="font-size:12px;color:#6b7280">@Localizer["Invoice Discount"]</label>
                 <div style="display:flex;gap:4px;margin-top:4px">
                     <input type="number" asp-for="InvoiceDiscountInput" min="0" step="0.01"
                            placeholder="0" style="flex:1;min-width:0" oninput="render()" />
                     <select id="invDiscMode" onchange="onInvDiscModeChange()"
                             style="width:58px;flex:none;padding:0 2px 0 8px"
-                            title="Fixed amount off the invoice, or a percentage of the total">
+                            title="@Localizer["Fixed amount off the invoice, or a percentage of the total"]">
                         <option value="amt">Rp</option>
                         <option value="pct">%</option>
                     </select>
@@ -121,11 +122,12 @@
 
             <table style="font-size:14px;width:100%;margin-top:6px">
                 <tr id="rowInvDisc" style="display:none">
-                    <td style="padding:6px 0;color:#dc2626">Invoice discount</td>
+                    <td style="padding:6px 0;color:#dc2626">@Localizer["Invoice Discount"]</td>
                     <td style="text-align:right;color:#dc2626" id="sumInvDisc">—</td>
                 </tr>
+                @* DPP and PPN stay bare — identical in both languages. *@
                 <tr>
-                    <td style="padding:6px 0;color:#6b7280;border-top:1px solid #f3f4f6">DPP <span style="font-size:11px;color:#9ca3af">(tax base)</span></td>
+                    <td style="padding:6px 0;color:#6b7280;border-top:1px solid #f3f4f6">DPP <span style="font-size:11px;color:#9ca3af">(@Localizer["tax base"])</span></td>
                     <td style="text-align:right;font-weight:600;border-top:1px solid #f3f4f6" id="sumBase">0</td>
                 </tr>
                 <tr>
@@ -133,14 +135,14 @@
                     <td style="text-align:right" id="sumTax">0</td>
                 </tr>
                 <tr style="border-top:2px solid #e5e7eb">
-                    <td style="padding:10px 0;font-size:17px;font-weight:700">Grand Total</td>
+                    <td style="padding:10px 0;font-size:17px;font-weight:700">@Localizer["Grand Total"]</td>
                     <td style="text-align:right;font-size:17px;font-weight:700;color:#059669" id="sumTotal">0</td>
                 </tr>
             </table>
             <input type="hidden" name="ItemsJson" id="ItemsJson" value="[]" />
             <button type="submit" id="submitBtn" class="btn btn-primary"
                     style="width:100%;margin-top:14px;padding:12px;font-size:15px">
-                🧾 Create Invoice
+                🧾 @Localizer["Create Invoice"]
             </button>
             <div id="submitErr" class="alert alert-danger" style="display:none;margin-top:10px"></div>
         </div>
@@ -148,14 +150,14 @@
 
     <!-- Item builder -->
     <div class="card">
-        <div class="card-title">Add Items</div>
+        <div class="card-title">@Localizer["Add Items"]</div>
 
         <!-- Row 1: product, qty, price, discount, warranty, add button -->
         <div style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1.35fr 0.8fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
             <div>
-                <label>Product</label>
+                <label>@Localizer["Product"]</label>
                 <select id="inProd" onchange="onProductChange()">
-                    <option value="">— Select —</option>
+                    <option value="">— @Localizer["Select"] —</option>
                     @foreach (var p in Model.AvailableProducts)
                     {
                         <option value="@p.Id"
@@ -163,23 +165,23 @@
                                 data-stock="@p.CurrentStock"
                                 data-warranty="@(p.DefaultWarrantyMonths ?? 0)"
                                 data-name="@p.Name">
-                            @p.Name (@p.SKU) — Stk: @p.CurrentStock.ToString("N0")
+                            @p.Name (@p.SKU) — @Localizer["Stk:"] @p.CurrentStock.ToString("N0")
                         </option>
                     }
                 </select>
             </div>
             <div>
-                <label>Qty</label>
+                <label>@Localizer["Qty"]</label>
                 <input type="number" id="inQty" min="0.01" step="0.01" value="1" />
             </div>
             <div>
-                <label>Unit Price</label>
+                <label>@Localizer["Unit Price"]</label>
                 <input type="number" id="inPrice" min="0" step="0.01" placeholder="0" oninput="onPriceInput()" />
             </div>
             <!-- position:relative so the resolved-amount hint can sit below without
                  adding height to this cell, which would break the row's flex-end alignment -->
             <div style="position:relative">
-                <label>Discount</label>
+                <label>@Localizer["Discount"]</label>
                 <div style="display:flex;gap:4px">
                     <input type="number" id="inDisc" min="0" step="0.01" value="0" placeholder="0"
                            style="flex:1;min-width:0" oninput="onDiscountInput()" />
@@ -189,7 +191,7 @@
                          keeps the row aligned without hardcoding a pixel value. -->
                     <select id="inDiscMode" onchange="onDiscountInput()"
                             style="width:58px;flex:none;padding:0 2px 0 8px"
-                            title="Fixed amount per unit, or a percentage of unit price">
+                            title="@Localizer["Fixed amount per unit, or a percentage of unit price"]">
                         <option value="amt">Rp</option>
                         <option value="pct">%</option>
                     </select>
@@ -199,24 +201,24 @@
                             white-space:nowrap;pointer-events:none;line-height:1.3"></div>
             </div>
             <div>
-                <label>Warranty(mo)</label>
+                <label>@Localizer["Warranty(mo)"]</label>
                 <input type="number" id="inWarranty" min="0" value="0" placeholder="0" />
             </div>
             <div>
                 <label>&nbsp;</label>
-                <button type="button" class="btn btn-success" onclick="addItem()">Add</button>
+                <button type="button" class="btn btn-success" onclick="addItem()">@Localizer["Add"]</button>
             </div>
         </div>
 
         <!-- Row 2: line notes + price reason (contextual) -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
             <div>
-                <label style="font-size:12px;color:#6b7280">Line Notes <span style="font-weight:400">(serial number, condition, etc.)</span></label>
-                <input type="text" id="inNotes" maxlength="500" placeholder="Optional..." />
+                <label style="font-size:12px;color:#6b7280">@Localizer["Line Notes"] <span style="font-weight:400">(@Localizer["serial number, condition, etc."])</span></label>
+                <input type="text" id="inNotes" maxlength="500" placeholder="@Localizer["Optional..."]" />
             </div>
             <div id="priceReasonBlock" style="display:none">
-                <label style="font-size:12px;color:#d97706">⚠ Price Override Reason <span style="font-weight:700;color:#dc2626">*Required</span></label>
-                <input type="text" id="inPriceReason" maxlength="300" placeholder="e.g. Special customer rate, clearance..." />
+                <label style="font-size:12px;color:#d97706">⚠ @Localizer["Price Override Reason"] <span style="font-weight:700;color:#dc2626">*@Localizer["Required"]</span></label>
+                <input type="text" id="inPriceReason" maxlength="300" placeholder="@Localizer["e.g. Special customer rate, clearance..."]" />
             </div>
         </div>
 
@@ -225,19 +227,19 @@
         <table id="tbl">
             <thead>
                 <tr>
-                    <th>Product</th>
-                    <th style="text-align:center">Qty</th>
-                    <th style="text-align:right">Price</th>
-                    <th style="text-align:right">Disc</th>
-                    <th style="text-align:right">Total</th>
-                    <th style="text-align:center">Warranty</th>
+                    <th>@Localizer["Product"]</th>
+                    <th style="text-align:center">@Localizer["Qty"]</th>
+                    <th style="text-align:right">@Localizer["Price"]</th>
+                    <th style="text-align:right">@Localizer["Disc"]</th>
+                    <th style="text-align:right">@Localizer["Total"]</th>
+                    <th style="text-align:center">@Localizer["Warranty"]</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody id="tblBody">
                 <tr id="emptyRow">
                     <td colspan="7" style="text-align:center;color:#9ca3af;padding:24px">
-                        No items yet — select a product above and click Add.
+                        @Localizer["No items yet — select a product above and click Add."]
                     </td>
                 </tr>
             </tbody>

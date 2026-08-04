@@ -1,7 +1,7 @@
 @page "/Returns/Supplier/{id:guid}"
 @model SimpleERP.Web.Pages.Returns.SupplierDetailModel
 @{
-    ViewData["Title"] = $"Purchase Return {Model.Return.ReturnNumber}";
+    ViewData["Title"] = Localizer["Purchase Return {0}", Model.Return.ReturnNumber].Value;
     var isActive = Model.Return.Status == "Active";
 }
 
@@ -11,14 +11,14 @@
 }
 
 <div class="no-print" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-    <a href="/Returns" class="btn btn-outline btn-sm">← Returns</a>
-    <a href="/Purchases/@Model.Return.PurchaseId" class="btn btn-outline btn-sm">Purchase @Model.Return.PurchaseNumber</a>
-    <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 Print</button>
+    <a href="/Returns" class="btn btn-outline btn-sm">&larr; @Localizer["Returns"]</a>
+    <a href="/Purchases/@Model.Return.PurchaseId" class="btn btn-outline btn-sm">@Localizer["Purchase {0}", Model.Return.PurchaseNumber]</a>
+    <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 @Localizer["Print"]</button>
     @if (isActive)
     {
         <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Return.Id" style="margin-left:auto"
-              onsubmit="return confirm('Cancel this return? The goods will come back into stock and the debit note will be voided.')">
-            <button type="submit" class="btn btn-danger btn-sm">✕ Cancel Return</button>
+              onsubmit="return confirm('@Localizer["Cancel this return? The goods will come back into stock and the debit note will be voided."]')">
+            <button type="submit" class="btn btn-danger btn-sm">✕ @Localizer["Cancel Return"]</button>
         </form>
     }
 </div>
@@ -28,27 +28,27 @@
 <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
         <div>
-            <div style="font-size:20px;font-weight:800;color:#1a1a2e">Purchase Return</div>
-            <div style="color:#6b7280;font-size:12px">Goods sent back to the supplier</div>
+            <div style="font-size:20px;font-weight:800;color:#1a1a2e">@Localizer["Purchase Return"]</div>
+            <div style="color:#6b7280;font-size:12px">@Localizer["Goods sent back to the supplier"]</div>
         </div>
         <div style="text-align:right">
             <div style="font-size:18px;font-weight:700;color:#2563eb">@Model.Return.ReturnNumber</div>
             <div style="color:#9ca3af;font-size:12px">@Model.Return.ReturnDate.ToLocalTime().ToString("dd MMM yyyy")</div>
             @if (!isActive)
             {
-                <div style="color:#dc2626;font-weight:700;font-size:13px;margin-top:4px">⛔ CANCELLED</div>
+                <div style="color:#dc2626;font-weight:700;font-size:13px;margin-top:4px;text-transform:uppercase">⛔ @Localizer["Cancelled"]</div>
             }
         </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;padding:12px;background:#f9fafb;border-radius:6px">
         <div>
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">Supplier</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">@Localizer["Supplier"]</div>
             <div style="font-weight:600">@Model.Return.SupplierName</div>
-            <div style="font-size:12px;color:#6b7280">Against purchase @Model.Return.PurchaseNumber</div>
+            <div style="font-size:12px;color:#6b7280">@Localizer["Against purchase {0}", Model.Return.PurchaseNumber]</div>
         </div>
         <div>
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">Reason</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">@Localizer["Reason"]</div>
             <div style="font-weight:600">@Model.Return.Reason</div>
         </div>
     </div>
@@ -56,11 +56,11 @@
     <table style="margin-bottom:14px">
         <thead>
             <tr>
-                <th>Product</th>
-                <th style="text-align:center">Qty</th>
-                <th style="text-align:right">Billed at</th>
-                <th style="text-align:right">Debit</th>
-                <th style="text-align:right">Left stock at</th>
+                <th>@Localizer["Product"]</th>
+                <th style="text-align:center">@Localizer["Qty"]</th>
+                <th style="text-align:right">@Localizer["Billed at"]</th>
+                <th style="text-align:right">@Localizer["Debit"]</th>
+                <th style="text-align:right">@Localizer["Left stock at"]</th>
             </tr>
         </thead>
         <tbody>
@@ -86,32 +86,33 @@
 
     <div style="max-width:280px;margin-left:auto">
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6">
-            <span style="color:#6b7280">Debit subtotal</span><span>@Model.Return.SubTotal.ToString("N0")</span>
+            <span style="color:#6b7280">@Localizer["Debit subtotal"]</span><span>@Model.Return.SubTotal.ToString("N0")</span>
         </div>
         @if (Model.Return.TaxAmount > 0)
         {
+            @* DPP and PPN stay bare — identical in both languages. *@
             <div style="display:flex;justify-content:space-between;padding:4px 0">
-                <span style="color:#6b7280">DPP (tax base)</span><span>@Model.Return.TaxBase.ToString("N0")</span>
+                <span style="color:#6b7280">DPP (@Localizer["tax base"])</span><span>@Model.Return.TaxBase.ToString("N0")</span>
             </div>
             <div style="display:flex;justify-content:space-between;padding:4px 0">
                 <span style="color:#6b7280">
-                    PPN @((Model.Return.TaxRate * 100).ToString("0.##"))% reversed
-                    @if (Model.Return.IsTaxInclusive) { <span style="font-size:11px;color:#9ca3af">(included)</span> }
+                    PPN @((Model.Return.TaxRate * 100).ToString("0.##"))% @Localizer["reversed"]
+                    @if (Model.Return.IsTaxInclusive) { <span style="font-size:11px;color:#9ca3af">(@Localizer["included"])</span> }
                 </span>
                 <span>@Model.Return.TaxAmount.ToString("N0")</span>
             </div>
         }
         <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1a1a2e;font-size:16px;font-weight:700">
-            <span>Total Debited</span><span>@Model.Return.GrandTotal.ToString("N0")</span>
+            <span>@Localizer["Total Debited"]</span><span>@Model.Return.GrandTotal.ToString("N0")</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0">
-            <span style="color:#6b7280">Inventory released</span>
+            <span style="color:#6b7280">@Localizer["Inventory released"]</span>
             <span style="color:#6b7280">@Model.Return.StockReleased.ToString("N0")</span>
         </div>
         @if (Model.Return.ValueDifference != 0)
         {
             <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px">
-                <span style="color:#9ca3af">Difference</span>
+                <span style="color:#9ca3af">@Localizer["Difference"]</span>
                 <span style="color:@(Model.Return.ValueDifference > 0 ? "#059669" : "#dc2626")">
                     @Model.Return.ValueDifference.ToString("N0")
                 </span>
@@ -122,17 +123,17 @@
     @if (!string.IsNullOrEmpty(Model.Return.Notes))
     {
         <div style="margin-top:12px;padding:10px;background:#f9fafb;border-radius:6px;font-size:13px;color:#6b7280">
-            <strong>Notes:</strong> @Model.Return.Notes
+            <strong>@Localizer["Notes:"]</strong> @Model.Return.Notes
         </div>
     }
 </div>
 
 <div class="no-print">
     <div class="card">
-        <div class="card-title">📄 Debit Note</div>
+        <div class="card-title">📄 @Localizer["Debit Note"]</div>
         @if (Model.Return.DebitNoteId == null)
         {
-            <p style="color:#9ca3af;font-size:13px">No debit note on this return.</p>
+            <p style="color:#9ca3af;font-size:13px">@Localizer["No debit note on this return."]</p>
         }
         else
         {
@@ -140,67 +141,63 @@
                 <span style="font-weight:700;font-size:15px;color:#2563eb">@Model.Return.DebitNoteNumber</span>
                 <span class="badge @(Model.Return.DebitNoteStatus == "Open" ? "warn"
                                    : Model.Return.DebitNoteStatus == "Settled" ? "ok" : "gray")">
-                    @Model.Return.DebitNoteStatus
+                    @Localizer[EnumDisplay.Key("CreditNoteStatus", Model.Return.DebitNoteStatus)]
                 </span>
             </div>
             <div style="font-size:20px;font-weight:700;margin-bottom:8px">@Model.Return.GrandTotal.ToString("N0")</div>
             @if (Model.Return.DebitNoteStatus == "Open")
             {
                 <p style="font-size:12px;color:#6b7280;line-height:1.6">
-                    The supplier still owes this. Settle it on the
-                    <a href="/CreditNotes">Credit &amp; Debit Notes</a> page once it has been
-                    offset against a payable or refunded.
+                    @Localizer["The supplier still owes this. Settle it on the"]
+                    <a href="/CreditNotes">@Localizer["Credit & Debit Notes"]</a>
+                    @Localizer["page once it has been offset against a payable or refunded."]
                 </p>
             }
             else if (Model.Return.DebitNoteStatus == "Settled")
             {
                 <p style="font-size:12px;color:#6b7280;line-height:1.6">
-                    Already offset or refunded — which is why this return can no longer be cancelled.
+                    @Localizer["Already offset or refunded — which is why this return can no longer be cancelled."]
                 </p>
             }
             else
             {
                 <p style="font-size:12px;color:#6b7280;line-height:1.6">
-                    Voided along with this return.
+                    @Localizer["Voided along with this return."]
                 </p>
             }
             <a href="/CreditNotes" class="btn btn-outline btn-sm" style="width:100%;justify-content:center">
-                Open notes register
+                @Localizer["Open notes register"]
             </a>
         }
     </div>
 
     <div class="card">
-        <div class="card-title">What This Return Did</div>
+        <div class="card-title">@Localizer["What This Return Did"]</div>
+        @{ var unitsOut = Model.Return.Items.Sum(i => i.Qty); }
         <ul style="font-size:12px;color:#6b7280;line-height:1.8;padding-left:18px">
-            <li>Issued @Model.Return.Items.Sum(i => i.Qty).ToString("N0") unit(s) out of stock,
-                releasing @Model.Return.StockReleased.ToString("N0") of inventory value.</li>
-            <li>Raised debit note @Model.Return.DebitNoteNumber for @Model.Return.GrandTotal.ToString("N0").</li>
-            <li>Left purchase @Model.Return.PurchaseNumber exactly as posted — its total and
-                payments are unchanged, by design.</li>
+            <li>
+                @(unitsOut == 1
+                    ? Localizer["Issued {0} unit out of stock, releasing {1} of inventory value.",  unitsOut.ToString("N0"), Model.Return.StockReleased.ToString("N0")]
+                    : Localizer["Issued {0} units out of stock, releasing {1} of inventory value.", unitsOut.ToString("N0"), Model.Return.StockReleased.ToString("N0")])
+            </li>
+            <li>@Localizer["Raised debit note {0} for {1}.", Model.Return.DebitNoteNumber, Model.Return.GrandTotal.ToString("N0")]</li>
+            <li>@Localizer["Left purchase {0} exactly as posted — its total and payments are unchanged, by design.", Model.Return.PurchaseNumber]</li>
         </ul>
         @if (Model.Return.ValueDifference != 0)
         {
             <p style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5">
-                The debit and the inventory released differ by
-                @Math.Abs(Model.Return.ValueDifference).ToString("N0") because the moving-average
-                cost has moved since these units were received. Both figures are real; neither is
-                an error.
+                @Localizer["The debit and the inventory released differ by {0} because the moving-average cost has moved since these units were received. Both figures are real; neither is an error.", Math.Abs(Model.Return.ValueDifference).ToString("N0")]
             </p>
         }
         <div class="alert alert-info" style="margin:10px 0 0;font-size:11px;line-height:1.5">
-            Returned units no longer count towards a supplier's volume threshold. If a
-            <strong>Volume</strong> rebate on this purchase had a minimum quantity that this
-            return drops it below, that accrual is reversed automatically by a negative accrual
-            — never edited or deleted, so an already-settled claim stays intact and the reversal
-            nets off the next one. Price-drop rebate is left alone: a return doesn't change what
-            the units you kept were billed at. Because of that, this return can no longer be
-            cancelled once a clawback exists.
+            @Localizer["Returned units no longer count towards a supplier's volume threshold. If a"]
+            <strong>@Localizer["Volume"]</strong>
+            @Localizer["rebate on this purchase had a minimum quantity that this return drops it below, that accrual is reversed automatically by a negative accrual — never edited or deleted, so an already-settled claim stays intact and the reversal nets off the next one. Price-drop rebate is left alone: a return doesn't change what the units you kept were billed at. Because of that, this return can no longer be cancelled once a clawback exists."]
         </div>
     </div>
 
     <div class="card">
-        <div class="card-title">Recorded By</div>
+        <div class="card-title">@Localizer["Recorded By"]</div>
         <div style="font-size:13px">@Model.Return.CreatedBy</div>
     </div>
 </div>

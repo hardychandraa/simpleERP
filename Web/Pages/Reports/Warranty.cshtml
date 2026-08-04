@@ -1,27 +1,27 @@
 @page "/Reports/Warranty"
 @model SimpleERP.Web.Pages.Reports.WarrantyModel
-@{ ViewData["Title"] = "Warranty Lookup"; }
+@{ ViewData["Title"] = Localizer["Warranty Lookup"].Value; }
 
 <div class="card" style="margin-bottom:14px">
   <form method="get" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
     <div class="fg" style="margin:0;flex:1;min-width:200px">
-      <label>Search customer, product, invoice, or phone</label>
-      <input type="text" name="search" value="@Model.Search" placeholder="e.g. John Doe, Samsung, INV-202501..."/>
+      <label>@Localizer["Search customer, product, invoice, or phone"]</label>
+      <input type="text" name="search" value="@Model.Search" placeholder="@Localizer["e.g. John Doe, Samsung, INV-202501..."]"/>
     </div>
     <div style="display:flex;align-items:center;gap:8px;padding-top:18px">
       <input type="checkbox" name="activeOnly" value="true" @(Model.ActiveOnly?"checked":"") id="chkActive" style="width:16px;height:16px;margin:0"/>
-      <label for="chkActive" style="font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;margin:0">Active warranties only</label>
+      <label for="chkActive" style="font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;margin:0">@Localizer["Active warranties only"]</label>
     </div>
-    <button type="submit" class="btn btn-primary">Search</button>
-    <a href="/Reports/Warranty" class="btn btn-outline">Reset</a>
+    <button type="submit" class="btn btn-primary">@Localizer["Search"]</button>
+    <a href="/Reports/Warranty" class="btn btn-outline">@Localizer["Reset"]</a>
   </form>
 </div>
 
 <div class="card">
-  <div class="card-title">Warranties found: @Model.Items.Count</div>
+  <div class="card-title">@Localizer["Warranties found:"] @Model.Items.Count</div>
   <table>
     <thead>
-      <tr><th>Invoice</th><th>Sale Date</th><th>Customer</th><th>Product</th><th style="text-align:center">Warranty</th><th>Expires</th><th>Status</th></tr>
+      <tr><th>@Localizer["Invoice"]</th><th>@Localizer["Sale Date"]</th><th>@Localizer["Customer"]</th><th>@Localizer["Product"]</th><th style="text-align:center">@Localizer["Warranty"]</th><th>@Localizer["Expires"]</th><th>@Localizer["Status"]</th></tr>
     </thead>
     <tbody>
     @foreach (var w in Model.Items) {
@@ -38,15 +38,15 @@
           <div>@w.ProductName</div>
           <div style="font-size:11px;color:#9ca3af">@w.SKU</div>
         </td>
-        <td style="text-align:center">@w.WarrantyMonths mo</td>
+        <td style="text-align:center">@(w.WarrantyMonths.HasValue ? Localizer["{0} mo", w.WarrantyMonths.Value].Value : "—")</td>
         <td>@w.WarrantyExpiry.ToLocalTime().ToString("dd MMM yyyy")</td>
         <td>
           @if (w.IsExpired) {
-            <span class="badge err">Expired</span>
+            <span class="badge err">@Localizer["Expired"]</span>
           } else if (w.DaysRemaining <= 30) {
-            <span class="badge warn">⚠ @w.DaysRemaining days left</span>
+            <span class="badge warn">⚠ @(w.DaysRemaining == 1 ? Localizer["{0} day left", w.DaysRemaining] : Localizer["{0} days left", w.DaysRemaining])</span>
           } else {
-            <span class="badge ok">@w.DaysRemaining days left</span>
+            <span class="badge ok">@(w.DaysRemaining == 1 ? Localizer["{0} day left", w.DaysRemaining] : Localizer["{0} days left", w.DaysRemaining])</span>
           }
         </td>
       </tr>
@@ -54,8 +54,8 @@
     @if (!Model.Items.Any()) {
       <tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:28px">
         @(string.IsNullOrEmpty(Model.Search)
-          ? "No warranty records found."
-          : $"No warranties match \"{Model.Search}\".")
+          ? Localizer["No warranty records found."]
+          : Localizer["No warranties match \"{0}\".", Model.Search])
       </td></tr>
     }
     </tbody>

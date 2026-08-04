@@ -1,22 +1,22 @@
 @page
 @model SimpleERP.Web.Pages.Products.IndexModel
-@{ ViewData["Title"] = "Products"; }
+@{ ViewData["Title"] = Localizer["Products"].Value; }
 @if (Model.Msg != null) {
     <div class="alert @(Model.IsErr?"alert-danger":"alert-success")">@Model.Msg</div>
 }
 <div class="search-bar">
     <form method="get" style="display:contents">
-        <input type="text" name="search" value="@Model.Search" placeholder="Search name, SKU, category..." />
-        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        <input type="text" name="search" value="@Model.Search" placeholder="@Localizer["Search name, SKU, category..."]" />
+        <button type="submit" class="btn btn-primary btn-sm">@Localizer["Search"]</button>
         @if (!string.IsNullOrEmpty(Model.Search)) {
-            <a href="/Products" class="btn btn-outline btn-sm">✕ Clear</a>
+            <a href="/Products" class="btn btn-outline btn-sm">✕ @Localizer["Clear"]</a>
         }
     </form>
-    <a href="/Products/Create" class="btn btn-primary" style="margin-left:auto">＋ Add Product</a>
+    <a href="/Products/Create" class="btn btn-primary" style="margin-left:auto">＋ @Localizer["Add Product"]</a>
 </div>
 <div class="card">
 <table>
-  <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Low Alert</th><th>Avg Cost</th><th>Warranty</th><th>Status</th><th></th></tr></thead>
+  <thead><tr><th>@Localizer["Name"]</th><th>@Localizer["SKU"]</th><th>@Localizer["Category"]</th><th>@Localizer["Price"]</th><th>@Localizer["Stock"]</th><th>@Localizer["Low Alert"]</th><th>@Localizer["Avg Cost"]</th><th>@Localizer["Warranty"]</th><th>@Localizer["Status"]</th><th></th></tr></thead>
   <tbody>
   @foreach (var p in Model.Products) {
     <tr>
@@ -27,15 +27,15 @@
       <td><span class="badge @(p.CurrentStock<=0?"err":p.IsLow?"warn":"ok")">@p.CurrentStock.ToString("N0")</span></td>
       <td style="color:#9ca3af;font-size:12px">≤ @p.LowStockThreshold</td>
       <td>@p.AvgCost.ToString("N0")</td>
-      <td>@(p.DefaultWarrantyMonths.HasValue ? $"{p.DefaultWarrantyMonths} mo" : "—")</td>
-      <td><span class="badge @(p.IsActive?"ok":"gray")">@(p.IsActive?"Active":"Inactive")</span></td>
+      <td>@(p.DefaultWarrantyMonths.HasValue ? Localizer["{0} mo", p.DefaultWarrantyMonths].Value : "—")</td>
+      <td><span class="badge @(p.IsActive?"ok":"gray")">@(p.IsActive?Localizer["Active"]:Localizer["Inactive"])</span></td>
       <td style="white-space:nowrap">
-        <a href="/Products/Edit/@p.Id" class="btn btn-outline btn-sm">Edit</a>
+        <a href="/Products/Edit/@p.Id" class="btn btn-outline btn-sm">@Localizer["Edit"]</a>
         @if (p.IsActive) {
-          <form method="post" asp-page-handler="Deactivate" style="display:inline" onsubmit="return confirm('Deactivate this product?')">
+          <form method="post" asp-page-handler="Deactivate" style="display:inline" onsubmit="return confirm('@Localizer["Deactivate this product?"]')">
             <input type="hidden" name="id" value="@p.Id"/>
             <input type="hidden" name="search" value="@Model.Search"/>
-            <button type="submit" class="btn btn-danger btn-sm">Off</button>
+            <button type="submit" class="btn btn-danger btn-sm">@Localizer["Off"]</button>
           </form>
         }
       </td>
@@ -43,8 +43,8 @@
   }
   @if (!Model.Products.Any()) {
     <tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:28px">
-      @(string.IsNullOrEmpty(Model.Search) ? "No products yet. " : $"No results for {Model.Search}. ")
-      <a href="/Products/Create">Add one →</a>
+      @(string.IsNullOrEmpty(Model.Search) ? Localizer["No products yet."] : Localizer["No results for \"{0}\".", Model.Search])
+      <a href="/Products/Create">@Localizer["Add one"] &rarr;</a>
     </td></tr>
   }
   </tbody>

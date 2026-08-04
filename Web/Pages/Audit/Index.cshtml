@@ -1,14 +1,17 @@
 @page "/Audit"
 @model SimpleERP.Web.Pages.Audit.IndexModel
-@{ ViewData["Title"] = "Audit Log"; }
+@{ ViewData["Title"] = Localizer["Audit Log"].Value; }
 <div class="card">
-  <div class="card-title">Recent Activity (last 200 events)</div>
+  @* The Action code and Detail text below come from the audit records themselves and are
+     deliberately left as stored — translating them is Phase C, and an audit trail arguably
+     wants the literal recorded value anyway. *@
+  <div class="card-title">@Localizer["Recent Activity (last 200 events)"]</div>
   <table>
-    <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Detail</th></tr></thead>
+    <thead><tr><th>@Localizer["Time"]</th><th>@Localizer["User"]</th><th>@Localizer["Action"]</th><th>@Localizer["Detail"]</th></tr></thead>
     <tbody>
-    @foreach (var log in Model.Logs) 
+    @foreach (var log in Model.Logs)
     {
-        var clr = log.Action.Contains("Cancel") ? "err" : log.Action.Contains("Create") ? "ok" : log.Action.Contains("Adjust") ? "warn" : "info"; 
+        var clr = log.Action.Contains("Cancel") ? "err" : log.Action.Contains("Create") ? "ok" : log.Action.Contains("Adjust") ? "warn" : "info";
       <tr>
         <td style="font-size:12px;white-space:nowrap">@log.Timestamp.ToLocalTime().ToString("dd-MMM-yy HH:mm:ss")</td>
         <td style="font-size:12px;color:#9ca3af">@log.User</td>
@@ -16,9 +19,9 @@
         <td style="font-size:12px;color:#374151;max-width:400px">@(log.Detail ?? "—")</td>
       </tr>
     }
-    @if (!Model.Logs.Any()) 
+    @if (!Model.Logs.Any())
     {
-      <tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:28px">No audit events yet.</td></tr>
+      <tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:28px">@Localizer["No audit events yet."]</td></tr>
     }
     </tbody>
   </table>

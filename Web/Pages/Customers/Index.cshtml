@@ -1,20 +1,20 @@
 @page
 @model SimpleERP.Web.Pages.Customers.IndexModel
-@{ ViewData["Title"] = "Customers"; }
+@{ ViewData["Title"] = Localizer["Customers"].Value; }
 @if (Model.Msg != null) { <div class="alert @(Model.IsErr?"alert-danger":"alert-success")">@Model.Msg</div> }
 <div class="search-bar">
     <form method="get" style="display:contents">
-        <input type="text" name="search" value="@Model.Search" placeholder="Search name, phone, address..." />
-        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        <input type="text" name="search" value="@Model.Search" placeholder="@Localizer["Search name, phone, address..."]" />
+        <button type="submit" class="btn btn-primary btn-sm">@Localizer["Search"]</button>
         @if (!string.IsNullOrEmpty(Model.Search)) {
-            <a href="/Customers" class="btn btn-outline btn-sm">✕ Clear</a>
+            <a href="/Customers" class="btn btn-outline btn-sm">✕ @Localizer["Clear"]</a>
         }
     </form>
-    <a href="/Customers/Create" class="btn btn-primary" style="margin-left:auto">＋ Add Customer</a>
+    <a href="/Customers/Create" class="btn btn-primary" style="margin-left:auto">＋ @Localizer["Add Customer"]</a>
 </div>
 <div class="card">
 <table>
-  <thead><tr><th>Name</th><th>Phone</th><th>Address</th><th>Outstanding Due</th><th>Status</th><th></th></tr></thead>
+  <thead><tr><th>@Localizer["Name"]</th><th>@Localizer["Phone"]</th><th>@Localizer["Address"]</th><th>@Localizer["Outstanding Due"]</th><th>@Localizer["Status"]</th><th></th></tr></thead>
   <tbody>
   @foreach (var c in Model.Customers) {
     <tr>
@@ -28,16 +28,16 @@
           <span style="color:#9ca3af">—</span>
         }
       </td>
-      <td><span class="badge @(c.IsActive?"ok":"gray")">@(c.IsActive?"Active":"Inactive")</span></td>
-      <td><a href="/Customers/Edit/@c.Id" class="btn btn-outline btn-sm">Edit</a></td>
+      <td><span class="badge @(c.IsActive?"ok":"gray")">@(c.IsActive?Localizer["Active"]:Localizer["Inactive"])</span></td>
+      <td><a href="/Customers/Edit/@c.Id" class="btn btn-outline btn-sm">@Localizer["Edit"]</a></td>
     </tr>
   }
   @if (!Model.Customers.Any()) {
   <tr>
     <td colspan="6" style="text-align:center;color:#9ca3af;padding:28px">
-      @(string.IsNullOrEmpty(Model.Search) 
-          ? "No customers yet." 
-          : $"No results for \"{Model.Search}\".")
+      @(string.IsNullOrEmpty(Model.Search)
+          ? Localizer["No customers yet."]
+          : Localizer["No results for \"{0}\".", Model.Search])
     </td>
   </tr>
 }

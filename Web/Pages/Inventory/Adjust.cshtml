@@ -1,59 +1,68 @@
 @page
 @model SimpleERP.Web.Pages.Inventory.AdjustModel
-@{ ViewData["Title"] = "Stock Adjustment"; }
+@{ ViewData["Title"] = Localizer["Stock Adjustment"].Value; }
 <div style="max-width:540px">
 @if (Model.Error   != null) { <div class="alert alert-danger">@Model.Error</div> }
 @if (Model.Success != null) { <div class="alert alert-success">✓ @Model.Success</div> }
 <div class="card">
-  <div class="card-title">⚖️ Physical Count Adjustment</div>
+  <div class="card-title">⚖️ @Localizer["Physical Count Adjustment"]</div>
   <div class="alert alert-info" style="font-size:12px;margin-bottom:14px">
-    Use this when a physical stock count differs from the system. Enter the <strong>actual physical count</strong>
-    — the system will calculate the difference and record it in the ledger.
+    @* Refers to the field by its own label, so this reuses that key rather than adding a
+       case-only variant — resx resource names are matched case-insensitively at build time. *@
+    @Localizer["Use this when a physical stock count differs from the system. Enter the"] <strong>@Localizer["Actual Physical Count"]</strong>
+    @Localizer["— the system will calculate the difference and record it in the ledger."]
   </div>
   <form method="post" id="adjForm">
     <div class="fg">
-      <label>Product *</label>
+      <label>@Localizer["Product"] *</label>
       <select asp-for="Input.ProductId" asp-items="Model.Products" required id="selProd"
               onchange="this.form.submit()">
-        <option value="">— Select product —</option>
+        <option value="">— @Localizer["Select product"] —</option>
       </select>
     </div>
     @if (Model.Input.ProductId != Guid.Empty) {
       <div class="fg">
-        <label>System Stock</label>
+        <label>@Localizer["System Stock"]</label>
         <div style="padding:8px 11px;background:#f9fafb;border-radius:6px;font-size:14px;font-weight:600;color:#374151">
-          @Model.CurrentStock.ToString("N0") units
+          @(Model.CurrentStock == 1
+              ? Localizer["{0} unit",  Model.CurrentStock.ToString("N0")]
+              : Localizer["{0} units", Model.CurrentStock.ToString("N0")])
         </div>
       </div>
       <div class="fg">
-        <label>Actual Physical Count *</label>
+        <label>@Localizer["Actual Physical Count"] *</label>
         <input type="number" asp-for="Input.QtyActual" min="0" step="0.01" required
                style="font-size:16px;font-weight:600"/>
         @{ var diff = Model.Input.QtyActual - Model.CurrentStock; }
         @if (Model.CurrentStock > 0 || Model.Input.QtyActual > 0) {
           <div style="font-size:12px;margin-top:4px;font-weight:600;color:@(diff>0?"#059669":diff<0?"#dc2626":"#9ca3af")">
-            @(diff>0 ? $"↑ Will add {diff:N2} units to stock" : diff<0 ? $"↓ Will remove {Math.Abs(diff):N2} units from stock" : "No change")
+            @(diff > 0 ? Localizer["↑ Will add {0} units to stock", diff.ToString("N2")]
+              : diff < 0 ? Localizer["↓ Will remove {0} units from stock", Math.Abs(diff).ToString("N2")]
+              : Localizer["No change"])
           </div>
         }
       </div>
       <div class="fg">
-        <label>Reason *</label>
-        <input type="text" asp-for="Input.Reason" required placeholder="e.g. Physical count on 22-Apr-2026, damaged items removed"/>
+        <label>@Localizer["Reason"] *</label>
+        <input type="text" asp-for="Input.Reason" required placeholder="@Localizer["e.g. Physical count on 22-Apr-2026, damaged items removed"]"/>
       </div>
       <div class="alert alert-warning" style="font-size:12px">
-        ⚠ This action is permanent and logged in the audit trail. Only use after a physical stock count.
+        ⚠ @Localizer["This action is permanent and logged in the audit trail. Only use after a physical stock count."]
       </div>
       <div style="display:flex;gap:10px;margin-top:10px">
-        <button type="submit" class="btn btn-warn" onclick="return confirm('Confirm stock adjustment? This cannot be undone.')">
-          ⚖️ Apply Adjustment
+        <button type="submit" class="btn btn-warn" onclick="return confirm('@Localizer["Confirm stock adjustment? This cannot be undone."]')">
+          ⚖️ @Localizer["Apply Adjustment"]
         </button>
-        <a href="/Inventory" class="btn btn-outline">Cancel</a>
+        <a href="/Inventory" class="btn btn-outline">@Localizer["Cancel"]</a>
       </div>
     }
   </form>
 </div>
 </div>
 @section Scripts {
+@* The three hint strings below are client-only (rebuilt in JS as the user types) and so
+   belong to Phase C's JS-dictionary mechanism, not Phase A. Left in English on purpose —
+   the server-rendered equivalent above is localized. *@
 <script>
 // Live diff calculation
 document.querySelector('input[name="Input.QtyActual"]')?.addEventListener('input', function() {

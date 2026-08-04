@@ -1,6 +1,6 @@
 @page "/Purchases/{id:guid}"
 @model SimpleERP.Web.Pages.Purchases.DetailModel
-@{ ViewData["Title"] = $"Purchase {Model.Purchase.PurchaseNumber}"; }
+@{ ViewData["Title"] = Localizer["Purchase {0}", Model.Purchase.PurchaseNumber].Value; }
 
 @if (Model.Msg != null)
 {
@@ -8,14 +8,14 @@
 }
 
 <div class="no-print" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-    <a href="/Purchases" class="btn btn-outline btn-sm">← Purchases</a>
-    <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 Print</button>
+    <a href="/Purchases" class="btn btn-outline btn-sm">&larr; @Localizer["Purchases"]</a>
+    <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 @Localizer["Print"]</button>
     @if (Model.Purchase.Status == "Active")
     {
-        <a href="/Returns/Supplier/New/@Model.Purchase.Id" class="btn btn-warn btn-sm">↪ Return items</a>
+        <a href="/Returns/Supplier/New/@Model.Purchase.Id" class="btn btn-warn btn-sm">↪ @Localizer["Return items"]</a>
         <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Purchase.Id" style="margin-left:auto"
-              onsubmit="return confirm('Cancel this purchase? Received stock will be reversed.')">
-            <button type="submit" class="btn btn-danger btn-sm">✕ Cancel Purchase</button>
+              onsubmit="return confirm('@Localizer["Cancel this purchase? Received stock will be reversed."]')">
+            <button type="submit" class="btn btn-danger btn-sm">✕ @Localizer["Cancel Purchase"]</button>
         </form>
     }
 </div>
@@ -25,22 +25,22 @@
 <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
         <div>
-            <div style="font-size:20px;font-weight:800;color:#1a1a2e">Purchase</div>
-            <div style="color:#6b7280;font-size:12px">Supplier invoice received into stock</div>
+            <div style="font-size:20px;font-weight:800;color:#1a1a2e">@Localizer["Purchase"]</div>
+            <div style="color:#6b7280;font-size:12px">@Localizer["Supplier invoice received into stock"]</div>
         </div>
         <div style="text-align:right">
             <div style="font-size:18px;font-weight:700;color:#2563eb">@Model.Purchase.PurchaseNumber</div>
             <div style="color:#9ca3af;font-size:12px">@Model.Purchase.PurchaseDate.ToLocalTime().ToString("dd MMM yyyy")</div>
             @if (Model.Purchase.Status == "Cancelled")
             {
-                <div style="color:#dc2626;font-weight:700;font-size:13px;margin-top:4px">⛔ CANCELLED</div>
+                <div style="color:#dc2626;font-weight:700;font-size:13px;margin-top:4px;text-transform:uppercase">⛔ @Localizer["Cancelled"]</div>
             }
         </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;padding:12px;background:#f9fafb;border-radius:6px">
         <div>
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">Supplier</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">@Localizer["Supplier"]</div>
             <div style="font-weight:600">@Model.Purchase.SupplierName</div>
             @if (!string.IsNullOrEmpty(Model.Purchase.SupplierPhone))
             {
@@ -48,18 +48,18 @@
             }
             @if (!string.IsNullOrEmpty(Model.Purchase.SupplierDocumentNumber))
             {
-                <div style="color:#6b7280;font-size:12px;margin-top:3px">📄 Their doc: <strong>@Model.Purchase.SupplierDocumentNumber</strong></div>
+                <div style="color:#6b7280;font-size:12px;margin-top:3px">📄 @Localizer["Their doc:"] <strong>@Model.Purchase.SupplierDocumentNumber</strong></div>
             }
         </div>
         <div>
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">Payment</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">@Localizer["Payment"]</div>
             @{
                 var isCash = Model.Purchase.PaymentType == "Cash";
                 var isOverdue = Model.Purchase.DueDate.HasValue
                              && Model.Purchase.DueDate.Value.Date < DateTime.UtcNow.Date
                              && Model.Purchase.BalanceDue > 0;
             }
-            <span class="badge @(isCash ? "ok" : "warn")">@(isCash ? "💵 Cash" : "📋 Credit")</span>
+            <span class="badge @(isCash ? "ok" : "warn")">@((isCash ? "💵 " : "📋 ") + Localizer[EnumDisplay.Key("PaymentType", Model.Purchase.PaymentType)].Value)</span>
             @if (!string.IsNullOrEmpty(Model.Purchase.PaymentTermName))
             {
                 <span style="font-size:12px;color:#6b7280"> · @Model.Purchase.PaymentTermName</span>
@@ -67,17 +67,17 @@
             @if (Model.Purchase.DueDate.HasValue)
             {
                 var dueLbl = isOverdue
-                    ? $"⚠ OVERDUE since {Model.Purchase.DueDate.Value:dd MMM yyyy}"
-                    : $"Due by {Model.Purchase.DueDate.Value:dd MMM yyyy}";
+                    ? Localizer["⚠ OVERDUE since {0}", Model.Purchase.DueDate.Value.ToString("dd MMM yyyy")].Value
+                    : Localizer["Due by {0}", Model.Purchase.DueDate.Value.ToString("dd MMM yyyy")].Value;
                 <div style="font-size:12px;font-weight:600;color:@(isOverdue?"#dc2626":"#d97706");margin-top:3px">@dueLbl</div>
             }
             @if (Model.StillOwed > 0)
             {
-                <div style="color:#dc2626;font-weight:700;font-size:12px;margin-top:3px">Still owed: @Model.StillOwed.ToString("N0")</div>
+                <div style="color:#dc2626;font-weight:700;font-size:12px;margin-top:3px">@Localizer["Still owed:"] @Model.StillOwed.ToString("N0")</div>
             }
             else if (!isCash && Model.Purchase.Status == "Active")
             {
-                <div style="color:#059669;font-size:12px;margin-top:3px">✓ Fully paid</div>
+                <div style="color:#059669;font-size:12px;margin-top:3px">✓ @Localizer["Fully paid"]</div>
             }
         </div>
     </div>
@@ -85,11 +85,11 @@
     <table style="margin-bottom:14px">
         <thead>
             <tr>
-                <th>Product</th>
-                <th style="text-align:center">Qty</th>
-                <th style="text-align:right">Unit Cost</th>
-                <th style="text-align:right">Disc</th>
-                <th style="text-align:right">Line Total</th>
+                <th>@Localizer["Product"]</th>
+                <th style="text-align:center">@Localizer["Qty"]</th>
+                <th style="text-align:right">@Localizer["Unit Cost"]</th>
+                <th style="text-align:right">@Localizer["Disc"]</th>
+                <th style="text-align:right">@Localizer["Line Total"]</th>
             </tr>
         </thead>
         <tbody>
@@ -127,16 +127,16 @@
     </table>
 
     <div style="max-width:240px;margin-left:auto">
-        <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6"><span style="color:#6b7280">Subtotal</span><span>@Model.Purchase.SubTotal.ToString("N0")</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6"><span style="color:#6b7280">@Localizer["Subtotal"]</span><span>@Model.Purchase.SubTotal.ToString("N0")</span></div>
         @if (Model.Purchase.DiscountTotal > 0)
         {
-            <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#dc2626">Line discount</span><span style="color:#dc2626">-@Model.Purchase.DiscountTotal.ToString("N0")</span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#dc2626">@Localizer["Line discount"]</span><span style="color:#dc2626">-@Model.Purchase.DiscountTotal.ToString("N0")</span></div>
         }
         @if (Model.Purchase.InvoiceDiscountAmount > 0)
         {
             <div style="display:flex;justify-content:space-between;padding:4px 0">
                 <span style="color:#dc2626">
-                    Document discount
+                    @Localizer["Document Discount"]
                     @if (Model.Purchase.InvoiceDiscountPercent.HasValue)
                     {
                         <span style="font-size:11px;color:#9ca3af">(@Model.Purchase.InvoiceDiscountPercent.Value.ToString("0.##")%)</span>
@@ -147,26 +147,28 @@
         }
         @if (Model.Purchase.TaxAmount > 0)
         {
-            <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6"><span style="color:#6b7280">DPP (tax base)</span><span>@Model.Purchase.TaxBase.ToString("N0")</span></div>
+            @* DPP and PPN are Indonesian tax terms — identical in both languages, left bare.
+               Only the English gloss next to DPP is localized. *@
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6"><span style="color:#6b7280">DPP (@Localizer["tax base"])</span><span>@Model.Purchase.TaxBase.ToString("N0")</span></div>
             <div style="display:flex;justify-content:space-between;padding:4px 0">
                 <span style="color:#6b7280">
                     PPN @((Model.Purchase.TaxRate * 100).ToString("0.##"))%
-                    @if (Model.Purchase.IsTaxInclusive) { <span style="font-size:11px;color:#9ca3af">(included)</span> }
+                    @if (Model.Purchase.IsTaxInclusive) { <span style="font-size:11px;color:#9ca3af">(@Localizer["included"])</span> }
                 </span>
                 <span>@Model.Purchase.TaxAmount.ToString("N0")</span>
             </div>
         }
-        <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1a1a2e;font-size:16px;font-weight:700"><span>Grand Total</span><span>@Model.Purchase.GrandTotal.ToString("N0")</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#6b7280">Paid</span><span style="color:#059669;font-weight:600">@Model.Purchase.AmountPaid.ToString("N0")</span></div>
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1a1a2e;font-size:16px;font-weight:700"><span>@Localizer["Grand Total"]</span><span>@Model.Purchase.GrandTotal.ToString("N0")</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#6b7280">@Localizer["Paid"]</span><span style="color:#059669;font-weight:600">@Model.Purchase.AmountPaid.ToString("N0")</span></div>
         @if (Model.StillOwed > 0)
         {
-            <div style="display:flex;justify-content:space-between;padding:4px 0;font-weight:700;color:#dc2626"><span>Balance Owed</span><span>@Model.StillOwed.ToString("N0")</span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;font-weight:700;color:#dc2626"><span>@Localizer["Balance Owed"]</span><span>@Model.StillOwed.ToString("N0")</span></div>
         }
     </div>
 
     @if (!string.IsNullOrEmpty(Model.Purchase.Notes))
     {
-        <div style="margin-top:12px;padding:10px;background:#f9fafb;border-radius:6px;font-size:13px;color:#6b7280"><strong>Notes:</strong> @Model.Purchase.Notes</div>
+        <div style="margin-top:12px;padding:10px;background:#f9fafb;border-radius:6px;font-size:13px;color:#6b7280"><strong>@Localizer["Notes:"]</strong> @Model.Purchase.Notes</div>
     }
 </div>
 
@@ -175,24 +177,24 @@
     @if (Model.Purchase.PaymentType != "Cash" && Model.Purchase.Status == "Active")
     {
         <div class="card">
-            <div class="card-title">💳 Pay Supplier</div>
+            <div class="card-title">💳 @Localizer["Pay Supplier"]</div>
             @if (Model.StillOwed <= 0)
             {
-                <div class="alert alert-success" style="font-size:12px">✓ Fully paid. No balance remaining.</div>
+                <div class="alert alert-success" style="font-size:12px">✓ @Localizer["Fully paid. No balance remaining."]</div>
             }
             else
             {
                 <form method="post" asp-page-handler="Payment" asp-route-id="@Model.Purchase.Id">
                     <div class="fg">
-                        <label>Amount to pay</label>
+                        <label>@Localizer["Amount to pay"]</label>
                         <input type="number" asp-for="PayInput.Amount" min="0.01" step="0.01" max="@Model.StillOwed" placeholder="@Model.StillOwed.ToString("N0")" required />
-                        <div style="font-size:11px;color:#6b7280;margin-top:3px">Outstanding: @Model.StillOwed.ToString("N0")</div>
+                        <div style="font-size:11px;color:#6b7280;margin-top:3px">@Localizer["Outstanding:"] @Model.StillOwed.ToString("N0")</div>
                     </div>
                     <div class="fg">
-                        <label>Notes (optional)</label>
-                        <input type="text" asp-for="PayInput.Notes" placeholder="e.g. Transfer, cheque..." />
+                        <label>@Localizer["Notes (optional)"]</label>
+                        <input type="text" asp-for="PayInput.Notes" placeholder="@Localizer["e.g. Transfer, cheque..."]" />
                     </div>
-                    <button type="submit" class="btn btn-success" style="width:100%">✓ Record Payment</button>
+                    <button type="submit" class="btn btn-success" style="width:100%">✓ @Localizer["Record Payment"]</button>
                 </form>
             }
         </div>
@@ -201,28 +203,29 @@
     @if (Model.Returns.Any())
     {
         <div class="card">
-            <div class="card-title">↪ Returns Against This Purchase</div>
+            <div class="card-title">↪ @Localizer["Returns Against This Purchase"]</div>
             <table>
-                <thead><tr><th>Return</th><th style="text-align:right">Debited</th><th style="text-align:center">Status</th></tr></thead>
+                <thead><tr><th>@Localizer["Return"]</th><th style="text-align:right">@Localizer["Debited"]</th><th style="text-align:center">@Localizer["Status"]</th></tr></thead>
                 <tbody>
                 @foreach (var r in Model.Returns)
                 {
                     <tr>
                         <td style="font-size:12px">
                             <a href="/Returns/Supplier/@r.Id" style="color:#2563eb;font-weight:600">@r.ReturnNumber</a>
-                            <div style="color:#9ca3af;font-size:11px">@r.ReturnDate.ToLocalTime().ToString("dd-MMM-yy") · @r.LineCount line(s)</div>
+                            <div style="color:#9ca3af;font-size:11px">@r.ReturnDate.ToLocalTime().ToString("dd-MMM-yy") ·
+                                @(r.LineCount == 1 ? Localizer["{0} line", r.LineCount] : Localizer["{0} lines", r.LineCount])
+                            </div>
                         </td>
                         <td style="text-align:right;font-weight:600">@r.GrandTotal.ToString("N0")</td>
                         <td style="text-align:center;font-size:11px">
-                            <span class="badge @(r.Status == "Active" ? "ok" : "gray")">@r.Status</span>
+                            <span class="badge @(r.Status == "Active" ? "ok" : "gray")">@Localizer[EnumDisplay.Key("ReturnStatus", r.Status)]</span>
                         </td>
                     </tr>
                 }
                 </tbody>
             </table>
             <p style="font-size:11px;color:#9ca3af;margin-top:8px">
-                The purchase total above is unchanged by design — what the supplier owes back sits
-                on the debit note each return raised.
+                @Localizer["The purchase total above is unchanged by design — what the supplier owes back sits on the debit note each return raised."]
             </p>
         </div>
     }
@@ -230,34 +233,35 @@
     @if (Model.Rebates.Any())
     {
         <div class="card">
-            <div class="card-title">💰 Rebates Accrued</div>
+            <div class="card-title">💰 @Localizer["Rebates Accrued"]</div>
             <table>
-                <thead><tr><th>Rule</th><th style="text-align:right">Amount</th><th style="text-align:center">Status</th></tr></thead>
+                <thead><tr><th>@Localizer["Rule"]</th><th style="text-align:right">@Localizer["Amount"]</th><th style="text-align:center">@Localizer["Status"]</th></tr></thead>
                 <tbody>
                 @foreach (var rb in Model.Rebates)
                 {
                     <tr>
                         <td style="font-size:12px">
                             @rb.RuleName
-                            <div style="color:#9ca3af;font-size:11px">@rb.RewardType</div>
+                            <div style="color:#9ca3af;font-size:11px">@Localizer[EnumDisplay.Key("RebateRewardType", rb.RewardType)]</div>
                         </td>
                         <td style="text-align:right;font-weight:600">
-                            @(rb.RewardType == "InKindGoods" ? $"{rb.Qty:N0} units"
-                              : rb.RewardType == "LuckyDraw" && rb.Amount == 0 ? "TBD"
-                              : rb.Amount.ToString("N0"))
+                            @(rb.RewardType == "InKindGoods"
+                                ? (rb.Qty == 1 ? Localizer["{0} unit", rb.Qty.ToString("N0")] : Localizer["{0} units", rb.Qty.ToString("N0")])
+                              : rb.RewardType == "LuckyDraw" && rb.Amount == 0 ? Localizer["TBD"]
+                              : (object)rb.Amount.ToString("N0"))
                         </td>
                         <td style="text-align:center;font-size:11px">
                             @if (rb.IsVoided)
                             {
-                                <span style="color:#9ca3af;font-weight:600;text-decoration:line-through">Voided</span>
+                                <span style="color:#9ca3af;font-weight:600;text-decoration:line-through">@Localizer["Voided"]</span>
                             }
                             else if (rb.IsSettled)
                             {
-                                <span style="color:#059669;font-weight:600">Settled</span>
+                                <span style="color:#059669;font-weight:600">@Localizer["Settled"]</span>
                             }
                             else
                             {
-                                <span style="color:#d97706;font-weight:600">Outstanding</span>
+                                <span style="color:#d97706;font-weight:600">@Localizer["Outstanding"]</span>
                             }
                         </td>
                     </tr>
@@ -265,7 +269,7 @@
                 </tbody>
             </table>
             <p style="font-size:11px;color:#9ca3af;margin-top:8px">
-                Settle outstanding rebates on the <a href="/Rebates">Rebates</a> page.
+                @Localizer["Settle outstanding rebates on the"] <a href="/Rebates">@Localizer["Rebates"]</a> @Localizer["page."]
             </p>
         </div>
     }
@@ -273,9 +277,9 @@
     @if (Model.Payments.Any())
     {
         <div class="card">
-            <div class="card-title">Payment History</div>
+            <div class="card-title">@Localizer["Payment History"]</div>
             <table>
-                <thead><tr><th>Date</th><th style="text-align:right">Amount</th><th>Notes</th></tr></thead>
+                <thead><tr><th>@Localizer["Date"]</th><th style="text-align:right">@Localizer["Amount"]</th><th>@Localizer["Notes"]</th></tr></thead>
                 <tbody>
                 @foreach (var p in Model.Payments)
                 {
@@ -286,7 +290,7 @@
                     </tr>
                 }
                 <tr style="background:#f9fafb">
-                    <td style="font-weight:700">Total</td>
+                    <td style="font-weight:700">@Localizer["Total"]</td>
                     <td style="text-align:right;font-weight:700;color:#059669">@Model.Purchase.AmountPaid.ToString("N0")</td>
                     <td></td>
                 </tr>

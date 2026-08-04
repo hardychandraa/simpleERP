@@ -73,7 +73,10 @@
 
   <!-- PaymentType -->
   <data name="PaymentType_Cash" xml:space="preserve"><value>Cash</value></data>
-  <data name="PaymentType_Due" xml:space="preserve"><value>Due</value></data>
+  <!-- "Credit", not "Due": the enum member is Due, but every list page already rendered this
+       as "Credit" in English, and the Indonesian is "Kredit". Reports/EndOfDay was the one
+       place showing the raw "Due" — routing it through EnumDisplay makes all of them agree. -->
+  <data name="PaymentType_Due" xml:space="preserve"><value>Credit</value></data>
 
   <!-- SaleStatus / PurchaseStatus / ReturnStatus (same members, kept separate so one can diverge later) -->
   <data name="SaleStatus_Active" xml:space="preserve"><value>Active</value></data>

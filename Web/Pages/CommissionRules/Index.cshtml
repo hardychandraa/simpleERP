@@ -1,6 +1,6 @@
 @page "/CommissionRules"
 @model SimpleERP.Web.Pages.CommissionRules.IndexModel
-@{ ViewData["Title"] = "Commission Rules"; }
+@{ ViewData["Title"] = Localizer["Commission Rules"].Value; }
 
 @if (Model.Msg != null)
 {
@@ -9,33 +9,32 @@
 
 <div class="card" style="margin-bottom:14px">
     <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="card-title" style="margin:0">Commission Rules (@Model.Rules.Count)</div>
-        <a href="/CommissionRules/Edit" class="btn btn-success">＋ New Rule</a>
+        <div class="card-title" style="margin:0">@Localizer["Commission Rules"] (@Model.Rules.Count)</div>
+        <a href="/CommissionRules/Edit" class="btn btn-success">＋ @Localizer["New Rule"]</a>
     </div>
     <p style="font-size:12px;color:#6b7280;margin-top:10px;line-height:1.6">
-        Commission is a percentage of revenue (ex-PPN), earned when payment is
-        collected — a credit sale accrues in slices as it's paid. When more than one
-        rule matches a line, the highest priority wins. Settle accruals on the
-        <a href="/Commissions">Commissions</a> page.
+        @* PPN stays bare — identical in both languages. *@
+        @Localizer["Commission is a percentage of revenue (ex-PPN), earned when payment is collected — a credit sale accrues in slices as it's paid. When more than one rule matches a line, the highest priority wins. Settle accruals on the"]
+        <a href="/Commissions">@Localizer["Commissions"]</a> @Localizer["page."]
     </p>
 </div>
 
 <div class="card">
     @if (Model.Rules.Count == 0)
     {
-        <p style="color:#9ca3af;font-size:13px">No commission rules yet. <a href="/CommissionRules/Edit">Add one →</a></p>
+        <p style="color:#9ca3af;font-size:13px">@Localizer["No commission rules yet."] <a href="/CommissionRules/Edit">@Localizer["Add one"] &rarr;</a></p>
     }
     else
     {
         <table style="width:100%">
             <thead>
                 <tr>
-                    <th>Rule</th>
-                    <th>Sales Person</th>
-                    <th>Scope</th>
-                    <th style="text-align:right">Rate</th>
-                    <th style="text-align:center">Priority</th>
-                    <th style="text-align:center">Status</th>
+                    <th>@Localizer["Rule"]</th>
+                    <th>@Localizer["Sales Person"]</th>
+                    <th>@Localizer["Scope"]</th>
+                    <th style="text-align:right">@Localizer["Rate"]</th>
+                    <th style="text-align:center">@Localizer["Priority"]</th>
+                    <th style="text-align:center">@Localizer["Status"]</th>
                     <th style="width:140px"></th>
                 </tr>
             </thead>
@@ -45,40 +44,40 @@
                 <tr>
                     <td style="font-weight:600">@r.Name</td>
                     <td style="font-size:12px;color:@(string.IsNullOrEmpty(r.SalesPersonName)?"#9ca3af":"inherit")">
-                        @(string.IsNullOrEmpty(r.SalesPersonName) ? "All" : r.SalesPersonName)
+                        @(string.IsNullOrEmpty(r.SalesPersonName) ? Localizer["All"].Value : r.SalesPersonName)
                     </td>
                     <td style="font-size:12px;color:#6b7280">
                         @{
                             var scope = new List<string>();
                             if (!string.IsNullOrEmpty(r.ProductName)) scope.Add(r.ProductName);
-                            if (!string.IsNullOrEmpty(r.Category))    scope.Add($"cat: {r.Category}");
+                            if (!string.IsNullOrEmpty(r.Category))    scope.Add(Localizer["cat: {0}", r.Category].Value);
                         }
-                        @(scope.Count == 0 ? "All products" : string.Join(" · ", scope))
+                        @(scope.Count == 0 ? Localizer["All products"].Value : string.Join(" · ", scope))
                     </td>
                     <td style="text-align:right;font-weight:600">@r.Rate.ToString("0.##")%</td>
                     <td style="text-align:center;color:#9ca3af">@r.Priority</td>
                     <td style="text-align:center">
                         @if (r.IsActive)
                         {
-                            <span style="color:#059669;font-weight:600;font-size:12px">Active</span>
+                            <span style="color:#059669;font-weight:600;font-size:12px">@Localizer["Active"]</span>
                         }
                         else
                         {
-                            <span style="color:#9ca3af;font-size:12px">Inactive</span>
+                            <span style="color:#9ca3af;font-size:12px">@Localizer["Inactive"]</span>
                         }
                     </td>
                     <td style="white-space:nowrap">
-                        <a href="/CommissionRules/Edit?id=@r.Id" class="btn btn-outline btn-sm">Edit</a>
+                        <a href="/CommissionRules/Edit?id=@r.Id" class="btn btn-outline btn-sm">@Localizer["Edit"]</a>
                         @if (r.InUse)
                         {
-                            <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="Has accrued commission">in use</span>
+                            <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="@Localizer["Has accrued commission"]">@Localizer["in use"]</span>
                         }
                         else
                         {
                             <form method="post" asp-page-handler="Delete" asp-route-id="@r.Id"
-                                  style="display:inline" onsubmit="return confirm('Delete rule @r.Name?');">
+                                  style="display:inline" onsubmit="return confirm('@Localizer["Delete rule {0}?", r.Name]');">
                                 <button type="submit" class="btn btn-outline btn-sm"
-                                        style="color:#dc2626;border-color:#fecaca">Delete</button>
+                                        style="color:#dc2626;border-color:#fecaca">@Localizer["Delete"]</button>
                             </form>
                         }
                     </td>

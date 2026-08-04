@@ -1,6 +1,6 @@
 @page "/Commissions"
 @model SimpleERP.Web.Pages.Commissions.IndexModel
-@{ ViewData["Title"] = "Commissions"; }
+@{ ViewData["Title"] = Localizer["Commissions"].Value; }
 
 @if (Model.Msg != null)
 {
@@ -9,29 +9,28 @@
 
 <div class="card" style="margin-bottom:14px">
     <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="card-title" style="margin:0">🧾 Commission Payouts</div>
-        <a href="/CommissionRules" class="btn btn-outline btn-sm">⚙ Manage Rules</a>
+        <div class="card-title" style="margin:0">🧾 @Localizer["Commission Payouts"]</div>
+        <a href="/CommissionRules" class="btn btn-outline btn-sm">⚙ @Localizer["Manage Rules"]</a>
     </div>
     <p style="font-size:12px;color:#6b7280;margin-top:10px;line-height:1.6">
-        Commission accrues automatically as sales are collected. Pay a salesperson out
-        here — one payout settles all their unpaid accruals.
+        @Localizer["Commission accrues automatically as sales are collected. Pay a salesperson out here — one payout settles all their unpaid accruals."]
     </p>
 </div>
 
 <div class="card">
-    <div class="card-title">Unpaid Commission</div>
+    <div class="card-title">@Localizer["Unpaid Commission"]</div>
     @if (Model.Unpaid.Count == 0)
     {
-        <p style="color:#9ca3af;font-size:13px">No unpaid commission.</p>
+        <p style="color:#9ca3af;font-size:13px">@Localizer["No unpaid commission."]</p>
     }
     else
     {
         <table style="width:100%">
             <thead>
                 <tr>
-                    <th>Sales Person</th>
-                    <th style="text-align:center">Accruals</th>
-                    <th style="text-align:right">Amount Owed</th>
+                    <th>@Localizer["Sales Person"]</th>
+                    <th style="text-align:center">@Localizer["Accruals"]</th>
+                    <th style="text-align:right">@Localizer["Amount Owed"]</th>
                     <th style="width:300px"></th>
                 </tr>
             </thead>
@@ -45,10 +44,10 @@
                     <td>
                         <form method="post" asp-page-handler="Payout"
                               style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"
-                              onsubmit="return confirm('Pay out @u.Amount.ToString("N0") to @u.SalesPersonName?');">
+                              onsubmit="return confirm('@Localizer["Pay out {0} to {1}?", u.Amount.ToString("N0"), u.SalesPersonName]');">
                             <input type="hidden" name="input.SalesPersonId" value="@u.SalesPersonId" />
-                            <input type="text" name="input.Notes" placeholder="Notes (optional)" style="width:150px" maxlength="500" />
-                            <button type="submit" class="btn btn-success btn-sm">Pay Out</button>
+                            <input type="text" name="input.Notes" placeholder="@Localizer["Notes (optional)"]" style="width:150px" maxlength="500" />
+                            <button type="submit" class="btn btn-success btn-sm">@Localizer["Pay Out"]</button>
                         </form>
                     </td>
                 </tr>
@@ -59,20 +58,20 @@
 </div>
 
 <div class="card">
-    <div class="card-title">Payout History (@Model.History.Count)</div>
+    <div class="card-title">@Localizer["Payout History"] (@Model.History.Count)</div>
     @if (Model.History.Count == 0)
     {
-        <p style="color:#9ca3af;font-size:13px">No payouts recorded yet.</p>
+        <p style="color:#9ca3af;font-size:13px">@Localizer["No payouts recorded yet."]</p>
     }
     else
     {
         <table style="width:100%">
             <thead>
                 <tr>
-                    <th>Date</th><th>Sales Person</th>
-                    <th style="text-align:center">Accruals</th>
-                    <th style="text-align:right">Amount</th>
-                    <th>Notes</th>
+                    <th>@Localizer["Date"]</th><th>@Localizer["Sales Person"]</th>
+                    <th style="text-align:center">@Localizer["Accruals"]</th>
+                    <th style="text-align:right">@Localizer["Amount"]</th>
+                    <th>@Localizer["Notes"]</th>
                 </tr>
             </thead>
             <tbody>

@@ -2,13 +2,13 @@
 @model SimpleERP.Web.Pages.Returns.CreateCustomerModel
 @using System.Globalization
 @{
-    ViewData["Title"] = $"Sales Return — {Model.Form.DocumentNumber}";
+    ViewData["Title"] = Localizer["Sales Return — {0}", Model.Form.DocumentNumber].Value;
     string Inv(decimal d) => d.ToString(CultureInfo.InvariantCulture);
 }
 
 <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
-    <a href="/Sales/@Model.Form.SourceId" class="btn btn-outline btn-sm">← Invoice @Model.Form.DocumentNumber</a>
-    <a href="/Returns" class="btn btn-outline btn-sm">All returns</a>
+    <a href="/Sales/@Model.Form.SourceId" class="btn btn-outline btn-sm">&larr; @Localizer["Invoice {0}", Model.Form.DocumentNumber]</a>
+    <a href="/Returns" class="btn btn-outline btn-sm">@Localizer["All returns"]</a>
 </div>
 
 @if (Model.Error != null)
@@ -26,8 +26,8 @@ else if (Model.Form.NothingLeft)
 {
     <div class="card">
         <div class="alert alert-info" style="margin:0">
-            Everything on invoice @Model.Form.DocumentNumber has already been returned.
-            <a href="/Sales/@Model.Form.SourceId">Back to the invoice →</a>
+            @Localizer["Everything on invoice {0} has already been returned.", Model.Form.DocumentNumber]
+            <a href="/Sales/@Model.Form.SourceId">@Localizer["Back to the invoice"] &rarr;</a>
         </div>
     </div>
 }
@@ -37,16 +37,16 @@ else
 <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
 
 <div class="card">
-    <div class="card-title">↩ Goods Coming Back</div>
+    <div class="card-title">↩ @Localizer["Goods Coming Back"]</div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;padding:12px;background:#f9fafb;border-radius:6px">
         <div>
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">Invoice</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">@Localizer["Invoice"]</div>
             <div style="font-weight:600">@Model.Form.DocumentNumber</div>
             <div style="font-size:12px;color:#6b7280">@Model.Form.DocumentDate.ToLocalTime().ToString("dd MMM yyyy")</div>
         </div>
         <div>
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">Customer</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">@Localizer["Customer"]</div>
             <div style="font-weight:600">@Model.Form.CounterpartyName</div>
         </div>
     </div>
@@ -54,12 +54,12 @@ else
     <table>
         <thead>
             <tr>
-                <th>Product</th>
-                <th style="text-align:center">Sold</th>
-                <th style="text-align:center">Already back</th>
-                <th style="text-align:right">Credit / unit</th>
-                <th style="width:110px;text-align:center">Return qty</th>
-                <th style="width:150px">Line note</th>
+                <th>@Localizer["Product"]</th>
+                <th style="text-align:center">@Localizer["Sold"]</th>
+                <th style="text-align:center">@Localizer["Already back"]</th>
+                <th style="text-align:right">@Localizer["Credit / unit"]</th>
+                <th style="width:110px;text-align:center">@Localizer["Return qty"]</th>
+                <th style="width:150px">@Localizer["Line note"]</th>
             </tr>
         </thead>
         <tbody>
@@ -92,7 +92,7 @@ else
                         <input type="number" name="Lines[@i].Qty" class="ret-qty"
                                data-unit="@Inv(line.UnitCredit)" value="" placeholder="0"
                                style="text-align:center" readonly />
-                        <div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:2px">fully returned</div>
+                        <div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:2px">@Localizer["fully returned"]</div>
                     }
                     else
                     {
@@ -102,13 +102,13 @@ else
                                value="@(posted != null && posted.Qty > 0 ? Inv(posted.Qty) : "")"
                                placeholder="0" style="text-align:center" />
                         <div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:2px">
-                            up to @line.ReturnableQty.ToString("N0")
+                            @Localizer["up to {0}", line.ReturnableQty.ToString("N0")]
                         </div>
                     }
                 </td>
                 <td>
                     <input type="text" name="Lines[@i].Notes" maxlength="500"
-                           value="@posted?.Notes" placeholder="optional" />
+                           value="@posted?.Notes" placeholder="@Localizer["Optional"]" />
                 </td>
             </tr>
         }
@@ -116,54 +116,53 @@ else
     </table>
 
     <p style="font-size:11px;color:#9ca3af;margin-top:10px">
-        Credit per unit comes from what the customer was actually charged on that line —
-        net of its own discount and its share of any invoice discount — not from the list price.
+        @Localizer["Credit per unit comes from what the customer was actually charged on that line — net of its own discount and its share of any invoice discount — not from the list price."]
     </p>
 </div>
 
 <div>
     <div class="card">
-        <div class="card-title">Return Details</div>
+        <div class="card-title">@Localizer["Return Details"]</div>
         <div class="fg">
-            <label>Return date</label>
+            <label>@Localizer["Return date"]</label>
             <input type="date" asp-for="ReturnDate" required />
-            <div style="font-size:11px;color:#6b7280;margin-top:3px">Cannot be before the invoice date.</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:3px">@Localizer["Cannot be before the invoice date."]</div>
         </div>
         <div class="fg">
-            <label>Reason <span style="color:#dc2626">*</span></label>
+            <label>@Localizer["Reason"] <span style="color:#dc2626">*</span></label>
             <input type="text" asp-for="Reason" maxlength="500" required
-                   placeholder="e.g. Faulty unit, wrong item shipped" />
+                   placeholder="@Localizer["e.g. Faulty unit, wrong item shipped"]" />
         </div>
         <div class="fg">
-            <label>Notes (optional)</label>
+            <label>@Localizer["Notes (optional)"]</label>
             <textarea asp-for="Notes" rows="2" maxlength="500"></textarea>
         </div>
     </div>
 
     <div class="card">
-        <div class="card-title">Credit Preview</div>
+        <div class="card-title">@Localizer["Credit Preview"]</div>
         <div style="display:flex;justify-content:space-between;padding:4px 0">
-            <span style="color:#6b7280">Lines returning</span><span id="pv-lines">0</span>
+            <span style="color:#6b7280">@Localizer["Lines returning"]</span><span id="pv-lines">0</span>
         </div>
+        @* DPP and PPN stay bare — identical in both languages. *@
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6">
-            <span style="color:#6b7280">DPP (tax base)</span><span id="pv-base">0</span>
+            <span style="color:#6b7280">DPP (@Localizer["tax base"])</span><span id="pv-base">0</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0">
             <span style="color:#6b7280">
                 PPN @((Model.Form.TaxRate * 100).ToString("0.##"))%
-                @if (Model.Form.IsTaxInclusive) { <span style="font-size:11px;color:#9ca3af">(included)</span> }
+                @if (Model.Form.IsTaxInclusive) { <span style="font-size:11px;color:#9ca3af">(@Localizer["included"])</span> }
             </span>
             <span id="pv-tax">0</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1a1a2e;font-size:16px;font-weight:700">
-            <span>Credit Note</span><span id="pv-total">0</span>
+            <span>@Localizer["Credit Note"]</span><span id="pv-total">0</span>
         </div>
         <button type="submit" class="btn btn-success" style="width:100%;margin-top:12px">
-            ✓ Post Return
+            ✓ @Localizer["Post Return"]
         </button>
         <p style="font-size:11px;color:#9ca3af;margin-top:10px;line-height:1.5">
-            Posting restocks the goods at the cost they were sold at and raises a credit note.
-            The invoice itself is left exactly as it was.
+            @Localizer["Posting restocks the goods at the cost they were sold at and raises a credit note. The invoice itself is left exactly as it was."]
         </p>
     </div>
 </div>

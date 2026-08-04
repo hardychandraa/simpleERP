@@ -1,6 +1,6 @@
 @page "/Settings"
 @model SimpleERP.Web.Pages.Settings.IndexModel
-@{ ViewData["Title"] = "Settings"; }
+@{ ViewData["Title"] = Localizer["Settings"].Value; }
 
 @if (Model.Msg != null)
 {
@@ -11,62 +11,58 @@
 
     <!-- ── STORE INFO ── -->
     <div class="card">
-        <div class="card-title">🏪 Store Information</div>
+        <div class="card-title">🏪 @Localizer["Store Information"]</div>
         <p style="font-size:12px;color:#9ca3af;margin-bottom:14px">
-            This information appears on every printed invoice.
+            @Localizer["This information appears on every printed invoice."]
         </p>
         <div class="frow frow2">
             <div class="fg">
-                <label>App Name</label>
+                <label>@Localizer["App Name"]</label>
                 <input type="text" asp-for="Input.AppName" placeholder="SimpleERP" />
             </div>
             <div class="fg">
-                <label>Store / Business Name *</label>
-                <input type="text" asp-for="Input.StoreName" required placeholder="My Store" />
+                <label>@Localizer["Store / Business Name"] *</label>
+                <input type="text" asp-for="Input.StoreName" required placeholder="@Localizer["My Store"]" />
             </div>
         </div>
         <div class="fg">
-            <label>Address</label>
-            <input type="text" asp-for="Input.StoreAddress" placeholder="e.g. Jl. Sudirman No. 1, Jakarta" />
+            <label>@Localizer["Address"]</label>
+            <input type="text" asp-for="Input.StoreAddress" placeholder="@Localizer["e.g. Jl. Sudirman No. 1, Jakarta"]" />
         </div>
         <div class="frow frow2">
             <div class="fg">
-                <label>Phone</label>
-                <input type="text" asp-for="Input.StorePhone" placeholder="e.g. 021-12345678" />
+                <label>@Localizer["Phone"]</label>
+                <input type="text" asp-for="Input.StorePhone" placeholder="@Localizer["e.g. 021-12345678"]" />
             </div>
             <div class="fg">
-                <label>Invoice Footer Text</label>
-                <input type="text" asp-for="Input.StoreFooter" placeholder="Thank you for your purchase!" />
+                <label>@Localizer["Invoice Footer Text"]</label>
+                <input type="text" asp-for="Input.StoreFooter" placeholder="@Localizer["Thank you for your purchase!"]" />
             </div>
         </div>
     </div>
 
     <!-- ── TAX ── -->
+    @* PPN and Faktur Pajak are Indonesian tax terms — identical in both languages, left bare. *@
     <div class="card">
-        <div class="card-title">🧾 Tax (PPN)</div>
+        <div class="card-title">🧾 @Localizer["Tax"] (PPN)</div>
         <p style="font-size:12px;color:#6b7280;margin-bottom:16px;line-height:1.6">
-            The PPN rate applied to new sales. Each sale stores the rate it was created with,
-            so changing this never alters invoices that are already posted.
-            Official Faktur Pajak is issued separately by your tax consultant via Coretax —
-            SimpleERP only calculates and reports the amounts.
+            @Localizer["The PPN rate applied to new sales. Each sale stores the rate it was created with, so changing this never alters invoices that are already posted. Official Faktur Pajak is issued separately by your tax consultant via Coretax — SimpleERP only calculates and reports the amounts."]
         </p>
         <div style="display:flex;gap:16px;flex-wrap:wrap">
             <div class="fg" style="max-width:220px">
-                <label>PPN Rate (%)</label>
+                <label>@Localizer["PPN Rate (%)"]</label>
                 <input type="number" asp-for="Input.VatRatePercent"
                        step="0.01" min="0" max="100" />
                 <div style="font-size:11px;color:#9ca3af;margin-top:4px">
-                    Confirm the current effective rate with your tax consultant — this is a
-                    configurable default, not tax advice.
+                    @Localizer["Confirm the current effective rate with your tax consultant — this is a configurable default, not tax advice."]
                 </div>
             </div>
             <div class="fg" style="max-width:240px">
-                <label>Rebate Withholding (%)</label>
+                <label>@Localizer["Rebate Withholding (%)"]</label>
                 <input type="number" asp-for="Input.RebateWithholdingPercent"
                        step="0.01" min="0" max="100" />
                 <div style="font-size:11px;color:#9ca3af;margin-top:4px">
-                    Deducted from a rebate settlement before it offsets the payable. The
-                    supplier sheet shows 15%; confirm the legal basis with your consultant.
+                    @Localizer["Deducted from a rebate settlement before it offsets the payable. The supplier sheet shows 15%; confirm the legal basis with your consultant."]
                 </div>
             </div>
         </div>
@@ -74,38 +70,36 @@
 
     <!-- ── PRINTER ── -->
     <div class="card">
-        <div class="card-title">🖨 Dot-Matrix Printer</div>
+        <div class="card-title">🖨 @Localizer["Dot-Matrix Printer"]</div>
         <p style="font-size:12px;color:#6b7280;margin-bottom:16px;line-height:1.6">
-            SimpleERP sends raw ESC/P bytes directly to your printer — no print dialog, one click.
-            Works with any Epson-compatible dot-matrix printer installed in Windows
-            (USB, LPT, or Serial — Windows handles the connection, just pick the name below).
+            @Localizer["SimpleERP sends raw ESC/P bytes directly to your printer — no print dialog, one click. Works with any Epson-compatible dot-matrix printer installed in Windows (USB, LPT, or Serial — Windows handles the connection, just pick the name below)."]
         </p>
 
         <div class="fg" style="display:flex;align-items:center;gap:10px">
-            <label style="margin:0;white-space:nowrap">Enable dot-matrix printing</label>
+            <label style="margin:0;white-space:nowrap">@Localizer["Enable dot-matrix printing"]</label>
             <input type="checkbox" asp-for="Input.PrinterEnabled"
                    style="width:18px;height:18px;margin:0" />
         </div>
 
         <div class="fg" style="margin-top:14px">
             <label>
-                Printer Name
+                @Localizer["Printer Name"]
                 <span style="font-weight:400;color:#9ca3af;text-transform:none">
-                    — must match exactly how Windows sees it
+                    — @Localizer["must match exactly how Windows sees it"]
                 </span>
             </label>
             <div style="display:flex;gap:10px">
                 <input type="text" asp-for="Input.PrinterName"
                        id="printerNameInput"
-                       placeholder="e.g. EPSON LX-300+" style="flex:1" />
+                       placeholder="@Localizer["e.g. EPSON LX-300+"]" style="flex:1" />
                 <button type="button" class="btn btn-outline btn-sm"
                         onclick="detectPrinters()" id="btnDetect">
-                    🔍 Detect Printers
+                    🔍 @Localizer["Detect Printers"]
                 </button>
             </div>
             <div id="printerList" style="display:none;margin-top:10px">
                 <div style="font-size:12px;color:#6b7280;margin-bottom:6px">
-                    Click a printer name to select it:
+                    @Localizer["Click a printer name to select it:"]
                 </div>
                 <div id="printerButtons" style="display:flex;flex-wrap:wrap;gap:8px"></div>
             </div>
@@ -114,34 +108,36 @@
         </div>
 
         <div class="fg">
-            <label>Paper Width</label>
+            <label>@Localizer["Paper Width"]</label>
             <select asp-for="Input.PaperColumns">
-                <option value="80">80 columns — Narrow paper (8 inch)</option>
-                <option value="132">132 columns — Wide paper (14 inch)</option>
+                <option value="80">@Localizer["80 columns — Narrow paper (8 inch)"]</option>
+                <option value="132">@Localizer["132 columns — Wide paper (14 inch)"]</option>
             </select>
             <div style="font-size:11px;color:#9ca3af;margin-top:4px">
-                Most small dot-matrix printers use 80 columns. Check your printer manual if unsure.
+                @Localizer["Most small dot-matrix printers use 80 columns. Check your printer manual if unsure."]
             </div>
         </div>
 
         <!-- Test print button -->
         <div style="margin-top:6px">
             <button type="button" class="btn btn-outline btn-sm" onclick="testPrint()">
-                📋 Send Test Print
+                📋 @Localizer["Send Test Print"]
             </button>
             <span style="font-size:11px;color:#9ca3af;margin-left:8px">
-                Saves settings first, then sends a test page to the printer.
+                @Localizer["Saves settings first, then sends a test page to the printer."]
             </span>
         </div>
         <div id="testResult" class="alert" style="display:none;margin-top:10px"></div>
     </div>
 
     <button type="submit" class="btn btn-primary" style="padding:10px 32px;font-size:14px">
-        💾 Save Settings
+        💾 @Localizer["Save Settings"]
     </button>
 </form>
 
 @section Scripts {
+@* The status strings written by these two handlers are client-only and belong to Phase C's
+   JS-dictionary mechanism, not Phase A. Left in English on purpose. *@
 <script>
 // Detect installed Windows printers via the API
 async function detectPrinters() {
@@ -186,7 +182,7 @@ async function detectPrinters() {
     }
 
     btn.disabled    = false;
-    btn.textContent = '🔍 Detect Printers';
+    btn.textContent = '🔍 @Localizer["Detect Printers"]';
 }
 
 // Save then test-print a simple line

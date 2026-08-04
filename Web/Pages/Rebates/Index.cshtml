@@ -1,6 +1,6 @@
 @page "/Rebates"
 @model SimpleERP.Web.Pages.Rebates.IndexModel
-@{ ViewData["Title"] = "Rebates"; }
+@{ ViewData["Title"] = Localizer["Rebates"].Value; }
 
 @if (Model.Msg != null)
 {
@@ -9,34 +9,33 @@
 
 <div class="card" style="margin-bottom:14px">
     <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="card-title" style="margin:0">💰 Rebate Claims</div>
-        <a href="/RebateRules" class="btn btn-outline btn-sm">⚙ Manage Rules</a>
+        <div class="card-title" style="margin:0">💰 @Localizer["Rebate Claims"]</div>
+        <a href="/RebateRules" class="btn btn-outline btn-sm">⚙ @Localizer["Manage Rules"]</a>
     </div>
     <p style="font-size:12px;color:#6b7280;margin-top:10px;line-height:1.6">
-        Rebates accrue automatically as purchases are posted and paid. Settle them here
-        when the supplier reconciles. Cash settlements net through a
-        <strong>@Model.WithholdingPercent.ToString("0.##")% withholding</strong>
-        (editable in <a href="/Settings">Settings</a>) before offsetting the payable.
+        @Localizer["Rebates accrue automatically as purchases are posted and paid. Settle them here when the supplier reconciles. Cash settlements net through a"]
+        <strong>@Localizer["{0}% withholding", Model.WithholdingPercent.ToString("0.##")]</strong>
+        (@Localizer["editable in"] <a href="/Settings">@Localizer["Settings"]</a>) @Localizer["before offsetting the payable."]
     </p>
 </div>
 
 <!-- ── Outstanding cash by supplier ─────────────────────────────────────────── -->
 <div class="card">
-    <div class="card-title">Outstanding — Cash / Credit</div>
+    <div class="card-title">@Localizer["Outstanding — Cash / Credit"]</div>
     @{ var cashSuppliers = Model.Outstanding.Where(o => o.CashAccrualCount > 0).ToList(); }
     @if (cashSuppliers.Count == 0)
     {
-        <p style="color:#9ca3af;font-size:13px">No outstanding cash rebates.</p>
+        <p style="color:#9ca3af;font-size:13px">@Localizer["No outstanding cash rebates."]</p>
     }
     else
     {
         <table style="width:100%">
             <thead>
                 <tr>
-                    <th>Supplier</th>
-                    <th style="text-align:center">Accruals</th>
-                    <th style="text-align:right">Accrued Total</th>
-                    <th style="width:340px">Settle (gross agreed with supplier)</th>
+                    <th>@Localizer["Supplier"]</th>
+                    <th style="text-align:center">@Localizer["Accruals"]</th>
+                    <th style="text-align:right">@Localizer["Accrued Total"]</th>
+                    <th style="width:340px">@Localizer["Settle (gross agreed with supplier)"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -54,9 +53,9 @@
                                    value="@o.CashAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                    class="rebate-gross" data-net="net-@o.SupplierId"
                                    style="width:120px" required />
-                            <input type="text" name="input.ReferenceId" placeholder="Ref"
+                            <input type="text" name="input.ReferenceId" placeholder="@Localizer["Ref"]"
                                    style="width:90px" maxlength="100" />
-                            <button type="submit" class="btn btn-success btn-sm">Settle</button>
+                            <button type="submit" class="btn btn-success btn-sm">@Localizer["Settle"]</button>
                             <span id="net-@o.SupplierId" style="font-size:11px;color:#059669;white-space:nowrap"></span>
                         </form>
                     </td>
@@ -65,8 +64,7 @@
             </tbody>
         </table>
         <p style="font-size:11px;color:#9ca3af;margin-top:10px">
-            Settling records the whole outstanding cash balance for that supplier as one
-            settlement, matching how the supplier reconciliation sheet batches them.
+            @Localizer["Settling records the whole outstanding cash balance for that supplier as one settlement, matching how the supplier reconciliation sheet batches them."]
         </p>
     }
 </div>
@@ -75,12 +73,12 @@
 @if (Model.InKindAccruals.Count > 0)
 {
     <div class="card">
-        <div class="card-title">Outstanding — In-Kind Goods</div>
+        <div class="card-title">@Localizer["Outstanding — In-Kind Goods"]</div>
         <table style="width:100%">
             <thead>
                 <tr>
-                    <th>Rule</th><th>Supplier</th><th>From Purchase</th>
-                    <th style="text-align:right">Free Qty</th><th style="width:120px"></th>
+                    <th>@Localizer["Rule"]</th><th>@Localizer["Supplier"]</th><th>@Localizer["From Purchase"]</th>
+                    <th style="text-align:right">@Localizer["Free Qty"]</th><th style="width:120px"></th>
                 </tr>
             </thead>
             <tbody>
@@ -93,9 +91,9 @@
                     <td style="text-align:right">@a.Qty.ToString("N0")</td>
                     <td>
                         <form method="post" asp-page-handler="RealizeInKind"
-                              onsubmit="return confirm('Receive these free goods into stock now?');">
+                              onsubmit="return confirm('@Localizer["Receive these free goods into stock now?"]');">
                             <input type="hidden" name="input.AccrualId" value="@a.Id" />
-                            <button type="submit" class="btn btn-success btn-sm">Receive Goods</button>
+                            <button type="submit" class="btn btn-success btn-sm">@Localizer["Receive Goods"]</button>
                         </form>
                     </td>
                 </tr>
@@ -103,7 +101,7 @@
             </tbody>
         </table>
         <p style="font-size:11px;color:#9ca3af;margin-top:10px">
-            Receiving stocks the goods in at zero cost, pulling the product's moving-average cost down.
+            @Localizer["Receiving stocks the goods in at zero cost, pulling the product's moving-average cost down."]
         </p>
     </div>
 }
@@ -112,12 +110,12 @@
 @if (Model.LuckyAccruals.Count > 0)
 {
     <div class="card">
-        <div class="card-title">Outstanding — Lucky Draw</div>
+        <div class="card-title">@Localizer["Outstanding — Lucky Draw"]</div>
         <table style="width:100%">
             <thead>
                 <tr>
-                    <th>Rule</th><th>Supplier</th><th>From Purchase</th>
-                    <th style="width:320px">Settled amount (from supplier)</th>
+                    <th>@Localizer["Rule"]</th><th>@Localizer["Supplier"]</th><th>@Localizer["From Purchase"]</th>
+                    <th style="width:320px">@Localizer["Settled amount (from supplier)"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -132,10 +130,10 @@
                               style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                             <input type="hidden" name="input.AccrualId" value="@a.Id" />
                             <input type="number" name="input.GrossAmount" min="0.01" step="0.01"
-                                   placeholder="Gross" class="rebate-gross" data-net="lnet-@a.Id"
+                                   placeholder="@Localizer["Gross"]" class="rebate-gross" data-net="lnet-@a.Id"
                                    style="width:120px" required />
-                            <input type="text" name="input.ReferenceId" placeholder="Ref" style="width:90px" maxlength="100" />
-                            <button type="submit" class="btn btn-success btn-sm">Settle</button>
+                            <input type="text" name="input.ReferenceId" placeholder="@Localizer["Ref"]" style="width:90px" maxlength="100" />
+                            <button type="submit" class="btn btn-success btn-sm">@Localizer["Settle"]</button>
                             <span id="lnet-@a.Id" style="font-size:11px;color:#059669;white-space:nowrap"></span>
                         </form>
                     </td>
@@ -148,21 +146,21 @@
 
 <!-- ── History ──────────────────────────────────────────────────────────────── -->
 <div class="card">
-    <div class="card-title">Settlement History (@Model.History.Count)</div>
+    <div class="card-title">@Localizer["Settlement History"] (@Model.History.Count)</div>
     @if (Model.History.Count == 0)
     {
-        <p style="color:#9ca3af;font-size:13px">No settlements recorded yet.</p>
+        <p style="color:#9ca3af;font-size:13px">@Localizer["No settlements recorded yet."]</p>
     }
     else
     {
         <table style="width:100%">
             <thead>
                 <tr>
-                    <th>Date</th><th>Supplier</th><th>Type</th>
-                    <th style="text-align:right">Gross</th>
-                    <th style="text-align:right">Withholding</th>
-                    <th style="text-align:right">Net</th>
-                    <th>In-Kind</th><th>Ref</th>
+                    <th>@Localizer["Date"]</th><th>@Localizer["Supplier"]</th><th>@Localizer["Type"]</th>
+                    <th style="text-align:right">@Localizer["Gross"]</th>
+                    <th style="text-align:right">@Localizer["Withholding"]</th>
+                    <th style="text-align:right">@Localizer["Net"]</th>
+                    <th>@Localizer["In-Kind"]</th><th>@Localizer["Ref"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -171,7 +169,7 @@
                 <tr>
                     <td style="font-size:12px">@h.RealizationDate.ToLocalTime().ToString("dd-MMM-yy")</td>
                     <td>@h.SupplierName</td>
-                    <td style="font-size:12px">@h.RewardType</td>
+                    <td style="font-size:12px">@Localizer[EnumDisplay.Key("RebateRewardType", h.RewardType)]</td>
                     <td style="text-align:right">@(h.GrossAmount?.ToString("N0") ?? "—")</td>
                     <td style="text-align:right;color:#dc2626">
                         @(h.WithholdingAmount.HasValue ? $"-{h.WithholdingAmount:N0}" : "—")

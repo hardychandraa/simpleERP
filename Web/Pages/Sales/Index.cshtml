@@ -1,6 +1,6 @@
 @page
 @model SimpleERP.Web.Pages.Sales.IndexModel
-@{ ViewData["Title"] = "Sales History"; }
+@{ ViewData["Title"] = Localizer["Sales History"].Value; }
 
 @if (Model.Msg != null)
 {
@@ -10,20 +10,20 @@
 <div class="card" style="margin-bottom:14px">
     <form method="get" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
         <div class="fg" style="margin:0;flex:1;min-width:140px">
-            <label>From</label>
+            <label>@Localizer["From"]</label>
             <input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" />
         </div>
         <div class="fg" style="margin:0;flex:1;min-width:140px">
-            <label>To</label>
+            <label>@Localizer["To"]</label>
             <input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" />
         </div>
         <div class="fg" style="margin:0;flex:1;min-width:180px">
-            <label>Search</label>
-            <input type="text" name="search" value="@Model.Search" placeholder="Invoice, customer, or phone..." />
+            <label>@Localizer["Search"]</label>
+            <input type="text" name="search" value="@Model.Search" placeholder="@Localizer["Invoice, customer, or phone..."]" />
         </div>
-        <button type="submit" class="btn btn-primary">Filter</button>
-        <a href="/Sales" class="btn btn-outline">Reset</a>
-        <a href="/Sales/Create" class="btn btn-success" style="margin-left:auto">＋ New Sale</a>
+        <button type="submit" class="btn btn-primary">@Localizer["Filter"]</button>
+        <a href="/Sales" class="btn btn-outline">@Localizer["Reset"]</a>
+        <a href="/Sales/Create" class="btn btn-success" style="margin-left:auto">＋ @Localizer["New Sale"]</a>
     </form>
 </div>
 
@@ -31,14 +31,14 @@
     <table>
         <thead>
             <tr>
-                <th>Invoice</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Payment</th>
-                <th>Total</th>
-                <th>Paid</th>
-                <th>Balance</th>
-                <th>Status</th>
+                <th>@Localizer["Invoice"]</th>
+                <th>@Localizer["Date"]</th>
+                <th>@Localizer["Customer"]</th>
+                <th>@Localizer["Payment"]</th>
+                <th>@Localizer["Total"]</th>
+                <th>@Localizer["Paid"]</th>
+                <th>@Localizer["Balance"]</th>
+                <th>@Localizer["Status"]</th>
                 <th></th>
             </tr>
         </thead>
@@ -55,7 +55,7 @@
                         }
                     </td>
                     <td><span class="badge @(s.PaymentType == "Cash" ? "ok" : "warn")">
-                        @(s.PaymentType == "Cash" ? "Cash" : "Credit")
+                        @Localizer[EnumDisplay.Key("PaymentType", s.PaymentType)]
                     </span>
                     @if (!string.IsNullOrEmpty(s.PaymentTermName)) {
                         <div style="font-size:11px;color:#6b7280">@s.PaymentTermName</div>
@@ -63,7 +63,7 @@
                     @if (s.DueDate.HasValue && s.BalanceDue > 0) {
                         var od = s.IsOverdue;
                         <div style="font-size:11px;color:@(od?"#dc2626":"#d97706");font-weight:600">
-                            @(od ? "⚠ OVERDUE" : "") @s.DueDate.Value.ToString("dd-MMM-yy")
+                            @(od ? $"⚠ {Localizer["OVERDUE"].Value}" : "") @s.DueDate.Value.ToString("dd-MMM-yy")
                         </div>
                     }
                     </td>
@@ -79,15 +79,15 @@
                             <span style="color:#9ca3af">—</span>
                         }
                     </td>
-                    <td><span class="badge @(s.Status == "Active" ? "ok" : "err")">@s.Status</span></td>
-                    <td><a href="/Sales/@s.Id" class="btn btn-outline btn-sm">View</a></td>
+                    <td><span class="badge @(s.Status == "Active" ? "ok" : "err")">@Localizer[EnumDisplay.Key("SaleStatus", s.Status)]</span></td>
+                    <td><a href="/Sales/@s.Id" class="btn btn-outline btn-sm">@Localizer["View"]</a></td>
                 </tr>
             }
             @if (!Model.Sales.Any())
             {
                 <tr>
                     <td colspan="9" style="text-align:center;color:#9ca3af;padding:30px">
-                        No sales found. <a href="/Sales/Create">Create one →</a>
+                        @Localizer["No sales found."] <a href="/Sales/Create">@Localizer["Create one"] &rarr;</a>
                     </td>
                 </tr>
             }

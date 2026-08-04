@@ -1,6 +1,6 @@
 @page "/SalesPersons"
 @model SimpleERP.Web.Pages.SalesPersons.IndexModel
-@{ ViewData["Title"] = "Sales People"; }
+@{ ViewData["Title"] = Localizer["Sales People"].Value; }
 
 @if (Model.Msg != null)
 {
@@ -8,45 +8,43 @@
 }
 
 <div class="card">
-    <div class="card-title">➕ Add Sales Person</div>
+    <div class="card-title">➕ @Localizer["Add Sales Person"]</div>
     <p style="font-size:12px;color:#6b7280;margin-bottom:14px;line-height:1.6">
-        Who gets credited with a sale. Selecting one on an invoice is optional —
-        walk-in sales can stay unattributed. Deliberately separate from system
-        logins: whoever closes the deal isn't always whoever types the invoice.
+        @Localizer["Who gets credited with a sale. Selecting one on an invoice is optional — walk-in sales can stay unattributed. Deliberately separate from system logins: whoever closes the deal isn't always whoever types the invoice."]
     </p>
     <form method="post" asp-page-handler="Create">
         <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
             <div class="fg" style="margin:0;flex:1;min-width:180px">
-                <label>Name *</label>
-                <input type="text" asp-for="Input.Name" required maxlength="200" placeholder="e.g. Budi" />
+                <label>@Localizer["Name"] *</label>
+                <input type="text" asp-for="Input.Name" required maxlength="200" placeholder="@Localizer["e.g. Budi"]" />
             </div>
             <div class="fg" style="margin:0;width:180px">
-                <label>Phone</label>
-                <input type="text" asp-for="Input.Phone" maxlength="50" placeholder="Optional" />
+                <label>@Localizer["Phone"]</label>
+                <input type="text" asp-for="Input.Phone" maxlength="50" placeholder="@Localizer["Optional"]" />
             </div>
             <div class="fg" style="margin:0;display:flex;align-items:center;gap:8px;padding-bottom:9px">
                 <input type="checkbox" asp-for="Input.IsActive" style="width:18px;height:18px;margin:0" />
-                <label style="margin:0;white-space:nowrap">Active</label>
+                <label style="margin:0;white-space:nowrap">@Localizer["Active"]</label>
             </div>
-            <button type="submit" class="btn btn-primary">Add</button>
+            <button type="submit" class="btn btn-primary">@Localizer["Add"]</button>
         </div>
     </form>
 </div>
 
 <div class="card">
-    <div class="card-title">Sales People (@Model.People.Count)</div>
+    <div class="card-title">@Localizer["Sales People"] (@Model.People.Count)</div>
     @if (Model.People.Count == 0)
     {
-        <p style="color:#9ca3af;font-size:13px">No sales people yet. Add one above.</p>
+        <p style="color:#9ca3af;font-size:13px">@Localizer["No sales people yet. Add one above."]</p>
     }
     else
     {
         <table style="width:100%">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th style="width:180px">Phone</th>
-                    <th style="width:110px;text-align:center">Status</th>
+                    <th>@Localizer["Name"]</th>
+                    <th style="width:180px">@Localizer["Phone"]</th>
+                    <th style="width:110px;text-align:center">@Localizer["Status"]</th>
                     <th style="width:150px"></th>
                 </tr>
             </thead>
@@ -61,26 +59,26 @@
                     <td style="text-align:center">
                         @if (p.IsActive)
                         {
-                            <span style="color:#059669;font-weight:600;font-size:12px">Active</span>
+                            <span style="color:#059669;font-weight:600;font-size:12px">@Localizer["Active"]</span>
                         }
                         else
                         {
-                            <span style="color:#9ca3af;font-size:12px">Inactive</span>
+                            <span style="color:#9ca3af;font-size:12px">@Localizer["Inactive"]</span>
                         }
                     </td>
                     <td style="white-space:nowrap">
-                        <a href="/SalesPersons/Edit?id=@p.Id" class="btn btn-outline btn-sm">Edit</a>
+                        <a href="/SalesPersons/Edit?id=@p.Id" class="btn btn-outline btn-sm">@Localizer["Edit"]</a>
                         @if (p.InUse)
                         {
-                            <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="Credited with existing sales">in use</span>
+                            <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="@Localizer["Credited with existing sales"]">@Localizer["in use"]</span>
                         }
                         else
                         {
                             <form method="post" asp-page-handler="Delete" asp-route-id="@p.Id"
                                   style="display:inline"
-                                  onsubmit="return confirm('Delete sales person @p.Name?');">
+                                  onsubmit="return confirm('@Localizer["Delete sales person {0}?", p.Name]');">
                                 <button type="submit" class="btn btn-outline btn-sm"
-                                        style="color:#dc2626;border-color:#fecaca">Delete</button>
+                                        style="color:#dc2626;border-color:#fecaca">@Localizer["Delete"]</button>
                             </form>
                         }
                     </td>
@@ -89,9 +87,7 @@
             </tbody>
         </table>
         <p style="font-size:11px;color:#9ca3af;margin-top:12px;line-height:1.6">
-            People already credited with a sale can't be deleted — set them inactive
-            instead, so they stop appearing on new sales while existing invoices
-            (and the commission calculated from them) keep showing their name.
+            @Localizer["People already credited with a sale can't be deleted — set them inactive instead, so they stop appearing on new sales while existing invoices (and the commission calculated from them) keep showing their name."]
         </p>
     }
 </div>

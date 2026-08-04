@@ -1,24 +1,24 @@
 @page
 @model SimpleERP.Web.Pages.Inventory.StockInModel
-@{ ViewData["Title"]="Stock In"; }
+@{ ViewData["Title"]=Localizer["Stock In"].Value; }
 <div style="max-width:520px">
 @if(Model.Error!=null){<div class="alert alert-danger">@Model.Error</div>}
 @if(Model.Success!=null){<div class="alert alert-success">✓ @Model.Success</div>}
-<div class="card"><div class="card-title">Receive Stock (Purchase)</div>
+<div class="card"><div class="card-title">@Localizer["Receive Stock (Purchase)"]</div>
 <form method="post">
-  <div class="fg"><label>Product *</label>
+  <div class="fg"><label>@Localizer["Product"] *</label>
     <select asp-for="Input.ProductId" asp-items="Model.Products" required>
-      <option value="">— Select product —</option>
+      <option value="">— @Localizer["Select product"] —</option>
     </select>
   </div>
   <div class="frow frow2">
-    <div class="fg"><label>Quantity *</label><input type="number" asp-for="Input.Qty" required min="0.01" step="0.01" placeholder="0"/></div>
-    <div class="fg"><label>Unit Cost *</label><input type="number" asp-for="Input.UnitCost" required min="0" step="0.01" placeholder="0"/></div>
+    <div class="fg"><label>@Localizer["Quantity"] *</label><input type="number" asp-for="Input.Qty" required min="0.01" step="0.01" placeholder="0"/></div>
+    <div class="fg"><label>@Localizer["Unit Cost"] *</label><input type="number" asp-for="Input.UnitCost" required min="0" step="0.01" placeholder="0"/></div>
   </div>
-  <div class="fg"><label>Notes</label><input type="text" asp-for="Input.Notes" placeholder="Supplier / PO ref..."/></div>
-  <div class="alert alert-warning" style="font-size:12px;margin-bottom:14px">⚠ Cost will update the Moving Average for this product.</div>
+  <div class="fg"><label>@Localizer["Notes"]</label><input type="text" asp-for="Input.Notes" placeholder="@Localizer["Supplier / PO ref..."]"/></div>
+  <div class="alert alert-warning" style="font-size:12px;margin-bottom:14px">⚠ @Localizer["Cost will update the Moving Average for this product."]</div>
   <div style="display:flex;gap:10px">
-    <button type="submit" class="btn btn-success">📥 Receive</button>
-    <a href="/Inventory" class="btn btn-outline">Cancel</a>
+    <button type="submit" class="btn btn-success">📥 @Localizer["Receive"]</button>
+    <a href="/Inventory" class="btn btn-outline">@Localizer["Cancel"]</a>
   </div>
 </form></div></div>

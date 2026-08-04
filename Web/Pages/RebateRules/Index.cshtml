@@ -1,7 +1,7 @@
 @page "/RebateRules"
 @model SimpleERP.Web.Pages.RebateRules.IndexModel
 @using SimpleERP.Domain.Enums
-@{ ViewData["Title"] = "Rebate Rules"; }
+@{ ViewData["Title"] = Localizer["Rebate Rules"].Value; }
 
 @if (Model.Msg != null)
 {
@@ -10,33 +10,31 @@
 
 <div class="card" style="margin-bottom:14px">
     <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="card-title" style="margin:0">Rebate Rules (@Model.Rules.Count)</div>
-        <a href="/RebateRules/Edit" class="btn btn-success">＋ New Rule</a>
+        <div class="card-title" style="margin:0">@Localizer["Rebate Rules"] (@Model.Rules.Count)</div>
+        <a href="/RebateRules/Edit" class="btn btn-success">＋ @Localizer["New Rule"]</a>
     </div>
     <p style="font-size:12px;color:#6b7280;margin-top:10px;line-height:1.6">
-        Standing agreements that earn a rebate from a supplier. Volume and price-drop
-        rules accrue when a purchase is posted; on-time-payment rules accrue when a
-        purchase is paid on time. Outstanding accruals are settled on the
-        <a href="/Rebates">Rebates</a> page.
+        @Localizer["Standing agreements that earn a rebate from a supplier. Volume and price-drop rules accrue when a purchase is posted; on-time-payment rules accrue when a purchase is paid on time. Outstanding accruals are settled on the"]
+        <a href="/Rebates">@Localizer["Rebates"]</a> @Localizer["page."]
     </p>
 </div>
 
 <div class="card">
     @if (Model.Rules.Count == 0)
     {
-        <p style="color:#9ca3af;font-size:13px">No rebate rules yet. <a href="/RebateRules/Edit">Add one →</a></p>
+        <p style="color:#9ca3af;font-size:13px">@Localizer["No rebate rules yet."] <a href="/RebateRules/Edit">@Localizer["Add one"] &rarr;</a></p>
     }
     else
     {
         <table style="width:100%">
             <thead>
                 <tr>
-                    <th>Rule</th>
-                    <th>Supplier</th>
-                    <th>Applies to</th>
-                    <th>Condition</th>
-                    <th>Reward</th>
-                    <th style="text-align:center">Status</th>
+                    <th>@Localizer["Rule"]</th>
+                    <th>@Localizer["Supplier"]</th>
+                    <th>@Localizer["Applies to"]</th>
+                    <th>@Localizer["Condition"]</th>
+                    <th>@Localizer["Reward"]</th>
+                    <th style="text-align:center">@Localizer["Status"]</th>
                     <th style="width:140px"></th>
                 </tr>
             </thead>
@@ -47,54 +45,60 @@
                     <td style="font-weight:600">@r.Name</td>
                     <td>@r.SupplierName</td>
                     <td style="font-size:12px;color:@(string.IsNullOrEmpty(r.ProductName)?"#9ca3af":"inherit")">
-                        @(string.IsNullOrEmpty(r.ProductName) ? "All products" : r.ProductName)
+                        @(string.IsNullOrEmpty(r.ProductName) ? Localizer["All products"].Value : r.ProductName)
                     </td>
+                    @* These two columns kept their own hardcoded English @switch text. The enum
+                       NAME now comes from EnumDisplay; the value-carrying detail around it is a
+                       parameterized key, so the number stays and only the wording translates. *@
                     <td style="font-size:12px">
                         @switch (r.ConditionType)
                         {
                             case RebateConditionType.Volume:
-                                <text>Volume@(r.ThresholdQty.HasValue ? $" ≥ {r.ThresholdQty:N0}" : "")@(r.ThresholdValue.HasValue ? $" / ≥ {r.ThresholdValue:N0} value" : "")</text>
+                                <text>@Localizer[EnumDisplay.Key(RebateConditionType.Volume)]</text>
+                                @if (r.ThresholdQty.HasValue)   { <text> &ge; @r.ThresholdQty.Value.ToString("N0")</text> }
+                                @if (r.ThresholdValue.HasValue) { <text> / @Localizer["≥ {0} value", r.ThresholdValue.Value.ToString("N0")]</text> }
                                 break;
                             case RebateConditionType.PriceDrop:
-                                <text>Price drop below @r.ReferenceCost?.ToString("N0")</text>
+                                <text>@Localizer[EnumDisplay.Key(RebateConditionType.PriceDrop)] @Localizer["below {0}", r.ReferenceCost?.ToString("N0") ?? "—"]</text>
                                 break;
                             case RebateConditionType.OnTimePayment:
-                                <text>On-time payment@(r.OnTimePaymentDays > 0 ? $" (+{r.OnTimePaymentDays}d grace)" : "")</text>
+                                <text>@Localizer[EnumDisplay.Key(RebateConditionType.OnTimePayment)]</text>
+                                @if (r.OnTimePaymentDays > 0) { <text> @Localizer["(+{0}d grace)", r.OnTimePaymentDays]</text> }
                                 break;
                         }
                     </td>
                     <td style="font-size:12px">
                         @switch (r.RewardType)
                         {
-                            case RebateRewardType.PercentDiscount: <text>@r.RewardRate?.ToString("0.##")% discount</text> break;
-                            case RebateRewardType.FixedCash:       <text>@r.RewardAmount?.ToString("N0") cash</text> break;
-                            case RebateRewardType.CreditNote:      <text>@r.RewardAmount?.ToString("N0") credit note</text> break;
+                            case RebateRewardType.PercentDiscount: <text>@Localizer["{0}% discount",  r.RewardRate?.ToString("0.##") ?? "—"]</text> break;
+                            case RebateRewardType.FixedCash:       <text>@Localizer["{0} cash",        r.RewardAmount?.ToString("N0") ?? "—"]</text> break;
+                            case RebateRewardType.CreditNote:      <text>@Localizer["{0} credit note", r.RewardAmount?.ToString("N0") ?? "—"]</text> break;
                             case RebateRewardType.InKindGoods:     <text>@r.RewardQty?.ToString("N0") × @r.RewardProductName</text> break;
-                            case RebateRewardType.LuckyDraw:       <text>Lucky draw</text> break;
+                            case RebateRewardType.LuckyDraw:       <text>@Localizer[EnumDisplay.Key(RebateRewardType.LuckyDraw)]</text> break;
                         }
                     </td>
                     <td style="text-align:center">
                         @if (r.IsActive)
                         {
-                            <span style="color:#059669;font-weight:600;font-size:12px">Active</span>
+                            <span style="color:#059669;font-weight:600;font-size:12px">@Localizer["Active"]</span>
                         }
                         else
                         {
-                            <span style="color:#9ca3af;font-size:12px">Inactive</span>
+                            <span style="color:#9ca3af;font-size:12px">@Localizer["Inactive"]</span>
                         }
                     </td>
                     <td style="white-space:nowrap">
-                        <a href="/RebateRules/Edit?id=@r.Id" class="btn btn-outline btn-sm">Edit</a>
+                        <a href="/RebateRules/Edit?id=@r.Id" class="btn btn-outline btn-sm">@Localizer["Edit"]</a>
                         @if (r.InUse)
                         {
-                            <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="Has accrued rebates">in use</span>
+                            <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="@Localizer["Has accrued rebates"]">@Localizer["in use"]</span>
                         }
                         else
                         {
                             <form method="post" asp-page-handler="Delete" asp-route-id="@r.Id"
-                                  style="display:inline" onsubmit="return confirm('Delete rule @r.Name?');">
+                                  style="display:inline" onsubmit="return confirm('@Localizer["Delete rule {0}?", r.Name]');">
                                 <button type="submit" class="btn btn-outline btn-sm"
-                                        style="color:#dc2626;border-color:#fecaca">Delete</button>
+                                        style="color:#dc2626;border-color:#fecaca">@Localizer["Delete"]</button>
                             </form>
                         }
                     </td>
