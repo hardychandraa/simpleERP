@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +10,8 @@ namespace SimpleERP.Web.Pages.Expenses;
 public class CreateModel : PageModel
 {
     private readonly IExpenseService _svc;
-    public CreateModel(IExpenseService svc) => _svc = svc;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public CreateModel(IExpenseService svc, IStringLocalizer<SharedResource> loc) { _svc = svc; _loc = loc; }
 
     [BindProperty] public CreateExpenseDto Input { get; set; } = new();
     public List<ExpenseCategoryDto> Categories { get; set; } = new();
@@ -31,6 +34,6 @@ public class CreateModel : PageModel
             Categories = await _svc.GetCategoriesAsync(activeOnly: true);
             return Page();
         }
-        return Redirect("/Expenses?msg=Expense+recorded.");
+        return Redirect($"/Expenses?msg={Uri.EscapeDataString(_loc["Expense recorded."].Value)}");
     }
 }

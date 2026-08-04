@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +14,8 @@ namespace SimpleERP.Web.Pages.Commissions;
 public class IndexModel : PageModel
 {
     private readonly ICommissionService _svc;
-    public IndexModel(ICommissionService svc) => _svc = svc;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public IndexModel(ICommissionService svc, IStringLocalizer<SharedResource> loc) { _svc = svc; _loc = loc; }
 
     public List<CommissionUnpaidDto>  Unpaid  { get; set; } = new();
     public List<CommissionPayoutDto>  History { get; set; } = new();
@@ -36,7 +39,7 @@ public class IndexModel : PageModel
     {
         var r = await _svc.PayoutAsync(input, User.Identity?.Name ?? "staff");
         return Redirect(r.Success
-            ? "/Commissions?msg=Commission+paid+out."
+            ? $"/Commissions?msg={Uri.EscapeDataString(_loc["Commission paid out."].Value)}"
             : $"/Commissions?err=true&msg={Uri.EscapeDataString(r.Error!)}");
     }
 }

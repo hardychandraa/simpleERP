@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Localization;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
+using SimpleERP.Application.Resources;
 using SimpleERP.Domain.Entities;
 using SimpleERP.Domain.Enums;
 using SimpleERP.Domain.Interfaces;
@@ -29,11 +31,13 @@ public class CreditNoteService : ICreditNoteService
     private readonly IAuditLogRepository    _audit;
     private readonly IUnitOfWork            _uow;
 
+    private readonly IStringLocalizer<SharedResource> _loc;
     public CreditNoteService(ICreditNoteRepository notes, ICustomerRepository customers,
         ISupplierRepository suppliers, ISaleRepository sales, IPurchaseRepository purchases,
-        IAppSettingsRepository settings, IAuditLogRepository audit, IUnitOfWork uow)
+        IAppSettingsRepository settings, IAuditLogRepository audit, IUnitOfWork uow,
+        IStringLocalizer<SharedResource> loc)
     { _notes=notes; _customers=customers; _suppliers=suppliers; _sales=sales;
-      _purchases=purchases; _settings=settings; _audit=audit; _uow=uow; }
+      _purchases=purchases; _settings=settings; _audit=audit; _uow=uow;  _loc = loc; }
 
     public async Task<List<CreditNoteDto>> GetAllAsync(CreditDebitType? type = null,
         CreditNoteStatus? status = null, DateTime? from = null, DateTime? to = null)
@@ -50,8 +54,8 @@ public class CreditNoteService : ICreditNoteService
     public async Task<ServiceResult> CreateAsync(CreateCreditNoteDto dto, string user)
     {
         var reason = Trim(dto.Reason, 500);
-        if (reason == null)  return ServiceResult.Fail("A reason for the note is required.");
-        if (dto.Amount <= 0) return ServiceResult.Fail("Amount must be greater than zero.");
+        if (reason == null)  return ServiceResult.Fail(_loc["A reason for the note is required."]);
+        if (dto.Amount <= 0) return ServiceResult.Fail(_loc["Amount must be greater than zero."]);
 
         // Compared local-to-local, matching Sale's stricter guard — see decisions.md,
         // 2026-07-31. No grace day, and the fallback for no date supplied is local
@@ -59,7 +63,7 @@ public class CreditNoteService : ICreditNoteService
         var todayLocal = DateTime.Now.Date;
         var noteDate   = dto.NoteDate?.Date ?? todayLocal;
         if (noteDate > todayLocal)
-            return ServiceResult.Fail("Note date cannot be in the future.");
+            return ServiceResult.Fail(_loc["Note date cannot be in the future."]);
 
         var isCredit = dto.Type == CreditDebitType.Credit;
 
@@ -69,17 +73,17 @@ public class CreditNoteService : ICreditNoteService
         if (isCredit)
         {
             if (dto.CustomerId == null || dto.CustomerId == Guid.Empty)
-                return ServiceResult.Fail("A credit note needs a customer.");
+                return ServiceResult.Fail(_loc["A credit note needs a customer."]);
             if (await _customers.GetByIdAsync(dto.CustomerId.Value) == null)
-                return ServiceResult.Fail("Customer not found.");
+                return ServiceResult.Fail(_loc["Customer not found."]);
             customerId = dto.CustomerId;
         }
         else
         {
             if (dto.SupplierId == null || dto.SupplierId == Guid.Empty)
-                return ServiceResult.Fail("A debit note needs a supplier.");
+                return ServiceResult.Fail(_loc["A debit note needs a supplier."]);
             if (await _suppliers.GetByIdAsync(dto.SupplierId.Value) == null)
-                return ServiceResult.Fail("Supplier not found.");
+                return ServiceResult.Fail(_loc["Supplier not found."]);
             supplierId = dto.SupplierId;
         }
 
@@ -92,20 +96,18 @@ public class CreditNoteService : ICreditNoteService
         if (isCredit && dto.SourceSaleId.HasValue)
         {
             var sale = await _sales.GetByIdWithItemsAsync(dto.SourceSaleId.Value);
-            if (sale == null) return ServiceResult.Fail("Linked invoice not found.");
+            if (sale == null) return ServiceResult.Fail(_loc["Linked invoice not found."]);
             if (sale.CustomerId != customerId)
-                return ServiceResult.Fail(
-                    $"Invoice {sale.InvoiceNumber} belongs to a different customer.");
+                return ServiceResult.Fail(_loc["Invoice {0} belongs to a different customer.", sale.InvoiceNumber]);
             taxRate      = sale.TaxRate;
             sourceSaleId = sale.Id;
         }
         else if (!isCredit && dto.SourcePurchaseId.HasValue)
         {
             var purchase = await _purchases.GetByIdWithItemsAsync(dto.SourcePurchaseId.Value);
-            if (purchase == null) return ServiceResult.Fail("Linked purchase not found.");
+            if (purchase == null) return ServiceResult.Fail(_loc["Linked purchase not found."]);
             if (purchase.SupplierId != supplierId)
-                return ServiceResult.Fail(
-                    $"Purchase {purchase.PurchaseNumber} belongs to a different supplier.");
+                return ServiceResult.Fail(_loc["Purchase {0} belongs to a different supplier.", purchase.PurchaseNumber]);
             taxRate          = purchase.TaxRate;
             sourcePurchaseId = purchase.Id;
         }
@@ -147,11 +149,11 @@ public class CreditNoteService : ICreditNoteService
     public async Task<ServiceResult> SettleAsync(SettleCreditNoteDto dto, string user)
     {
         var note = await _notes.GetByIdAsync(dto.Id);
-        if (note == null) return ServiceResult.Fail("Note not found.");
+        if (note == null) return ServiceResult.Fail(_loc["Note not found."]);
         if (note.Status == CreditNoteStatus.Settled)
-            return ServiceResult.Fail($"{note.DocumentNumber} is already settled.");
+            return ServiceResult.Fail(_loc["{0} is already settled.", note.DocumentNumber]);
         if (note.Status == CreditNoteStatus.Cancelled)
-            return ServiceResult.Fail($"{note.DocumentNumber} is cancelled.");
+            return ServiceResult.Fail(_loc["{0} is cancelled.", note.DocumentNumber]);
 
         note.Status          = CreditNoteStatus.Settled;
         note.SettledDate     = DateTime.UtcNow;
@@ -168,13 +170,11 @@ public class CreditNoteService : ICreditNoteService
     public async Task<ServiceResult> CancelAsync(Guid id, string user)
     {
         var note = await _notes.GetByIdAsync(id);
-        if (note == null) return ServiceResult.Fail("Note not found.");
+        if (note == null) return ServiceResult.Fail(_loc["Note not found."]);
         if (note.Status == CreditNoteStatus.Cancelled)
-            return ServiceResult.Fail($"{note.DocumentNumber} is already cancelled.");
+            return ServiceResult.Fail(_loc["{0} is already cancelled.", note.DocumentNumber]);
         if (note.Status == CreditNoteStatus.Settled)
-            return ServiceResult.Fail(
-                $"{note.DocumentNumber} has already been settled — the money has moved. " +
-                "Raise an opposite note instead of cancelling this one.");
+            return ServiceResult.Fail(_loc["{0} has already been settled — the money has moved. Raise an opposite note instead of cancelling this one.", note.DocumentNumber]);
 
         // A return's note can't be cancelled on its own: the goods movement has to be
         // reversed with it, and only the return knows how.
@@ -182,9 +182,7 @@ public class CreditNoteService : ICreditNoteService
         {
             var returnNumber = note.SourceCustomerReturn?.ReturnNumber
                             ?? note.SourceSupplierReturn?.ReturnNumber ?? "the return";
-            return ServiceResult.Fail(
-                $"{note.DocumentNumber} was raised by return {returnNumber}. Cancel that " +
-                "return instead — it reverses the stock movement as well as this note.");
+            return ServiceResult.Fail(_loc["{0} was raised by return {1}. Cancel that return instead — it reverses the stock movement as well as this note.", note.DocumentNumber, returnNumber]);
         }
 
         note.Status = CreditNoteStatus.Cancelled;

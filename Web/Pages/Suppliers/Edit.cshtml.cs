@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -14,8 +16,9 @@ public class EditModel : PageModel
 {
     private readonly ISupplierService    _svc;
     private readonly IPaymentTermService _terms;
-    public EditModel(ISupplierService svc, IPaymentTermService terms)
-    { _svc = svc; _terms = terms; }
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public EditModel(ISupplierService svc, IPaymentTermService terms, IStringLocalizer<SharedResource> loc)
+    { _svc = svc; _terms = terms;  _loc = loc; }
 
     [BindProperty] public SupplierDto Input { get; set; } = new();
     public List<PaymentTermDto> TermOptions { get; set; } = new();
@@ -32,7 +35,7 @@ public class EditModel : PageModel
         if (IsNew) { Input = new SupplierDto { IsActive = true }; return Page(); }
 
         var s = await _svc.GetByIdAsync(id!.Value);
-        if (s == null) return Redirect("/Suppliers?err=true&msg=Supplier+not+found.");
+        if (s == null) return Redirect($"/Suppliers?err=true&msg={Uri.EscapeDataString(_loc["Supplier not found."].Value)}");
         Input = s; InUse = s.InUse;
         return Page();
     }
@@ -53,7 +56,7 @@ public class EditModel : PageModel
             if (!IsNew) InUse = (await _svc.GetByIdAsync(Input.Id))?.InUse ?? false;
             return Page();
         }
-        return Redirect($"/Suppliers?msg={Uri.EscapeDataString($"'{Input.Name}' saved.")}");
+        return Redirect($"/Suppliers?msg={Uri.EscapeDataString(_loc["'{0}' saved.", Input.Name].Value)}");
     }
 
     private async Task LoadAsync() => TermOptions = await _terms.GetAllAsync(activeOnly: true);

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -11,8 +13,9 @@ public class EditModel : PageModel
     private readonly ICommissionService _svc;
     private readonly ISalesPersonService _people;
     private readonly IProductService _products;
-    public EditModel(ICommissionService svc, ISalesPersonService people, IProductService products)
-    { _svc = svc; _people = people; _products = products; }
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public EditModel(ICommissionService svc, ISalesPersonService people, IProductService products, IStringLocalizer<SharedResource> loc)
+    { _svc = svc; _people = people; _products = products;  _loc = loc; }
 
     [BindProperty] public CommissionRuleDto Input { get; set; } = new();
     public List<SelectListItem> SalesPersonOptions { get; set; } = new();
@@ -31,7 +34,7 @@ public class EditModel : PageModel
         if (IsNew) { Input = new CommissionRuleDto { IsActive = true, Priority = 0 }; return Page(); }
 
         var r = await _svc.GetRuleAsync(id!.Value);
-        if (r == null) return Redirect("/CommissionRules?err=true&msg=Commission+rule+not+found.");
+        if (r == null) return Redirect($"/CommissionRules?err=true&msg={Uri.EscapeDataString(_loc["Commission rule not found."].Value)}");
         Input = r; InUse = r.InUse;
         return Page();
     }
@@ -52,7 +55,7 @@ public class EditModel : PageModel
             if (!IsNew) InUse = (await _svc.GetRuleAsync(Input.Id))?.InUse ?? false;
             return Page();
         }
-        return Redirect($"/CommissionRules?msg={Uri.EscapeDataString($"'{Input.Name}' saved.")}");
+        return Redirect($"/CommissionRules?msg={Uri.EscapeDataString(_loc["'{0}' saved.", Input.Name].Value)}");
     }
 
     private async Task LoadAsync()

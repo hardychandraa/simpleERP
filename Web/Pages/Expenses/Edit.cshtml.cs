@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +10,8 @@ namespace SimpleERP.Web.Pages.Expenses;
 public class EditModel : PageModel
 {
     private readonly IExpenseService _svc;
-    public EditModel(IExpenseService svc) => _svc = svc;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public EditModel(IExpenseService svc, IStringLocalizer<SharedResource> loc) { _svc = svc; _loc = loc; }
 
     [BindProperty] public UpdateExpenseDto Input { get; set; } = new();
     public List<ExpenseCategoryDto> Categories { get; set; } = new();
@@ -18,7 +21,7 @@ public class EditModel : PageModel
     {
         ViewData["Title"] = "Edit Expense";
         var e = await _svc.GetByIdAsync(id);
-        if (e == null) return Redirect("/Expenses?err=true&msg=Expense+not+found.");
+        if (e == null) return Redirect($"/Expenses?err=true&msg={Uri.EscapeDataString(_loc["Expense not found."].Value)}");
 
         Input = new UpdateExpenseDto {
             Id = e.Id, ExpenseDate = e.ExpenseDate, CategoryId = e.CategoryId,
@@ -37,6 +40,6 @@ public class EditModel : PageModel
             Categories = await _svc.GetCategoriesAsync(activeOnly: true);
             return Page();
         }
-        return Redirect("/Expenses?msg=Expense+updated.");
+        return Redirect($"/Expenses?msg={Uri.EscapeDataString(_loc["Expense updated."].Value)}");
     }
 }

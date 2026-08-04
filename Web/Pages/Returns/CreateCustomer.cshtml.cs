@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +15,8 @@ namespace SimpleERP.Web.Pages.Returns;
 public class CreateCustomerModel : PageModel
 {
     private readonly IReturnService _returns;
-    public CreateCustomerModel(IReturnService returns) => _returns = returns;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public CreateCustomerModel(IReturnService returns, IStringLocalizer<SharedResource> loc) { _returns = returns; _loc = loc; }
 
     public ReturnFormDto Form { get; set; } = null!;
 
@@ -52,7 +55,7 @@ public class CreateCustomerModel : PageModel
 
         if (items.Count == 0)
         {
-            Error = "Enter a quantity on at least one line.";
+            Error = _loc["Enter a quantity on at least one line."];
             return Page();
         }
 
@@ -66,8 +69,8 @@ public class CreateCustomerModel : PageModel
 
         if (!result.Success) { Error = result.Error; return Page(); }
 
-        var msg = $"Return {result.Data!.ReturnNumber} posted. Goods restocked and credit note " +
-                  $"{result.Data.CreditNoteNumber} raised for {result.Data.GrandTotal:N0}.";
+        var msg = _loc["Return {0} posted. Goods restocked and credit note {1} raised for {2}.",
+                       result.Data!.ReturnNumber, result.Data.CreditNoteNumber, result.Data.GrandTotal.ToString("N0")].Value;
         return Redirect($"/Returns/Customer/{result.Data.Id}?msg={Uri.EscapeDataString(msg)}");
     }
 }

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +15,8 @@ namespace SimpleERP.Web.Pages.Purchases;
 public class StatementModel : PageModel
 {
     private readonly IPurchaseService _purchases;
-    public StatementModel(IPurchaseService purchases) => _purchases = purchases;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public StatementModel(IPurchaseService purchases, IStringLocalizer<SharedResource> loc) { _purchases = purchases; _loc = loc; }
 
     public PaymentStatementDto Statement { get; set; } = null!;
 
@@ -53,7 +56,7 @@ public class StatementModel : PageModel
 
         if (lines.Count == 0 && ApplyNoteIds.Count == 0)
         {
-            Error = "Enter an amount on at least one purchase, or tick a debit note.";
+            Error = _loc["Enter an amount on at least one purchase, or tick a debit note."];
             return Page();
         }
 
@@ -67,9 +70,14 @@ public class StatementModel : PageModel
         if (!result.Success) { Error = result.Error; return Page(); }
 
         var b = result.Data!;
-        var msg = $"Settlement {b.BatchNumber} recorded — {b.NetAmount:N0} paid across " +
-                  $"{b.DocumentCount} purchase(s)" +
-                  (b.NoteCount > 0 ? $", after netting {b.NotesAppliedAmount:N0} in debit note(s)." : ".");
+        var docs = b.DocumentCount == 1
+            ? _loc["Settlement {0} recorded — {1} paid across {2} purchase", b.BatchNumber, b.NetAmount.ToString("N0"), b.DocumentCount].Value
+            : _loc["Settlement {0} recorded — {1} paid across {2} purchases", b.BatchNumber, b.NetAmount.ToString("N0"), b.DocumentCount].Value;
+        var notes = b.NoteCount == 0 ? "."
+            : b.NoteCount == 1
+                ? _loc[", after netting {0} in debit note.",  b.NotesAppliedAmount.ToString("N0")].Value
+                : _loc[", after netting {0} in debit notes.", b.NotesAppliedAmount.ToString("N0")].Value;
+        var msg = docs + notes;
         return Redirect($"/Purchases/Due?msg={Uri.EscapeDataString(msg)}");
     }
 }

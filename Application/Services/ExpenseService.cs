@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Localization;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
+using SimpleERP.Application.Resources;
 using SimpleERP.Domain.Entities;
 using SimpleERP.Domain.Interfaces;
 
@@ -20,9 +22,11 @@ public class ExpenseService : IExpenseService
     private readonly IAuditLogRepository        _audit;
     private readonly IUnitOfWork                _uow;
 
+    private readonly IStringLocalizer<SharedResource> _loc;
     public ExpenseService(IExpenseRepository expenses, IExpenseCategoryRepository categories,
-                          IAuditLogRepository audit, IUnitOfWork uow)
-    { _expenses = expenses; _categories = categories; _audit = audit; _uow = uow; }
+                          IAuditLogRepository audit, IUnitOfWork uow,
+        IStringLocalizer<SharedResource> loc)
+    { _expenses = expenses; _categories = categories; _audit = audit; _uow = uow;  _loc = loc; }
 
     // ── Expenses ──────────────────────────────────────────────────────────────
 
@@ -67,7 +71,7 @@ public class ExpenseService : IExpenseService
     public async Task<ServiceResult> UpdateAsync(UpdateExpenseDto dto, string user)
     {
         var expense = await _expenses.GetByIdAsync(dto.Id);
-        if (expense == null) return ServiceResult.Fail("Expense not found.");
+        if (expense == null) return ServiceResult.Fail(_loc["Expense not found."]);
 
         var invalid = await ValidateExpenseAsync(dto);
         if (invalid != null) return invalid;
@@ -91,7 +95,7 @@ public class ExpenseService : IExpenseService
     public async Task<ServiceResult> DeleteAsync(Guid id, string user)
     {
         var expense = await _expenses.GetByIdAsync(id);
-        if (expense == null) return ServiceResult.Fail("Expense not found.");
+        if (expense == null) return ServiceResult.Fail(_loc["Expense not found."]);
 
         _expenses.Remove(expense);
         await _audit.LogAsync(user, "Expense.Delete",
@@ -102,18 +106,18 @@ public class ExpenseService : IExpenseService
 
     private async Task<ServiceResult?> ValidateExpenseAsync(CreateExpenseDto dto)
     {
-        if (dto.CategoryId == Guid.Empty) return ServiceResult.Fail("Category is required.");
-        if (dto.Amount <= 0)              return ServiceResult.Fail("Amount must be greater than zero.");
-        if (dto.ExpenseDate == default)   return ServiceResult.Fail("Date is required.");
+        if (dto.CategoryId == Guid.Empty) return ServiceResult.Fail(_loc["Category is required."]);
+        if (dto.Amount <= 0)              return ServiceResult.Fail(_loc["Amount must be greater than zero."]);
+        if (dto.ExpenseDate == default)   return ServiceResult.Fail(_loc["Date is required."]);
         // A future-dated expense is almost always a typo in the year field, and it
         // would silently distort any period report that includes it. Compared
         // local-to-local, matching Sale's stricter guard — see decisions.md, 2026-07-31.
         if (dto.ExpenseDate.Date > DateTime.Now.Date)
-            return ServiceResult.Fail("Expense date cannot be in the future.");
+            return ServiceResult.Fail(_loc["Expense date cannot be in the future."]);
 
         var cat = await _categories.GetByIdAsync(dto.CategoryId);
-        if (cat == null)   return ServiceResult.Fail("Category not found.");
-        if (!cat.IsActive) return ServiceResult.Fail($"Category '{cat.Name}' is no longer active.");
+        if (cat == null)   return ServiceResult.Fail(_loc["Category not found."]);
+        if (!cat.IsActive) return ServiceResult.Fail(_loc["Category '{0}' is no longer active.", cat.Name]);
         return null;
     }
 
@@ -147,7 +151,7 @@ public class ExpenseService : IExpenseService
     public async Task<ServiceResult> UpdateCategoryAsync(ExpenseCategoryDto dto, string user)
     {
         var cat = await _categories.GetByIdAsync(dto.Id);
-        if (cat == null) return ServiceResult.Fail("Category not found.");
+        if (cat == null) return ServiceResult.Fail(_loc["Category not found."]);
 
         var invalid = await ValidateCategoryAsync(dto, dto.Id);
         if (invalid != null) return invalid;
@@ -168,13 +172,10 @@ public class ExpenseService : IExpenseService
     public async Task<ServiceResult> DeleteCategoryAsync(Guid id, string user)
     {
         var cat = await _categories.GetByIdAsync(id);
-        if (cat == null) return ServiceResult.Fail("Category not found.");
+        if (cat == null) return ServiceResult.Fail(_loc["Category not found."]);
 
         if (await _categories.IsInUseAsync(id))
-            return ServiceResult.Fail(
-                $"'{cat.Name}' has expenses recorded against it and cannot be deleted. " +
-                "Set it to inactive instead — it will stop appearing on new expenses " +
-                "while existing ones stay categorised.");
+            return ServiceResult.Fail(_loc["'{0}' has expenses recorded against it and cannot be deleted. Set it to inactive instead — it will stop appearing on new expenses while existing ones stay categorised.", cat.Name]);
 
         _categories.Remove(cat);
         await _audit.LogAsync(user, "ExpenseCategory.Delete", cat.Name);
@@ -185,9 +186,9 @@ public class ExpenseService : IExpenseService
     private async Task<ServiceResult?> ValidateCategoryAsync(ExpenseCategoryDto dto, Guid? excludeId)
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
-            return ServiceResult.Fail("Category name is required.");
+            return ServiceResult.Fail(_loc["Category name is required."]);
         if (await _categories.NameExistsAsync(dto.Name.Trim(), excludeId))
-            return ServiceResult.Fail($"A category named '{dto.Name.Trim()}' already exists.");
+            return ServiceResult.Fail(_loc["A category named '{0}' already exists.", dto.Name.Trim()]);
         return null;
     }
 

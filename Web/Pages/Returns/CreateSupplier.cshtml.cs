@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +15,8 @@ namespace SimpleERP.Web.Pages.Returns;
 public class CreateSupplierModel : PageModel
 {
     private readonly IReturnService _returns;
-    public CreateSupplierModel(IReturnService returns) => _returns = returns;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public CreateSupplierModel(IReturnService returns, IStringLocalizer<SharedResource> loc) { _returns = returns; _loc = loc; }
 
     public ReturnFormDto Form { get; set; } = null!;
 
@@ -51,7 +54,7 @@ public class CreateSupplierModel : PageModel
 
         if (items.Count == 0)
         {
-            Error = "Enter a quantity on at least one line.";
+            Error = _loc["Enter a quantity on at least one line."];
             return Page();
         }
 

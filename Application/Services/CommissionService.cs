@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Localization;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
+using SimpleERP.Application.Resources;
 using SimpleERP.Domain.Entities;
 using SimpleERP.Domain.Interfaces;
 
@@ -25,11 +27,13 @@ public class CommissionService : ICommissionService
     private readonly IAuditLogRepository          _audit;
     private readonly IUnitOfWork                  _uow;
 
+    private readonly IStringLocalizer<SharedResource> _loc;
     public CommissionService(ICommissionRuleRepository rules, ICommissionAccrualRepository accruals,
         ICommissionPayoutRepository payouts, ISalesPersonRepository people,
-        IProductRepository products, IAuditLogRepository audit, IUnitOfWork uow)
+        IProductRepository products, IAuditLogRepository audit, IUnitOfWork uow,
+        IStringLocalizer<SharedResource> loc)
     { _rules=rules; _accruals=accruals; _payouts=payouts; _people=people;
-      _products=products; _audit=audit; _uow=uow; }
+      _products=products; _audit=audit; _uow=uow;  _loc = loc; }
 
     // ── Accrual (called inside the SaleService transaction — no SaveChanges) ──
 
@@ -180,11 +184,11 @@ public class CommissionService : ICommissionService
     public async Task<ServiceResult> PayoutAsync(PayoutCommissionDto dto, string user)
     {
         var person = await _people.GetByIdAsync(dto.SalesPersonId);
-        if (person == null) return ServiceResult.Fail("Sales person not found.");
+        if (person == null) return ServiceResult.Fail(_loc["Sales person not found."]);
 
         var unpaid = await _accruals.GetUnpaidBySalesPersonAsync(dto.SalesPersonId);
         if (unpaid.Count == 0)
-            return ServiceResult.Fail($"{person.Name} has no unpaid commission to pay out.");
+            return ServiceResult.Fail(_loc["{0} has no unpaid commission to pay out.", person.Name]);
 
         var total = unpaid.Sum(a => a.Amount);
         var payout = new CommissionPayout {
@@ -233,7 +237,7 @@ public class CommissionService : ICommissionService
     public async Task<ServiceResult> UpdateRuleAsync(CommissionRuleDto dto, string user)
     {
         var rule = await _rules.GetByIdAsync(dto.Id);
-        if (rule == null) return ServiceResult.Fail("Commission rule not found.");
+        if (rule == null) return ServiceResult.Fail(_loc["Commission rule not found."]);
         var invalid = await ValidateRuleAsync(dto, dto.Id);
         if (invalid != null) return invalid;
         ApplyRule(rule, dto);
@@ -246,12 +250,9 @@ public class CommissionService : ICommissionService
     public async Task<ServiceResult> DeleteRuleAsync(Guid id, string user)
     {
         var rule = await _rules.GetByIdAsync(id);
-        if (rule == null) return ServiceResult.Fail("Commission rule not found.");
+        if (rule == null) return ServiceResult.Fail(_loc["Commission rule not found."]);
         if (await _rules.IsInUseAsync(id))
-            return ServiceResult.Fail(
-                $"'{rule.Name}' has already accrued commission and cannot be deleted. " +
-                "Set it inactive instead — it stops applying to new collections while " +
-                "existing accruals keep their link to it.");
+            return ServiceResult.Fail(_loc["'{0}' has already accrued commission and cannot be deleted. Set it inactive instead — it stops applying to new collections while existing accruals keep their link to it.", rule.Name]);
         _rules.Remove(rule);
         await _audit.LogAsync(user, "CommissionRule.Delete", rule.Name);
         await _uow.SaveChangesAsync();
@@ -260,16 +261,16 @@ public class CommissionService : ICommissionService
 
     private async Task<ServiceResult?> ValidateRuleAsync(CommissionRuleDto dto, Guid? excludeId)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail("Rule name is required.");
-        if (!(dto.Rate > 0) || dto.Rate >= 100)  return ServiceResult.Fail("Rate must be between 0 and 100 percent.");
+        if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail(_loc["Rule name is required."]);
+        if (!(dto.Rate > 0) || dto.Rate >= 100)  return ServiceResult.Fail(_loc["Rate must be between 0 and 100 percent."]);
         if (await _rules.NameExistsAsync(dto.Name.Trim(), excludeId))
-            return ServiceResult.Fail($"A commission rule named '{dto.Name.Trim()}' already exists.");
+            return ServiceResult.Fail(_loc["A commission rule named '{0}' already exists.", dto.Name.Trim()]);
         if (dto.SalesPersonId.HasValue && await _people.GetByIdAsync(dto.SalesPersonId.Value) == null)
-            return ServiceResult.Fail("Sales person not found.");
+            return ServiceResult.Fail(_loc["Sales person not found."]);
         if (dto.ProductId.HasValue && await _products.GetByIdAsync(dto.ProductId.Value) == null)
-            return ServiceResult.Fail("Product not found.");
+            return ServiceResult.Fail(_loc["Product not found."]);
         if (dto.EffectiveFrom.HasValue && dto.EffectiveTo.HasValue && dto.EffectiveTo < dto.EffectiveFrom)
-            return ServiceResult.Fail("Effective end cannot be before effective start.");
+            return ServiceResult.Fail(_loc["Effective end cannot be before effective start."]);
         return null;
     }
 

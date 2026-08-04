@@ -916,4 +916,217 @@
   <data name="Who gets credited with a sale. Selecting one on an invoice is optional — walk-in sales can stay unattributed. Deliberately separate from system logins: whoever closes the deal isn't always whoever types the invoice." xml:space="preserve"><value>Siapa yang mendapat kredit atas sebuah penjualan. Memilihnya pada faktur bersifat opsional — penjualan langsung boleh tanpa atribusi. Sengaja dipisahkan dari login sistem: yang menutup transaksi tidak selalu yang mengetik fakturnya.</value></data>
   <data name="Withholding" xml:space="preserve"><value>Potongan</value></data>
   <data name="Yes" xml:space="preserve"><value>Ya</value></data>
+  <!-- Phase B: Application-layer service results and PageModel-owned messages. -->
+  <data name=", after netting {0} in credit note." xml:space="preserve"><value>, setelah memperhitungkan nota kredit sebesar {0}.</value></data>
+  <data name=", after netting {0} in credit notes." xml:space="preserve"><value>, setelah memperhitungkan nota kredit sebesar {0}.</value></data>
+  <data name=", after netting {0} in debit note." xml:space="preserve"><value>, setelah memperhitungkan nota debit sebesar {0}.</value></data>
+  <data name=", after netting {0} in debit notes." xml:space="preserve"><value>, setelah memperhitungkan nota debit sebesar {0}.</value></data>
+  <data name="'{0}' added." xml:space="preserve"><value>'{0}' ditambahkan.</value></data>
+  <data name="'{0}' already has an active purchase with document number '{1}'. Cancel that one first if this is a correction." xml:space="preserve"><value>'{0}' sudah memiliki pembelian aktif dengan nomor dokumen '{1}'. Batalkan yang itu dulu bila ini sebuah koreksi.</value></data>
+  <data name="'{0}' has already accrued commission and cannot be deleted. Set it inactive instead — it stops applying to new collections while existing accruals keep their link to it." xml:space="preserve"><value>'{0}' sudah menghasilkan akrual komisi dan tidak bisa dihapus. Nonaktifkan saja — aturan berhenti berlaku untuk penagihan baru sementara akrual yang sudah ada tetap tertaut padanya.</value></data>
+  <data name="'{0}' has already accrued rebates and cannot be deleted. Set it inactive instead — it stops applying to new purchases while existing accruals keep their link to it." xml:space="preserve"><value>'{0}' sudah menghasilkan akrual rebat dan tidak bisa dihapus. Nonaktifkan saja — aturan berhenti berlaku untuk pembelian baru sementara akrual yang sudah ada tetap tertaut padanya.</value></data>
+  <data name="'{0}' has expenses recorded against it and cannot be deleted. Set it to inactive instead — it will stop appearing on new expenses while existing ones stay categorised." xml:space="preserve"><value>'{0}' sudah memiliki catatan biaya dan tidak bisa dihapus. Nonaktifkan saja — kategori berhenti muncul pada biaya baru sementara yang sudah ada tetap terkategori.</value></data>
+  <data name="'{0}' has posted purchases and cannot be deleted. Set them to inactive instead — they will stop appearing on new purchases while existing documents keep showing them." xml:space="preserve"><value>'{0}' sudah memiliki pembelian terposting dan tidak bisa dihapus. Nonaktifkan saja — pemasok berhenti muncul pada pembelian baru sementara dokumen yang sudah ada tetap menampilkannya.</value></data>
+  <data name="'{0}' is credited with existing sales and cannot be deleted. Set them to inactive instead — they will stop appearing on new sales while existing invoices keep showing them." xml:space="preserve"><value>'{0}' sudah diatribusikan pada penjualan yang ada dan tidak bisa dihapus. Nonaktifkan saja — namanya berhenti muncul pada penjualan baru sementara faktur yang sudah ada tetap menampilkannya.</value></data>
+  <data name="'{0}' is used by existing sales and cannot be deleted. Set it to inactive instead — it will stop appearing on new sales while existing invoices keep showing it." xml:space="preserve"><value>'{0}' dipakai oleh penjualan yang sudah ada dan tidak bisa dihapus. Nonaktifkan saja — termin berhenti muncul pada penjualan baru sementara faktur yang sudah ada tetap menampilkannya.</value></data>
+  <data name="'{0}' saved." xml:space="preserve"><value>'{0}' disimpan.</value></data>
+  <data name="'{0}': {1} being returned but only {2} of the {3} received is still returnable ({4} already returned)." xml:space="preserve"><value>'{0}': {1} akan diretur tetapi hanya {2} dari {3} yang diterima masih bisa diretur ({4} sudah diretur).</value></data>
+  <data name="'{0}': {1} being returned but only {2} of the {3} received is still returnable." xml:space="preserve"><value>'{0}': {1} akan diretur tetapi hanya {2} dari {3} yang diterima masih bisa diretur.</value></data>
+  <data name="'{0}': {1} being returned but only {2} of the {3} sold is still returnable ({4} already returned)." xml:space="preserve"><value>'{0}': {1} akan diretur tetapi hanya {2} dari {3} yang terjual masih bisa diretur ({4} sudah diretur).</value></data>
+  <data name="'{0}': {1} being returned but only {2} of the {3} sold is still returnable." xml:space="preserve"><value>'{0}': {1} akan diretur tetapi hanya {2} dari {3} yang terjual masih bisa diretur.</value></data>
+  <data name="{0} belongs to a different customer." xml:space="preserve"><value>{0} milik pelanggan lain.</value></data>
+  <data name="{0} belongs to a different supplier." xml:space="preserve"><value>{0} milik pemasok lain.</value></data>
+  <data name="{0} has already been paid against this purchase. Cancelling would leave that payment pointing at nothing — reverse the payment first, or record a supplier return instead." xml:space="preserve"><value>{0} sudah dibayarkan atas pembelian ini. Membatalkannya akan membuat pembayaran itu menggantung tanpa dasar — batalkan pembayarannya dulu, atau catat retur pembelian saja.</value></data>
+  <data name="{0} has already been settled — the money has moved. Raise an opposite note instead of cancelling this one." xml:space="preserve"><value>{0} sudah diselesaikan — uangnya sudah berpindah. Terbitkan nota kebalikannya, jangan membatalkan yang ini.</value></data>
+  <data name="{0} has no unpaid commission to pay out." xml:space="preserve"><value>{0} tidak memiliki komisi yang belum dibayar.</value></data>
+  <data name="{0} is a credit note and cannot be applied to money paid out." xml:space="preserve"><value>{0} adalah nota kredit dan tidak bisa diperhitungkan terhadap uang yang dibayarkan keluar.</value></data>
+  <data name="{0} is a debit note and cannot be applied to money received." xml:space="preserve"><value>{0} adalah nota debit dan tidak bisa diperhitungkan terhadap uang yang diterima.</value></data>
+  <data name="{0} is already {1}." xml:space="preserve"><value>{0} sudah {1}.</value></data>
+  <data name="{0} is already cancelled." xml:space="preserve"><value>{0} sudah dibatalkan.</value></data>
+  <data name="{0} is already settled." xml:space="preserve"><value>{0} sudah diselesaikan.</value></data>
+  <data name="{0} is cancelled." xml:space="preserve"><value>{0} dibatalkan.</value></data>
+  <data name="{0} note created." xml:space="preserve"><value>Nota {0} dibuat.</value></data>
+  <data name="{0} was raised by return {1}. Cancel that return instead — it reverses the stock movement as well as this note." xml:space="preserve"><value>{0} diterbitkan oleh retur {1}. Batalkan retur itu saja — pembatalannya sekaligus mengoreksi pergerakan stok dan nota ini.</value></data>
+  <data name="{0}: only {1} in stock, {2} being returned. Stock cannot go negative — check the quantity, or adjust stock first." xml:space="preserve"><value>{0}: hanya {1} di stok, {2} akan diretur. Stok tidak boleh negatif — periksa kuantitasnya, atau sesuaikan stok dulu.</value></data>
+  <data name="{0}: only {1} of the {2} received units are still in stock — the rest has already been sold or issued. Record a supplier return instead." xml:space="preserve"><value>{0}: hanya {1} dari {2} unit yang diterima masih ada di stok — sisanya sudah terjual atau dikeluarkan. Catat retur pembelian saja.</value></data>
+  <data name="{0}: only {1} of the {2} returned units are still in stock — the rest has been sold again. This return can no longer be cancelled." xml:space="preserve"><value>{0}: hanya {1} dari {2} unit retur masih ada di stok — sisanya sudah terjual kembali. Retur ini tidak bisa lagi dibatalkan.</value></data>
+  <data name="A category named '{0}' already exists." xml:space="preserve"><value>Kategori bernama '{0}' sudah ada.</value></data>
+  <data name="A commission rule named '{0}' already exists." xml:space="preserve"><value>Aturan komisi bernama '{0}' sudah ada.</value></data>
+  <data name="A credit note needs a customer." xml:space="preserve"><value>Nota kredit harus memiliki pelanggan.</value></data>
+  <data name="A credit note on this settlement no longer exists." xml:space="preserve"><value>Sebuah nota kredit pada penyelesaian ini sudah tidak ada.</value></data>
+  <data name="A debit note needs a supplier." xml:space="preserve"><value>Nota debit harus memiliki pemasok.</value></data>
+  <data name="A debit note on this settlement no longer exists." xml:space="preserve"><value>Sebuah nota debit pada penyelesaian ini sudah tidak ada.</value></data>
+  <data name="A line being returned is not on this invoice." xml:space="preserve"><value>Ada baris retur yang tidak terdapat pada faktur ini.</value></data>
+  <data name="A line being returned is not on this purchase." xml:space="preserve"><value>Ada baris retur yang tidak terdapat pada pembelian ini.</value></data>
+  <data name="A payment term named '{0}' already exists." xml:space="preserve"><value>Termin pembayaran bernama '{0}' sudah ada.</value></data>
+  <data name="A purchase on this settlement no longer exists." xml:space="preserve"><value>Sebuah pembelian pada penyelesaian ini sudah tidak ada.</value></data>
+  <data name="A reason for the note is required." xml:space="preserve"><value>Alasan penerbitan nota wajib diisi.</value></data>
+  <data name="A reason for the return is required." xml:space="preserve"><value>Alasan retur wajib diisi.</value></data>
+  <data name="A rebate rule named '{0}' already exists." xml:space="preserve"><value>Aturan rebat bernama '{0}' sudah ada.</value></data>
+  <data name="A sales person named '{0}' already exists." xml:space="preserve"><value>Sales bernama '{0}' sudah ada.</value></data>
+  <data name="A supplier named '{0}' already exists." xml:space="preserve"><value>Pemasok bernama '{0}' sudah ada.</value></data>
+  <data name="Accrual not found." xml:space="preserve"><value>Akrual tidak ditemukan.</value></data>
+  <data name="Actual quantity cannot be negative." xml:space="preserve"><value>Kuantitas sebenarnya tidak boleh negatif.</value></data>
+  <data name="Add at least one item." xml:space="preserve"><value>Tambahkan minimal satu barang.</value></data>
+  <data name="Add at least one line to return." xml:space="preserve"><value>Tambahkan minimal satu baris untuk diretur.</value></data>
+  <data name="All quantities must be &gt; 0." xml:space="preserve"><value>Semua kuantitas harus lebih dari 0.</value></data>
+  <data name="All return quantities must be greater than zero." xml:space="preserve"><value>Semua kuantitas retur harus lebih dari nol.</value></data>
+  <data name="Amount ({0}) exceeds balance due ({1})." xml:space="preserve"><value>Jumlah ({0}) melebihi sisa tagihan ({1}).</value></data>
+  <data name="Amount ({0}) exceeds balance owed ({1})." xml:space="preserve"><value>Jumlah ({0}) melebihi sisa utang ({1}).</value></data>
+  <data name="Amount must be greater than zero." xml:space="preserve"><value>Jumlah harus lebih dari nol.</value></data>
+  <data name="An invoice on this settlement no longer exists." xml:space="preserve"><value>Sebuah faktur pada penyelesaian ini sudah tidak ada.</value></data>
+  <data name="Cannot pay a cancelled purchase." xml:space="preserve"><value>Pembelian yang dibatalkan tidak bisa dibayar.</value></data>
+  <data name="Cannot record payment on a cancelled sale." xml:space="preserve"><value>Pembayaran tidak bisa dicatat pada penjualan yang dibatalkan.</value></data>
+  <data name="Cash rebate settled." xml:space="preserve"><value>Rebat tunai diselesaikan.</value></data>
+  <data name="Cash reward amount must be greater than zero." xml:space="preserve"><value>Jumlah imbalan tunai harus lebih dari nol.</value></data>
+  <data name="Category '{0}' is no longer active." xml:space="preserve"><value>Kategori '{0}' sudah tidak aktif.</value></data>
+  <data name="Category deleted." xml:space="preserve"><value>Kategori dihapus.</value></data>
+  <data name="Category is required." xml:space="preserve"><value>Kategori wajib diisi.</value></data>
+  <data name="Category name is required." xml:space="preserve"><value>Nama kategori wajib diisi.</value></data>
+  <data name="Category not found." xml:space="preserve"><value>Kategori tidak ditemukan.</value></data>
+  <data name="Commission has already been clawed back against this return — cancelling it now would leave that clawback standing with nothing to justify it. Raise a fresh sale instead if this return was a mistake." xml:space="preserve"><value>Komisi sudah ditarik kembali atas retur ini — membatalkannya sekarang akan membuat penarikan itu berdiri tanpa dasar. Buat penjualan baru saja bila retur ini keliru.</value></data>
+  <data name="Commission paid out." xml:space="preserve"><value>Komisi dibayarkan.</value></data>
+  <data name="Commission rule deleted." xml:space="preserve"><value>Aturan komisi dihapus.</value></data>
+  <data name="Commission rule not found." xml:space="preserve"><value>Aturan komisi tidak ditemukan.</value></data>
+  <data name="Cost cannot be negative." xml:space="preserve"><value>Biaya tidak boleh negatif.</value></data>
+  <data name="Credit note {0} has already been settled — the customer has had the money or the credit. Cancelling the return now would leave that settlement unsupported; raise a fresh sale or debit note instead." xml:space="preserve"><value>Nota kredit {0} sudah diselesaikan — pelanggan sudah menerima uang atau kreditnya. Membatalkan retur sekarang akan membuat penyelesaian itu tanpa dasar; buat penjualan baru atau nota debit saja.</value></data>
+  <data name="Customer '{0}' is inactive." xml:space="preserve"><value>Pelanggan '{0}' tidak aktif.</value></data>
+  <data name="Customer created." xml:space="preserve"><value>Pelanggan dibuat.</value></data>
+  <data name="Customer is required." xml:space="preserve"><value>Pelanggan wajib diisi.</value></data>
+  <data name="Customer name is required." xml:space="preserve"><value>Nama pelanggan wajib diisi.</value></data>
+  <data name="Customer not found." xml:space="preserve"><value>Pelanggan tidak ditemukan.</value></data>
+  <data name="Customer updated." xml:space="preserve"><value>Pelanggan diperbarui.</value></data>
+  <data name="Date is required." xml:space="preserve"><value>Tanggal wajib diisi.</value></data>
+  <data name="Debit note {0} has already been settled — the supplier has already credited it. Cancelling the return now would leave that settlement unsupported; raise a fresh purchase instead." xml:space="preserve"><value>Nota debit {0} sudah diselesaikan — pemasok sudah mengkreditkannya. Membatalkan retur sekarang akan membuat penyelesaian itu tanpa dasar; buat pembelian baru saja.</value></data>
+  <data name="Default branch not found." xml:space="preserve"><value>Cabang bawaan tidak ditemukan.</value></data>
+  <data name="Discount cannot be negative." xml:space="preserve"><value>Diskon tidak boleh negatif.</value></data>
+  <data name="Discount cannot equal or exceed unit cost." xml:space="preserve"><value>Diskon tidak boleh sama dengan atau melebihi biaya per unit.</value></data>
+  <data name="Discount cannot equal or exceed unit price." xml:space="preserve"><value>Diskon tidak boleh sama dengan atau melebihi harga per unit.</value></data>
+  <data name="Discount percent must be between 0 and 100." xml:space="preserve"><value>Persentase diskon harus antara 0 dan 100.</value></data>
+  <data name="Document discount ({0}) cannot equal or exceed the total ({1})." xml:space="preserve"><value>Diskon dokumen ({0}) tidak boleh sama dengan atau melebihi total ({1}).</value></data>
+  <data name="Document discount cannot be negative." xml:space="preserve"><value>Diskon dokumen tidak boleh negatif.</value></data>
+  <data name="Document discount percent must be between 0 and 100." xml:space="preserve"><value>Persentase diskon dokumen harus antara 0 dan 100.</value></data>
+  <data name="Due days cannot be negative." xml:space="preserve"><value>Jumlah hari jatuh tempo tidak boleh negatif.</value></data>
+  <data name="Due days cannot exceed {0}." xml:space="preserve"><value>Jumlah hari jatuh tempo tidak boleh melebihi {0}.</value></data>
+  <data name="Effective end cannot be before effective start." xml:space="preserve"><value>Akhir masa berlaku tidak boleh lebih awal dari awal masa berlaku.</value></data>
+  <data name="Enter a quantity on at least one line." xml:space="preserve"><value>Isi kuantitas pada minimal satu baris.</value></data>
+  <data name="Enter an amount on at least one invoice, or tick a credit note." xml:space="preserve"><value>Isi jumlah pada minimal satu faktur, atau centang sebuah nota kredit.</value></data>
+  <data name="Enter an amount on at least one invoice." xml:space="preserve"><value>Isi jumlah pada minimal satu faktur.</value></data>
+  <data name="Enter an amount on at least one purchase, or tick a debit note." xml:space="preserve"><value>Isi jumlah pada minimal satu pembelian, atau centang sebuah nota debit.</value></data>
+  <data name="Enter an amount on at least one purchase." xml:space="preserve"><value>Isi jumlah pada minimal satu pembelian.</value></data>
+  <data name="Expense date cannot be in the future." xml:space="preserve"><value>Tanggal biaya tidak boleh di masa depan.</value></data>
+  <data name="Expense deleted." xml:space="preserve"><value>Biaya dihapus.</value></data>
+  <data name="Expense not found." xml:space="preserve"><value>Biaya tidak ditemukan.</value></data>
+  <data name="Expense recorded." xml:space="preserve"><value>Biaya dicatat.</value></data>
+  <data name="Expense updated." xml:space="preserve"><value>Biaya diperbarui.</value></data>
+  <data name="Gross amount must be greater than zero." xml:space="preserve"><value>Jumlah bruto harus lebih dari nol.</value></data>
+  <data name="In-kind goods received into stock." xml:space="preserve"><value>Barang gratis diterima ke stok.</value></data>
+  <data name="In-kind reward needs a product and a quantity." xml:space="preserve"><value>Imbalan barang harus memiliki produk dan kuantitas.</value></data>
+  <data name="Insufficient stock. Available: {0}, Requested: {1}" xml:space="preserve"><value>Stok tidak mencukupi. Tersedia: {0}, Diminta: {1}</value></data>
+  <data name="Invalid item data." xml:space="preserve"><value>Data barang tidak valid.</value></data>
+  <data name="Invoice {0} belongs to a different customer." xml:space="preserve"><value>Faktur {0} milik pelanggan lain.</value></data>
+  <data name="Invoice {0} is a cash sale — already collected." xml:space="preserve"><value>Faktur {0} adalah penjualan tunai — sudah tertagih.</value></data>
+  <data name="Invoice {0} is cancelled." xml:space="preserve"><value>Faktur {0} dibatalkan.</value></data>
+  <data name="Invoice {0}: {1} exceeds its balance of {2}." xml:space="preserve"><value>Faktur {0}: {1} melebihi sisa tagihannya sebesar {2}.</value></data>
+  <data name="Invoice discount ({0}) cannot equal or exceed the total ({1})." xml:space="preserve"><value>Diskon faktur ({0}) tidak boleh sama dengan atau melebihi total ({1}).</value></data>
+  <data name="Invoice discount cannot be negative." xml:space="preserve"><value>Diskon faktur tidak boleh negatif.</value></data>
+  <data name="Invoice discount percent must be between 0 and 100." xml:space="preserve"><value>Persentase diskon faktur harus antara 0 dan 100.</value></data>
+  <data name="Invoice not found." xml:space="preserve"><value>Faktur tidak ditemukan.</value></data>
+  <data name="Linked invoice not found." xml:space="preserve"><value>Faktur yang tertaut tidak ditemukan.</value></data>
+  <data name="Linked purchase not found." xml:space="preserve"><value>Pembelian yang tertaut tidak ditemukan.</value></data>
+  <data name="Low stock threshold cannot be negative." xml:space="preserve"><value>Ambang stok menipis tidak boleh negatif.</value></data>
+  <data name="Lucky draw settled." xml:space="preserve"><value>Undian diselesaikan.</value></data>
+  <data name="Name cannot exceed 200 characters." xml:space="preserve"><value>Nama tidak boleh lebih dari 200 karakter.</value></data>
+  <data name="Name is required." xml:space="preserve"><value>Nama wajib diisi.</value></data>
+  <data name="No difference between current stock and actual count. No adjustment needed." xml:space="preserve"><value>Tidak ada selisih antara stok sistem dan hasil hitung fisik. Tidak perlu penyesuaian.</value></data>
+  <data name="Note cancelled." xml:space="preserve"><value>Nota dibatalkan.</value></data>
+  <data name="Note date cannot be in the future." xml:space="preserve"><value>Tanggal nota tidak boleh di masa depan.</value></data>
+  <data name="Note not found." xml:space="preserve"><value>Nota tidak ditemukan.</value></data>
+  <data name="Note settled." xml:space="preserve"><value>Nota diselesaikan.</value></data>
+  <data name="On-time grace days cannot be negative." xml:space="preserve"><value>Hari tenggang pembayaran tepat waktu tidak boleh negatif.</value></data>
+  <data name="Payment amount must be &gt; 0." xml:space="preserve"><value>Jumlah pembayaran harus lebih dari 0.</value></data>
+  <data name="Payment term '{0}' is no longer active." xml:space="preserve"><value>Termin pembayaran '{0}' sudah tidak aktif.</value></data>
+  <data name="Payment term deleted." xml:space="preserve"><value>Termin pembayaran dihapus.</value></data>
+  <data name="Payment term not found." xml:space="preserve"><value>Termin pembayaran tidak ditemukan.</value></data>
+  <data name="Percent reward must be between 0 and 100." xml:space="preserve"><value>Imbalan persentase harus antara 0 dan 100.</value></data>
+  <data name="Period end cannot be before period start." xml:space="preserve"><value>Akhir periode tidak boleh lebih awal dari awal periode.</value></data>
+  <data name="Phone cannot exceed 50 characters." xml:space="preserve"><value>Telepon tidak boleh lebih dari 50 karakter.</value></data>
+  <data name="PPN rate must be between 0 and 100 percent." xml:space="preserve"><value>Tarif PPN harus antara 0 dan 100 persen.</value></data>
+  <data name="Price cannot be negative." xml:space="preserve"><value>Harga tidak boleh negatif.</value></data>
+  <data name="Price for '{0}' differs from master price ({1}). Please provide a reason for the price override." xml:space="preserve"><value>Harga untuk '{0}' berbeda dari harga master ({1}). Mohon isi alasan penggantian harga.</value></data>
+  <data name="Price-drop rules need a reference cost greater than zero." xml:space="preserve"><value>Aturan penurunan harga memerlukan biaya acuan lebih dari nol.</value></data>
+  <data name="Product '{0}' is inactive." xml:space="preserve"><value>Produk '{0}' tidak aktif.</value></data>
+  <data name="Product created." xml:space="preserve"><value>Produk dibuat.</value></data>
+  <data name="Product name is required." xml:space="preserve"><value>Nama produk wajib diisi.</value></data>
+  <data name="Product not found." xml:space="preserve"><value>Produk tidak ditemukan.</value></data>
+  <data name="Product updated." xml:space="preserve"><value>Produk diperbarui.</value></data>
+  <data name="Purchase {0} belongs to a different supplier." xml:space="preserve"><value>Pembelian {0} milik pemasok lain.</value></data>
+  <data name="Purchase {0} is a cash purchase — already paid." xml:space="preserve"><value>Pembelian {0} adalah pembelian tunai — sudah dibayar.</value></data>
+  <data name="Purchase {0} is cancelled." xml:space="preserve"><value>Pembelian {0} dibatalkan.</value></data>
+  <data name="Purchase {0}: {1} exceeds its balance of {2}." xml:space="preserve"><value>Pembelian {0}: {1} melebihi sisa utangnya sebesar {2}.</value></data>
+  <data name="Purchase date cannot be in the future." xml:space="preserve"><value>Tanggal pembelian tidak boleh di masa depan.</value></data>
+  <data name="Purchase is already cancelled." xml:space="preserve"><value>Pembelian sudah dibatalkan.</value></data>
+  <data name="Purchase not found." xml:space="preserve"><value>Pembelian tidak ditemukan.</value></data>
+  <data name="Quantity must be &gt; 0." xml:space="preserve"><value>Kuantitas harus lebih dari 0.</value></data>
+  <data name="Rate must be between 0 and 100 percent." xml:space="preserve"><value>Tarif harus antara 0 dan 100 persen.</value></data>
+  <data name="Reason is required." xml:space="preserve"><value>Alasan wajib diisi.</value></data>
+  <data name="Rebate has already been clawed back against this return — cancelling it now would leave that clawback standing with nothing to justify it. Raise a fresh purchase instead if this return was a mistake." xml:space="preserve"><value>Rebat sudah ditarik kembali atas retur ini — membatalkannya sekarang akan membuat penarikan itu berdiri tanpa dasar. Buat pembelian baru saja bila retur ini keliru.</value></data>
+  <data name="Rebate rule deleted." xml:space="preserve"><value>Aturan rebat dihapus.</value></data>
+  <data name="Rebate rule not found." xml:space="preserve"><value>Aturan rebat tidak ditemukan.</value></data>
+  <data name="Rebate withholding rate must be between 0 and 100 percent." xml:space="preserve"><value>Tarif potongan rebat harus antara 0 dan 100 persen.</value></data>
+  <data name="Return {0} posted. Goods restocked and credit note {1} raised for {2}." xml:space="preserve"><value>Retur {0} diposting. Barang dikembalikan ke stok dan nota kredit {1} diterbitkan sebesar {2}.</value></data>
+  <data name="Return date cannot be before the invoice date ({0})." xml:space="preserve"><value>Tanggal retur tidak boleh lebih awal dari tanggal faktur ({0}).</value></data>
+  <data name="Return date cannot be before the purchase date ({0})." xml:space="preserve"><value>Tanggal retur tidak boleh lebih awal dari tanggal pembelian ({0}).</value></data>
+  <data name="Return date cannot be in the future." xml:space="preserve"><value>Tanggal retur tidak boleh di masa depan.</value></data>
+  <data name="Return not found." xml:space="preserve"><value>Retur tidak ditemukan.</value></data>
+  <data name="Reward product not found." xml:space="preserve"><value>Produk imbalan tidak ditemukan.</value></data>
+  <data name="Rule name is required." xml:space="preserve"><value>Nama aturan wajib diisi.</value></data>
+  <data name="Sale date cannot be in the future." xml:space="preserve"><value>Tanggal penjualan tidak boleh di masa depan.</value></data>
+  <data name="Sale is already cancelled." xml:space="preserve"><value>Penjualan sudah dibatalkan.</value></data>
+  <data name="Sale not found." xml:space="preserve"><value>Penjualan tidak ditemukan.</value></data>
+  <data name="Sales person '{0}' is no longer active." xml:space="preserve"><value>Sales '{0}' sudah tidak aktif.</value></data>
+  <data name="Sales person deleted." xml:space="preserve"><value>Sales dihapus.</value></data>
+  <data name="Sales person not found." xml:space="preserve"><value>Sales tidak ditemukan.</value></data>
+  <data name="Selected payment term not found." xml:space="preserve"><value>Termin pembayaran yang dipilih tidak ditemukan.</value></data>
+  <data name="Selected sales person not found." xml:space="preserve"><value>Sales yang dipilih tidak ditemukan.</value></data>
+  <data name="Settled amount must be greater than zero." xml:space="preserve"><value>Jumlah penyelesaian harus lebih dari nol.</value></data>
+  <data name="Settlement {0} recorded — {1} collected across {2} invoice" xml:space="preserve"><value>Penyelesaian {0} dicatat — {1} ditagih atas {2} faktur</value></data>
+  <data name="Settlement {0} recorded — {1} collected across {2} invoices" xml:space="preserve"><value>Penyelesaian {0} dicatat — {1} ditagih atas {2} faktur</value></data>
+  <data name="Settlement {0} recorded — {1} paid across {2} purchase" xml:space="preserve"><value>Penyelesaian {0} dicatat — {1} dibayar atas {2} pembelian</value></data>
+  <data name="Settlement {0} recorded — {1} paid across {2} purchases" xml:space="preserve"><value>Penyelesaian {0} dicatat — {1} dibayar atas {2} pembelian</value></data>
+  <data name="SKU '{0}' is already used by another product." xml:space="preserve"><value>SKU '{0}' sudah dipakai oleh produk lain.</value></data>
+  <data name="SKU is required." xml:space="preserve"><value>SKU wajib diisi.</value></data>
+  <data name="Stock received successfully." xml:space="preserve"><value>Stok berhasil diterima.</value></data>
+  <data name="Store name is required." xml:space="preserve"><value>Nama toko wajib diisi.</value></data>
+  <data name="Supplier '{0}' is inactive." xml:space="preserve"><value>Pemasok '{0}' tidak aktif.</value></data>
+  <data name="Supplier deleted." xml:space="preserve"><value>Pemasok dihapus.</value></data>
+  <data name="Supplier is required." xml:space="preserve"><value>Pemasok wajib diisi.</value></data>
+  <data name="Supplier name cannot exceed 300 characters." xml:space="preserve"><value>Nama pemasok tidak boleh lebih dari 300 karakter.</value></data>
+  <data name="Supplier name is required." xml:space="preserve"><value>Nama pemasok wajib diisi.</value></data>
+  <data name="Supplier not found." xml:space="preserve"><value>Pemasok tidak ditemukan.</value></data>
+  <data name="Term name is required." xml:space="preserve"><value>Nama termin wajib diisi.</value></data>
+  <data name="That accrual is already settled or voided." xml:space="preserve"><value>Akrual itu sudah diselesaikan atau dibatalkan.</value></data>
+  <data name="That accrual is not a Lucky Draw." xml:space="preserve"><value>Akrual itu bukan Undian.</value></data>
+  <data name="That accrual is not an in-kind reward." xml:space="preserve"><value>Akrual itu bukan imbalan barang.</value></data>
+  <data name="The rebate rule has no reward product to receive." xml:space="preserve"><value>Aturan rebat ini tidak memiliki produk imbalan untuk diterima.</value></data>
+  <data name="The same invoice appears twice — combine it into one row." xml:space="preserve"><value>Faktur yang sama muncul dua kali — gabungkan menjadi satu baris.</value></data>
+  <data name="The same invoice line appears twice — combine it into one row." xml:space="preserve"><value>Baris faktur yang sama muncul dua kali — gabungkan menjadi satu baris.</value></data>
+  <data name="The same purchase appears twice — combine it into one row." xml:space="preserve"><value>Pembelian yang sama muncul dua kali — gabungkan menjadi satu baris.</value></data>
+  <data name="The same purchase line appears twice — combine it into one row." xml:space="preserve"><value>Baris pembelian yang sama muncul dua kali — gabungkan menjadi satu baris.</value></data>
+  <data name="The selected credit notes ({0}) exceed the {1} being collected. Include more invoices, or untick a note and settle it against a later payment." xml:space="preserve"><value>Nota kredit yang dipilih ({0}) melebihi {1} yang ditagih. Sertakan lebih banyak faktur, atau hilangkan centang sebuah nota dan selesaikan pada pembayaran berikutnya.</value></data>
+  <data name="The selected debit notes ({0}) exceed the {1} being paid. Include more purchases, or untick a note and settle it against a later payment." xml:space="preserve"><value>Nota debit yang dipilih ({0}) melebihi {1} yang dibayar. Sertakan lebih banyak pembelian, atau hilangkan centang sebuah nota dan selesaikan pada pembayaran berikutnya.</value></data>
+  <data name="This invoice has a sales return against it. Cancel the return first — cancelling the invoice now would put the returned goods back into stock twice." xml:space="preserve"><value>Faktur ini memiliki retur penjualan. Batalkan returnya dulu — membatalkan faktur sekarang akan memasukkan barang retur ke stok dua kali.</value></data>
+  <data name="This invoice is cancelled — its stock was already reversed, so there is nothing to return against." xml:space="preserve"><value>Faktur ini dibatalkan — stoknya sudah dikoreksi, jadi tidak ada yang bisa diretur.</value></data>
+  <data name="This is a cash purchase — already paid." xml:space="preserve"><value>Ini pembelian tunai — sudah dibayar.</value></data>
+  <data name="This is a Cash sale — payment already collected." xml:space="preserve"><value>Ini penjualan tunai — pembayaran sudah tertagih.</value></data>
+  <data name="This purchase has a supplier return against it. Cancel the return first — its goods have already left stock and cannot be reversed twice." xml:space="preserve"><value>Pembelian ini memiliki retur pembelian. Batalkan returnya dulu — barangnya sudah keluar dari stok dan tidak bisa dikoreksi dua kali.</value></data>
+  <data name="This purchase is cancelled — its stock was already reversed, so there is nothing to return." xml:space="preserve"><value>Pembelian ini dibatalkan — stoknya sudah dikoreksi, jadi tidak ada yang bisa diretur.</value></data>
+  <data name="This return is already cancelled." xml:space="preserve"><value>Retur ini sudah dibatalkan.</value></data>
+  <data name="This supplier has no outstanding cash rebates to settle." xml:space="preserve"><value>Pemasok ini tidak memiliki rebat tunai yang perlu diselesaikan.</value></data>
+  <data name="Threshold cannot be negative." xml:space="preserve"><value>Ambang batas tidak boleh negatif.</value></data>
+  <data name="Too many items in one purchase." xml:space="preserve"><value>Terlalu banyak barang dalam satu pembelian.</value></data>
+  <data name="Too many items in one sale." xml:space="preserve"><value>Terlalu banyak barang dalam satu penjualan.</value></data>
+  <data name="Unit price cannot be negative." xml:space="preserve"><value>Harga per unit tidak boleh negatif.</value></data>
+  <data name="Volume thresholds cannot be negative." xml:space="preserve"><value>Ambang volume tidak boleh negatif.</value></data>
+  <data name="Stock adjusted. New stock: {0}" xml:space="preserve"><value>Stok disesuaikan. Stok baru: {0}</value></data>
 </root>

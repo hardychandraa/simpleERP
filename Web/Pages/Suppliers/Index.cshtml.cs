@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +10,8 @@ namespace SimpleERP.Web.Pages.Suppliers;
 public class IndexModel : PageModel
 {
     private readonly ISupplierService _svc;
-    public IndexModel(ISupplierService svc) => _svc = svc;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public IndexModel(ISupplierService svc, IStringLocalizer<SharedResource> loc) { _svc = svc; _loc = loc; }
 
     public List<SupplierDto> Suppliers { get; set; } = new();
     public string? Msg   { get; set; }
@@ -25,7 +28,7 @@ public class IndexModel : PageModel
     {
         var result = await _svc.DeleteAsync(id, User.Identity?.Name ?? "staff");
         return Redirect(result.Success
-            ? "/Suppliers?msg=Supplier+deleted."
+            ? $"/Suppliers?msg={Uri.EscapeDataString(_loc["Supplier deleted."].Value)}"
             : $"/Suppliers?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 }

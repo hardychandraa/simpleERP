@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +16,8 @@ namespace SimpleERP.Web.Pages.PaymentTerms;
 public class IndexModel : PageModel
 {
     private readonly IPaymentTermService _svc;
-    public IndexModel(IPaymentTermService svc) => _svc = svc;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public IndexModel(IPaymentTermService svc, IStringLocalizer<SharedResource> loc) { _svc = svc; _loc = loc; }
 
     public List<PaymentTermDto> Terms { get; set; } = new();
     public string? Msg   { get; set; }
@@ -35,7 +38,7 @@ public class IndexModel : PageModel
     {
         var result = await _svc.CreateAsync(Input, User_);
         return Redirect(result.Success
-            ? $"/PaymentTerms?msg={Uri.EscapeDataString($"'{Input.Name}' added.")}"
+            ? $"/PaymentTerms?msg={Uri.EscapeDataString(_loc["'{0}' added.", Input.Name].Value)}"
             : $"/PaymentTerms?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 
@@ -43,7 +46,7 @@ public class IndexModel : PageModel
     {
         var result = await _svc.UpdateAsync(Input, User_);
         return Redirect(result.Success
-            ? $"/PaymentTerms?msg={Uri.EscapeDataString($"'{Input.Name}' saved.")}"
+            ? $"/PaymentTerms?msg={Uri.EscapeDataString(_loc["'{0}' saved.", Input.Name].Value)}"
             : $"/PaymentTerms?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 
@@ -51,7 +54,7 @@ public class IndexModel : PageModel
     {
         var result = await _svc.DeleteAsync(id, User_);
         return Redirect(result.Success
-            ? "/PaymentTerms?msg=Payment+term+deleted."
+            ? $"/PaymentTerms?msg={Uri.EscapeDataString(_loc["Payment term deleted."].Value)}"
             : $"/PaymentTerms?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 }

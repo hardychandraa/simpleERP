@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Localization;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
+using SimpleERP.Application.Resources;
 using SimpleERP.Domain.Entities;
 using SimpleERP.Domain.Interfaces;
 
@@ -9,7 +11,9 @@ public class CustomerService : ICustomerService
 {
     private readonly ICustomerRepository _customers;
     private readonly IUnitOfWork _uow;
-    public CustomerService(ICustomerRepository c, IUnitOfWork uow) { _customers=c; _uow=uow; }
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public CustomerService(ICustomerRepository c, IUnitOfWork uow,
+        IStringLocalizer<SharedResource> loc) { _customers=c; _uow=uow;  _loc = loc; }
 
     public async Task<List<CustomerDto>> GetAllAsync(string? search = null)
         => Filter(await _customers.GetAllAsync(), search);
@@ -20,7 +24,7 @@ public class CustomerService : ICustomerService
 
     public async Task<ServiceResult> CreateAsync(CreateCustomerDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail("Customer name is required.");
+        if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail(_loc["Customer name is required."]);
         await _customers.AddAsync(new Customer {
             Id = Guid.NewGuid(), Name = dto.Name.Trim(),
             Phone = dto.Phone?.Trim(), Address = dto.Address?.Trim(),
@@ -32,8 +36,8 @@ public class CustomerService : ICustomerService
     public async Task<ServiceResult> UpdateAsync(UpdateCustomerDto dto)
     {
         var c = await _customers.GetByIdAsync(dto.Id);
-        if (c == null) return ServiceResult.Fail("Customer not found.");
-        if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail("Name is required.");
+        if (c == null) return ServiceResult.Fail(_loc["Customer not found."]);
+        if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail(_loc["Name is required."]);
         c.Name = dto.Name.Trim(); c.Phone = dto.Phone?.Trim();
         c.Address = dto.Address?.Trim(); c.IsActive = dto.IsActive;
         _customers.Update(c); await _uow.SaveChangesAsync();

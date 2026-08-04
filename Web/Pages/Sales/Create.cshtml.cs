@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Domain.Enums;
@@ -17,11 +19,12 @@ public class CreateModel : PageModel
     private readonly ISalesPersonService _people;
     private readonly IAppSettingsService _settings;
 
+    private readonly IStringLocalizer<SharedResource> _loc;
     public CreateModel(ISaleService sales, ICustomerService customers,
                        IProductService products, IPaymentTermService terms,
-                       ISalesPersonService people, IAppSettingsService settings)
+                       ISalesPersonService people, IAppSettingsService settings, IStringLocalizer<SharedResource> loc)
     { _sales=sales; _customers=customers; _products=products; _terms=terms;
-      _people=people; _settings=settings; }
+      _people=people; _settings=settings;  _loc = loc; }
 
     [BindProperty] public Guid        CustomerId  { get; set; }
     /// <summary>Business date of the sale. Defaults to today; may be backdated for
@@ -69,10 +72,10 @@ public class CreateModel : PageModel
         List<CreateSaleItemDto>? items;
         try { items = JsonSerializer.Deserialize<List<CreateSaleItemDto>>(ItemsJson,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
-        catch { Error = "Invalid item data."; return Page(); }
+        catch { Error = _loc["Invalid item data."]; return Page(); }
 
-        if (items == null || items.Count == 0) { Error = "Add at least one item."; return Page(); }
-        if (items.Count > 100) { Error = "Too many items in one sale."; return Page(); }
+        if (items == null || items.Count == 0) { Error = _loc["Add at least one item."]; return Page(); }
+        if (items.Count > 100) { Error = _loc["Too many items in one sale."]; return Page(); }
 
         // Determine user — in a 2-user system the role comes from a simple claim or falls back to "staff"
         var user = User.Identity?.Name ?? "staff";

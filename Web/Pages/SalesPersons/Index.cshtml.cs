@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +14,8 @@ namespace SimpleERP.Web.Pages.SalesPersons;
 public class IndexModel : PageModel
 {
     private readonly ISalesPersonService _svc;
-    public IndexModel(ISalesPersonService svc) => _svc = svc;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public IndexModel(ISalesPersonService svc, IStringLocalizer<SharedResource> loc) { _svc = svc; _loc = loc; }
 
     public List<SalesPersonDto> People { get; set; } = new();
     public string? Msg   { get; set; }
@@ -33,7 +36,7 @@ public class IndexModel : PageModel
     {
         var result = await _svc.CreateAsync(Input, User_);
         return Redirect(result.Success
-            ? $"/SalesPersons?msg={Uri.EscapeDataString($"'{Input.Name}' added.")}"
+            ? $"/SalesPersons?msg={Uri.EscapeDataString(_loc["'{0}' added.", Input.Name].Value)}"
             : $"/SalesPersons?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 
@@ -41,7 +44,7 @@ public class IndexModel : PageModel
     {
         var result = await _svc.DeleteAsync(id, User_);
         return Redirect(result.Success
-            ? "/SalesPersons?msg=Sales+person+deleted."
+            ? $"/SalesPersons?msg={Uri.EscapeDataString(_loc["Sales person deleted."].Value)}"
             : $"/SalesPersons?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 }

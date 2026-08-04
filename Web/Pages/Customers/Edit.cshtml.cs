@@ -1,9 +1,12 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace SimpleERP.Web.Pages.Customers;
 public class EditModel:PageModel{
-    private readonly ICustomerService _svc;public EditModel(ICustomerService s)=>_svc=s;
+    private readonly ICustomerService _svc;    private readonly IStringLocalizer<SharedResource> _loc;
+public EditModel(ICustomerService s, IStringLocalizer<SharedResource> loc) { _svc=s; _loc = loc; }
     [BindProperty]public UpdateCustomerDto Input{get;set;}=new();
     public string? Error{get;set;}
     public async Task<IActionResult> OnGetAsync(Guid id){
@@ -16,6 +19,6 @@ public class EditModel:PageModel{
         ViewData["Title"]="Edit Customer";if(!ModelState.IsValid)return Page();
         var r=await _svc.UpdateAsync(Input);
         if(!r.Success){Error=r.Error;return Page();}
-        return RedirectToPage("/Customers/Index",new{msg="Customer updated."});
+        return RedirectToPage("/Customers/Index",new{msg=_loc["Customer updated."].Value});
     }
 }

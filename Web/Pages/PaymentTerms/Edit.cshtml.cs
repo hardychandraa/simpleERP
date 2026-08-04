@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +10,8 @@ namespace SimpleERP.Web.Pages.PaymentTerms;
 public class EditModel : PageModel
 {
     private readonly IPaymentTermService _svc;
-    public EditModel(IPaymentTermService svc) => _svc = svc;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public EditModel(IPaymentTermService svc, IStringLocalizer<SharedResource> loc) { _svc = svc; _loc = loc; }
 
     [BindProperty] public PaymentTermDto Input { get; set; } = new();
     public string? Error { get; set; }
@@ -18,7 +21,7 @@ public class EditModel : PageModel
     {
         ViewData["Title"] = "Edit Payment Term";
         var t = await _svc.GetByIdAsync(id);
-        if (t == null) return Redirect("/PaymentTerms?err=true&msg=Payment+term+not+found.");
+        if (t == null) return Redirect($"/PaymentTerms?err=true&msg={Uri.EscapeDataString(_loc["Payment term not found."].Value)}");
         Input = t; InUse = t.InUse;
         return Page();
     }
@@ -33,6 +36,6 @@ public class EditModel : PageModel
             InUse = (await _svc.GetByIdAsync(Input.Id))?.InUse ?? false;
             return Page();
         }
-        return Redirect($"/PaymentTerms?msg={Uri.EscapeDataString($"'{Input.Name}' saved.")}");
+        return Redirect($"/PaymentTerms?msg={Uri.EscapeDataString(_loc["'{0}' saved.", Input.Name].Value)}");
     }
 }

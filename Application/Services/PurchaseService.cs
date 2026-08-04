@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Localization;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
+using SimpleERP.Application.Resources;
 using SimpleERP.Domain.Entities;
 using SimpleERP.Domain.Enums;
 using SimpleERP.Domain.Interfaces;
@@ -34,31 +36,33 @@ public class PurchaseService : IPurchaseService
     private readonly RebateService              _rebates;
     private readonly IUnitOfWork                _uow;
 
+    private readonly IStringLocalizer<SharedResource> _loc;
     public PurchaseService(IPurchaseRepository purchases, ISupplierRepository suppliers,
         IProductRepository products, IBranchRepository branches,
         ISupplierPaymentRepository payments, IPaymentTermRepository terms,
         IAppSettingsRepository settings, IAuditLogRepository audit,
         ISupplierReturnRepository returns, ICreditNoteRepository notes,
         IPaymentBatchRepository batches, IRebateAccrualRepository rebateAccruals,
-        InventoryService inventory, RebateService rebates, IUnitOfWork uow)
+        InventoryService inventory, RebateService rebates, IUnitOfWork uow,
+        IStringLocalizer<SharedResource> loc)
     { _purchases=purchases; _suppliers=suppliers; _products=products; _branches=branches;
       _payments=payments; _terms=terms; _settings=settings; _audit=audit;
       _returns=returns; _notes=notes; _batches=batches; _rebateAccruals=rebateAccruals;
-      _inventory=inventory; _rebates=rebates; _uow=uow; }
+      _inventory=inventory; _rebates=rebates; _uow=uow;  _loc = loc; }
 
     public async Task<ServiceResult<PurchaseDto>> CreateAsync(CreatePurchaseDto dto, string user)
     {
         if (dto.Items == null || dto.Items.Count == 0)
-            return ServiceResult<PurchaseDto>.Fail("Add at least one item.");
+            return ServiceResult<PurchaseDto>.Fail(_loc["Add at least one item."]);
         if (dto.SupplierId == Guid.Empty)
-            return ServiceResult<PurchaseDto>.Fail("Supplier is required.");
+            return ServiceResult<PurchaseDto>.Fail(_loc["Supplier is required."]);
 
         var supplier = await _suppliers.GetByIdAsync(dto.SupplierId);
-        if (supplier == null)   return ServiceResult<PurchaseDto>.Fail("Supplier not found.");
-        if (!supplier.IsActive) return ServiceResult<PurchaseDto>.Fail($"Supplier '{supplier.Name}' is inactive.");
+        if (supplier == null)   return ServiceResult<PurchaseDto>.Fail(_loc["Supplier not found."]);
+        if (!supplier.IsActive) return ServiceResult<PurchaseDto>.Fail(_loc["Supplier '{0}' is inactive.", supplier.Name]);
 
         var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return ServiceResult<PurchaseDto>.Fail("Default branch not found.");
+        if (branch == null) return ServiceResult<PurchaseDto>.Fail(_loc["Default branch not found."]);
 
         // The supplier's document number is how a rebate settlement is later matched
         // back to what was bought, so a duplicate almost always means the same invoice
@@ -67,9 +71,7 @@ public class PurchaseService : IPurchaseService
         var supplierDoc = SanitiseText(dto.SupplierDocumentNumber, 100);
         if (supplierDoc != null &&
             await _purchases.SupplierDocumentExistsAsync(dto.SupplierId, supplierDoc))
-            return ServiceResult<PurchaseDto>.Fail(
-                $"'{supplier.Name}' already has an active purchase with document number " +
-                $"'{supplierDoc}'. Cancel that one first if this is a correction.");
+            return ServiceResult<PurchaseDto>.Fail(_loc["'{0}' already has an active purchase with document number '{1}'. Cancel that one first if this is a correction.", supplier.Name, supplierDoc]);
 
         // Compared local-to-local, matching Sale's stricter guard (see SaleService.CreateAsync
         // and decisions.md, 2026-07-31) — no grace day, and the no-date-supplied fallback is
@@ -79,34 +81,34 @@ public class PurchaseService : IPurchaseService
         var todayLocal   = DateTime.Now.Date;
         var purchaseDate = dto.PurchaseDate?.Date ?? todayLocal;
         if (purchaseDate > todayLocal)
-            return ServiceResult<PurchaseDto>.Fail("Purchase date cannot be in the future.");
+            return ServiceResult<PurchaseDto>.Fail(_loc["Purchase date cannot be in the future."]);
 
         // Validate every line before anything is written.
         foreach (var item in dto.Items)
         {
-            if (item.Qty <= 0)      return ServiceResult<PurchaseDto>.Fail("All quantities must be > 0.");
-            if (item.UnitCost < 0)  return ServiceResult<PurchaseDto>.Fail("Cost cannot be negative.");
+            if (item.Qty <= 0)      return ServiceResult<PurchaseDto>.Fail(_loc["All quantities must be > 0."]);
+            if (item.UnitCost < 0)  return ServiceResult<PurchaseDto>.Fail(_loc["Cost cannot be negative."]);
 
             // A supplied percent is resolved to an amount server-side, before any
             // validation runs — the client's own computed amount is never trusted.
             if (item.DiscountPercent.HasValue)
             {
                 if (item.DiscountPercent < 0 || item.DiscountPercent >= 100)
-                    return ServiceResult<PurchaseDto>.Fail("Discount percent must be between 0 and 100.");
+                    return ServiceResult<PurchaseDto>.Fail(_loc["Discount percent must be between 0 and 100."]);
                 item.DiscountAmount = Math.Round(
                     item.UnitCost * item.DiscountPercent.Value / 100m, 2, MidpointRounding.AwayFromZero);
             }
 
             if (item.DiscountAmount < 0)
-                return ServiceResult<PurchaseDto>.Fail("Discount cannot be negative.");
+                return ServiceResult<PurchaseDto>.Fail(_loc["Discount cannot be negative."]);
             if (item.DiscountAmount >= item.UnitCost && item.UnitCost > 0)
-                return ServiceResult<PurchaseDto>.Fail("Discount cannot equal or exceed unit cost.");
+                return ServiceResult<PurchaseDto>.Fail(_loc["Discount cannot equal or exceed unit cost."]);
 
             item.Notes = SanitiseText(item.Notes, 500);
 
             var p = await _products.GetByIdAsync(item.ProductId);
-            if (p == null)   return ServiceResult<PurchaseDto>.Fail("Product not found.");
-            if (!p.IsActive) return ServiceResult<PurchaseDto>.Fail($"Product '{p.Name}' is inactive.");
+            if (p == null)   return ServiceResult<PurchaseDto>.Fail(_loc["Product not found."]);
+            if (!p.IsActive) return ServiceResult<PurchaseDto>.Fail(_loc["Product '{0}' is inactive.", p.Name]);
         }
 
         var purchaseId    = Guid.NewGuid();
@@ -135,15 +137,14 @@ public class PurchaseService : IPurchaseService
         if (dto.InvoiceDiscountPercent.HasValue)
         {
             if (dto.InvoiceDiscountPercent < 0 || dto.InvoiceDiscountPercent >= 100)
-                return ServiceResult<PurchaseDto>.Fail("Document discount percent must be between 0 and 100.");
+                return ServiceResult<PurchaseDto>.Fail(_loc["Document discount percent must be between 0 and 100."]);
             invoiceDiscount = Math.Round(
                 lineNetTotal * dto.InvoiceDiscountPercent.Value / 100m, 2, MidpointRounding.AwayFromZero);
         }
         if (invoiceDiscount < 0)
-            return ServiceResult<PurchaseDto>.Fail("Document discount cannot be negative.");
+            return ServiceResult<PurchaseDto>.Fail(_loc["Document discount cannot be negative."]);
         if (invoiceDiscount >= lineNetTotal && lineNetTotal > 0)
-            return ServiceResult<PurchaseDto>.Fail(
-                $"Document discount ({invoiceDiscount:N0}) cannot equal or exceed the total ({lineNetTotal:N0}).");
+            return ServiceResult<PurchaseDto>.Fail(_loc["Document discount ({0}) cannot equal or exceed the total ({1}).", invoiceDiscount.ToString("N0"), lineNetTotal.ToString("N0")]);
 
         AllocateInvoiceDiscount(purchaseItems, invoiceDiscount, lineNetTotal);
 
@@ -182,9 +183,9 @@ public class PurchaseService : IPurchaseService
         {
             var term = await _terms.GetByIdAsync(dto.PaymentTermId.Value);
             if (term == null)
-                return ServiceResult<PurchaseDto>.Fail("Selected payment term not found.");
+                return ServiceResult<PurchaseDto>.Fail(_loc["Selected payment term not found."]);
             if (!term.IsActive)
-                return ServiceResult<PurchaseDto>.Fail($"Payment term '{term.Name}' is no longer active.");
+                return ServiceResult<PurchaseDto>.Fail(_loc["Payment term '{0}' is no longer active.", term.Name]);
 
             termId  = term.Id;
             dueDate = purchaseDate.AddDays(term.DueDays);
@@ -246,25 +247,20 @@ public class PurchaseService : IPurchaseService
     public async Task<ServiceResult> CancelAsync(Guid purchaseId, string user)
     {
         var purchase = await _purchases.GetByIdWithItemsAsync(purchaseId);
-        if (purchase == null) return ServiceResult.Fail("Purchase not found.");
+        if (purchase == null) return ServiceResult.Fail(_loc["Purchase not found."]);
         if (purchase.Status == PurchaseStatus.Cancelled)
-            return ServiceResult.Fail("Purchase is already cancelled.");
+            return ServiceResult.Fail(_loc["Purchase is already cancelled."]);
         if (purchase.AmountPaid > 0)
-            return ServiceResult.Fail(
-                $"{purchase.AmountPaid:N0} has already been paid against this purchase. " +
-                "Cancelling would leave that payment pointing at nothing — reverse the " +
-                "payment first, or record a supplier return instead.");
+            return ServiceResult.Fail(_loc["{0} has already been paid against this purchase. Cancelling would leave that payment pointing at nothing — reverse the payment first, or record a supplier return instead.", purchase.AmountPaid.ToString("N0")]);
 
         // A supplier return has already sent some of these units back, so the stock guard
         // below would refuse anyway — but with a message about goods being sold. Say the
         // real reason, and point at the action that actually unblocks it.
         if (await _returns.HasActiveReturnAsync(purchaseId))
-            return ServiceResult.Fail(
-                "This purchase has a supplier return against it. Cancel the return first — " +
-                "its goods have already left stock and cannot be reversed twice.");
+            return ServiceResult.Fail(_loc["This purchase has a supplier return against it. Cancel the return first — its goods have already left stock and cannot be reversed twice."]);
 
         var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return ServiceResult.Fail("Default branch not found.");
+        if (branch == null) return ServiceResult.Fail(_loc["Default branch not found."]);
 
         // The whole document goes in one call: every line is checked against a running
         // tally before anything is written, so a document whose stock is partly gone fails
@@ -292,19 +288,18 @@ public class PurchaseService : IPurchaseService
         RecordSupplierPaymentDto dto, string user)
     {
         if (dto.Amount <= 0)
-            return ServiceResult<SupplierPaymentDto>.Fail("Payment amount must be > 0.");
+            return ServiceResult<SupplierPaymentDto>.Fail(_loc["Payment amount must be > 0."]);
 
         var purchase = await _purchases.GetByIdWithItemsAsync(dto.PurchaseId);
-        if (purchase == null) return ServiceResult<SupplierPaymentDto>.Fail("Purchase not found.");
+        if (purchase == null) return ServiceResult<SupplierPaymentDto>.Fail(_loc["Purchase not found."]);
         if (purchase.Status == PurchaseStatus.Cancelled)
-            return ServiceResult<SupplierPaymentDto>.Fail("Cannot pay a cancelled purchase.");
+            return ServiceResult<SupplierPaymentDto>.Fail(_loc["Cannot pay a cancelled purchase."]);
         if (purchase.PaymentType == PaymentType.Cash)
-            return ServiceResult<SupplierPaymentDto>.Fail("This is a cash purchase — already paid.");
+            return ServiceResult<SupplierPaymentDto>.Fail(_loc["This is a cash purchase — already paid."]);
 
         var balance = purchase.GrandTotal - purchase.AmountPaid;
         if (dto.Amount > balance)
-            return ServiceResult<SupplierPaymentDto>.Fail(
-                $"Amount ({dto.Amount:N0}) exceeds balance owed ({balance:N0}).");
+            return ServiceResult<SupplierPaymentDto>.Fail(_loc["Amount ({0}) exceeds balance owed ({1}).", dto.Amount.ToString("N0"), balance.ToString("N0")]);
 
         var record = await RecordPaymentCoreAsync(purchase, dto.Amount, dto.Notes, batchId: null, user);
 
@@ -354,16 +349,15 @@ public class PurchaseService : IPurchaseService
         var noteIds = (dto.ApplyCreditNoteIds ?? new()).Distinct().ToList();
 
         if (lines.Count == 0 && noteIds.Count == 0)
-            return ServiceResult<PaymentBatchDto>.Fail("Enter an amount on at least one purchase.");
+            return ServiceResult<PaymentBatchDto>.Fail(_loc["Enter an amount on at least one purchase."]);
 
         var supplier = await _suppliers.GetByIdAsync(dto.SupplierId);
-        if (supplier == null) return ServiceResult<PaymentBatchDto>.Fail("Supplier not found.");
+        if (supplier == null) return ServiceResult<PaymentBatchDto>.Fail(_loc["Supplier not found."]);
 
         // One purchase can only appear once. Without this, two lines could each pass a
         // balance check read before either was applied, and jointly overpay.
         if (lines.GroupBy(l => l.PurchaseId).Any(g => g.Count() > 1))
-            return ServiceResult<PaymentBatchDto>.Fail(
-                "The same purchase appears twice — combine it into one row.");
+            return ServiceResult<PaymentBatchDto>.Fail(_loc["The same purchase appears twice — combine it into one row."]);
 
         // ── Validate every purchase line before anything is written ───────────────
         var purchases = await _purchases.GetByIdsWithItemsAsync(lines.Select(l => l.PurchaseId));
@@ -372,39 +366,32 @@ public class PurchaseService : IPurchaseService
         foreach (var line in lines)
         {
             if (!byId.TryGetValue(line.PurchaseId, out var purchase))
-                return ServiceResult<PaymentBatchDto>.Fail("A purchase on this settlement no longer exists.");
+                return ServiceResult<PaymentBatchDto>.Fail(_loc["A purchase on this settlement no longer exists."]);
             if (purchase.SupplierId != dto.SupplierId)
-                return ServiceResult<PaymentBatchDto>.Fail(
-                    $"Purchase {purchase.PurchaseNumber} belongs to a different supplier.");
+                return ServiceResult<PaymentBatchDto>.Fail(_loc["Purchase {0} belongs to a different supplier.", purchase.PurchaseNumber]);
             if (purchase.Status == PurchaseStatus.Cancelled)
-                return ServiceResult<PaymentBatchDto>.Fail(
-                    $"Purchase {purchase.PurchaseNumber} is cancelled.");
+                return ServiceResult<PaymentBatchDto>.Fail(_loc["Purchase {0} is cancelled.", purchase.PurchaseNumber]);
             if (purchase.PaymentType == PaymentType.Cash)
-                return ServiceResult<PaymentBatchDto>.Fail(
-                    $"Purchase {purchase.PurchaseNumber} is a cash purchase — already paid.");
+                return ServiceResult<PaymentBatchDto>.Fail(_loc["Purchase {0} is a cash purchase — already paid.", purchase.PurchaseNumber]);
 
             var balance = purchase.GrandTotal - purchase.AmountPaid;
             if (line.Amount > balance)
-                return ServiceResult<PaymentBatchDto>.Fail(
-                    $"Purchase {purchase.PurchaseNumber}: {line.Amount:N0} exceeds its balance of {balance:N0}.");
+                return ServiceResult<PaymentBatchDto>.Fail(_loc["Purchase {0}: {1} exceeds its balance of {2}.", purchase.PurchaseNumber, line.Amount.ToString("N0"), balance.ToString("N0")]);
         }
 
         // ── Validate every note before anything is written ────────────────────────
         var notes = noteIds.Count == 0 ? new List<CreditNote>() : await _notes.GetByIdsAsync(noteIds);
         if (notes.Count != noteIds.Count)
-            return ServiceResult<PaymentBatchDto>.Fail("A debit note on this settlement no longer exists.");
+            return ServiceResult<PaymentBatchDto>.Fail(_loc["A debit note on this settlement no longer exists."]);
 
         foreach (var note in notes)
         {
             if (note.Type != CreditDebitType.Debit)
-                return ServiceResult<PaymentBatchDto>.Fail(
-                    $"{note.DocumentNumber} is a credit note and cannot be applied to money paid out.");
+                return ServiceResult<PaymentBatchDto>.Fail(_loc["{0} is a credit note and cannot be applied to money paid out.", note.DocumentNumber]);
             if (note.SupplierId != dto.SupplierId)
-                return ServiceResult<PaymentBatchDto>.Fail(
-                    $"{note.DocumentNumber} belongs to a different supplier.");
+                return ServiceResult<PaymentBatchDto>.Fail(_loc["{0} belongs to a different supplier.", note.DocumentNumber]);
             if (note.Status != CreditNoteStatus.Open)
-                return ServiceResult<PaymentBatchDto>.Fail(
-                    $"{note.DocumentNumber} is already {note.Status.ToString().ToLower()}.");
+                return ServiceResult<PaymentBatchDto>.Fail(_loc["{0} is already {1}.", note.DocumentNumber, _loc["CreditNoteStatus_" + note.Status].Value]);
         }
 
         // ── Post ─────────────────────────────────────────────────────────────────
@@ -415,10 +402,7 @@ public class PurchaseService : IPurchaseService
         // would settle notes whose value this settlement can't absorb — quietly writing off
         // money the supplier still owes back. Refuse, and say what to change.
         if (notesApplied > gross)
-            return ServiceResult<PaymentBatchDto>.Fail(
-                $"The selected debit notes ({notesApplied:N0}) exceed the {gross:N0} being " +
-                "paid. Include more purchases, or untick a note and settle it against a " +
-                "later payment.");
+            return ServiceResult<PaymentBatchDto>.Fail(_loc["The selected debit notes ({0}) exceed the {1} being paid. Include more purchases, or untick a note and settle it against a later payment.", notesApplied.ToString("N0"), gross.ToString("N0")]);
 
         var batchNotes   = SanitiseText(dto.Notes, 500);
 

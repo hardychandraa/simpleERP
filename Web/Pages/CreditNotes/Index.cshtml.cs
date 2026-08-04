@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Domain.Enums;
@@ -18,8 +20,9 @@ public class IndexModel : PageModel
     private readonly ICustomerService   _customers;
     private readonly ISupplierService   _suppliers;
 
-    public IndexModel(ICreditNoteService notes, ICustomerService customers, ISupplierService suppliers)
-    { _notes = notes; _customers = customers; _suppliers = suppliers; }
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public IndexModel(ICreditNoteService notes, ICustomerService customers, ISupplierService suppliers, IStringLocalizer<SharedResource> loc)
+    { _notes = notes; _customers = customers; _suppliers = suppliers;  _loc = loc; }
 
     public List<CreditNoteDto> Notes           { get; set; } = new();
     public List<CustomerDto>   CustomerOptions { get; set; } = new();
@@ -62,7 +65,7 @@ public class IndexModel : PageModel
     {
         var result = await _notes.CreateAsync(NewNote, User_);
         return Redirect(result.Success
-            ? $"/CreditNotes?msg={Uri.EscapeDataString($"{NewNote.Type} note created.")}"
+            ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["{0} note created.", _loc["CreditDebitType_" + NewNote.Type].Value].Value)}"
             : $"/CreditNotes?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 
@@ -70,7 +73,7 @@ public class IndexModel : PageModel
     {
         var result = await _notes.SettleAsync(Settle, User_);
         return Redirect(result.Success
-            ? "/CreditNotes?msg=Note+settled."
+            ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Note settled."].Value)}"
             : $"/CreditNotes?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 
@@ -78,7 +81,7 @@ public class IndexModel : PageModel
     {
         var result = await _notes.CancelAsync(id, User_);
         return Redirect(result.Success
-            ? "/CreditNotes?msg=Note+cancelled."
+            ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Note cancelled."].Value)}"
             : $"/CreditNotes?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 }

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Domain.Enums;
@@ -15,8 +17,9 @@ public class IndexModel : PageModel
 {
     private readonly IRebateService      _svc;
     private readonly IAppSettingsService _settings;
-    public IndexModel(IRebateService svc, IAppSettingsService settings)
-    { _svc = svc; _settings = settings; }
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public IndexModel(IRebateService svc, IAppSettingsService settings, IStringLocalizer<SharedResource> loc)
+    { _svc = svc; _settings = settings;  _loc = loc; }
 
     public List<RebateOutstandingDto>  Outstanding    { get; set; } = new();
     public List<RebateAccrualDto>      InKindAccruals { get; set; } = new();
@@ -51,7 +54,7 @@ public class IndexModel : PageModel
     {
         var r = await _svc.RealizeCashAsync(input, User_);
         return Redirect(r.Success
-            ? "/Rebates?msg=Cash+rebate+settled."
+            ? $"/Rebates?msg={Uri.EscapeDataString(_loc["Cash rebate settled."].Value)}"
             : $"/Rebates?err=true&msg={Uri.EscapeDataString(r.Error!)}");
     }
 
@@ -59,7 +62,7 @@ public class IndexModel : PageModel
     {
         var r = await _svc.RealizeInKindAsync(input, User_);
         return Redirect(r.Success
-            ? "/Rebates?msg=In-kind+goods+received+into+stock."
+            ? $"/Rebates?msg={Uri.EscapeDataString(_loc["In-kind goods received into stock."].Value)}"
             : $"/Rebates?err=true&msg={Uri.EscapeDataString(r.Error!)}");
     }
 
@@ -67,7 +70,7 @@ public class IndexModel : PageModel
     {
         var r = await _svc.RealizeLuckyDrawAsync(input, User_);
         return Redirect(r.Success
-            ? "/Rebates?msg=Lucky+draw+settled."
+            ? $"/Rebates?msg={Uri.EscapeDataString(_loc["Lucky draw settled."].Value)}"
             : $"/Rebates?err=true&msg={Uri.EscapeDataString(r.Error!)}");
     }
 }

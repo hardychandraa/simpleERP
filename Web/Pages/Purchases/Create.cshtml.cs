@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Domain.Enums;
@@ -20,11 +22,12 @@ public class CreateModel : PageModel
     private readonly IPaymentTermService _terms;
     private readonly IAppSettingsService _settings;
 
+    private readonly IStringLocalizer<SharedResource> _loc;
     public CreateModel(IPurchaseService purchases, ISupplierService suppliers,
                        IProductService products, IPaymentTermService terms,
-                       IAppSettingsService settings)
+                       IAppSettingsService settings, IStringLocalizer<SharedResource> loc)
     { _purchases=purchases; _suppliers=suppliers; _products=products;
-      _terms=terms; _settings=settings; }
+      _terms=terms; _settings=settings;  _loc = loc; }
 
     [BindProperty] public Guid        SupplierId  { get; set; }
     [BindProperty] public string?     SupplierDocumentNumber { get; set; }
@@ -60,10 +63,10 @@ public class CreateModel : PageModel
         List<CreatePurchaseItemDto>? items;
         try { items = JsonSerializer.Deserialize<List<CreatePurchaseItemDto>>(ItemsJson,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
-        catch { Error = "Invalid item data."; return Page(); }
+        catch { Error = _loc["Invalid item data."]; return Page(); }
 
-        if (items == null || items.Count == 0) { Error = "Add at least one item."; return Page(); }
-        if (items.Count > 200) { Error = "Too many items in one purchase."; return Page(); }
+        if (items == null || items.Count == 0) { Error = _loc["Add at least one item."]; return Page(); }
+        if (items.Count > 200) { Error = _loc["Too many items in one purchase."]; return Page(); }
 
         var result = await _purchases.CreateAsync(new CreatePurchaseDto {
             SupplierId             = SupplierId,

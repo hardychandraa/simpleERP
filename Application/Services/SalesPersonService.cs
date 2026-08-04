@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Localization;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
+using SimpleERP.Application.Resources;
 using SimpleERP.Domain.Entities;
 using SimpleERP.Domain.Interfaces;
 
@@ -16,8 +18,10 @@ public class SalesPersonService : ISalesPersonService
     private readonly IAuditLogRepository    _audit;
     private readonly IUnitOfWork            _uow;
 
-    public SalesPersonService(ISalesPersonRepository people, IAuditLogRepository audit, IUnitOfWork uow)
-    { _people = people; _audit = audit; _uow = uow; }
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public SalesPersonService(ISalesPersonRepository people, IAuditLogRepository audit, IUnitOfWork uow,
+        IStringLocalizer<SharedResource> loc)
+    { _people = people; _audit = audit; _uow = uow;  _loc = loc; }
 
     public async Task<List<SalesPersonDto>> GetAllAsync(bool activeOnly = false)
     {
@@ -54,7 +58,7 @@ public class SalesPersonService : ISalesPersonService
     public async Task<ServiceResult> UpdateAsync(SalesPersonDto dto, string user)
     {
         var person = await _people.GetByIdAsync(dto.Id);
-        if (person == null) return ServiceResult.Fail("Sales person not found.");
+        if (person == null) return ServiceResult.Fail(_loc["Sales person not found."]);
 
         var invalid = await ValidateAsync(dto, dto.Id);
         if (invalid != null) return invalid;
@@ -74,13 +78,10 @@ public class SalesPersonService : ISalesPersonService
     public async Task<ServiceResult> DeleteAsync(Guid id, string user)
     {
         var person = await _people.GetByIdAsync(id);
-        if (person == null) return ServiceResult.Fail("Sales person not found.");
+        if (person == null) return ServiceResult.Fail(_loc["Sales person not found."]);
 
         if (await _people.IsInUseAsync(id))
-            return ServiceResult.Fail(
-                $"'{person.Name}' is credited with existing sales and cannot be deleted. " +
-                "Set them to inactive instead — they will stop appearing on new sales " +
-                "while existing invoices keep showing them.");
+            return ServiceResult.Fail(_loc["'{0}' is credited with existing sales and cannot be deleted. Set them to inactive instead — they will stop appearing on new sales while existing invoices keep showing them.", person.Name]);
 
         _people.Remove(person);
         await _audit.LogAsync(user, "SalesPerson.Delete", person.Name);
@@ -91,13 +92,13 @@ public class SalesPersonService : ISalesPersonService
     private async Task<ServiceResult?> ValidateAsync(SalesPersonDto dto, Guid? excludeId)
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
-            return ServiceResult.Fail("Name is required.");
+            return ServiceResult.Fail(_loc["Name is required."]);
         if (dto.Name.Trim().Length > 200)
-            return ServiceResult.Fail("Name cannot exceed 200 characters.");
+            return ServiceResult.Fail(_loc["Name cannot exceed 200 characters."]);
         if (dto.Phone?.Trim().Length > 50)
-            return ServiceResult.Fail("Phone cannot exceed 50 characters.");
+            return ServiceResult.Fail(_loc["Phone cannot exceed 50 characters."]);
         if (await _people.NameExistsAsync(dto.Name.Trim(), excludeId))
-            return ServiceResult.Fail($"A sales person named '{dto.Name.Trim()}' already exists.");
+            return ServiceResult.Fail(_loc["A sales person named '{0}' already exists.", dto.Name.Trim()]);
         return null;
     }
 

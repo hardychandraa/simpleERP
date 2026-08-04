@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +10,8 @@ namespace SimpleERP.Web.Pages.Expenses;
 public class CategoriesModel : PageModel
 {
     private readonly IExpenseService _svc;
-    public CategoriesModel(IExpenseService svc) => _svc = svc;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public CategoriesModel(IExpenseService svc, IStringLocalizer<SharedResource> loc) { _svc = svc; _loc = loc; }
 
     public List<ExpenseCategoryDto> Categories { get; set; } = new();
     public string? Msg   { get; set; }
@@ -29,7 +32,7 @@ public class CategoriesModel : PageModel
     {
         var result = await _svc.CreateCategoryAsync(Input, User_);
         return Redirect(result.Success
-            ? $"/Expenses/Categories?msg={Uri.EscapeDataString($"'{Input.Name}' added.")}"
+            ? $"/Expenses/Categories?msg={Uri.EscapeDataString(_loc["'{0}' added.", Input.Name].Value)}"
             : $"/Expenses/Categories?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 
@@ -37,7 +40,7 @@ public class CategoriesModel : PageModel
     {
         var result = await _svc.UpdateCategoryAsync(Input, User_);
         return Redirect(result.Success
-            ? $"/Expenses/Categories?msg={Uri.EscapeDataString($"'{Input.Name}' saved.")}"
+            ? $"/Expenses/Categories?msg={Uri.EscapeDataString(_loc["'{0}' saved.", Input.Name].Value)}"
             : $"/Expenses/Categories?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 
@@ -45,7 +48,7 @@ public class CategoriesModel : PageModel
     {
         var result = await _svc.DeleteCategoryAsync(id, User_);
         return Redirect(result.Success
-            ? "/Expenses/Categories?msg=Category+deleted."
+            ? $"/Expenses/Categories?msg={Uri.EscapeDataString(_loc["Category deleted."].Value)}"
             : $"/Expenses/Categories?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 }

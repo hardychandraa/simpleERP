@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +10,8 @@ namespace SimpleERP.Web.Pages.SalesPersons;
 public class EditModel : PageModel
 {
     private readonly ISalesPersonService _svc;
-    public EditModel(ISalesPersonService svc) => _svc = svc;
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public EditModel(ISalesPersonService svc, IStringLocalizer<SharedResource> loc) { _svc = svc; _loc = loc; }
 
     [BindProperty] public SalesPersonDto Input { get; set; } = new();
     public string? Error { get; set; }
@@ -18,7 +21,7 @@ public class EditModel : PageModel
     {
         ViewData["Title"] = "Edit Sales Person";
         var p = await _svc.GetByIdAsync(id);
-        if (p == null) return Redirect("/SalesPersons?err=true&msg=Sales+person+not+found.");
+        if (p == null) return Redirect($"/SalesPersons?err=true&msg={Uri.EscapeDataString(_loc["Sales person not found."].Value)}");
         Input = p; InUse = p.InUse;
         return Page();
     }
@@ -33,6 +36,6 @@ public class EditModel : PageModel
             InUse = (await _svc.GetByIdAsync(Input.Id))?.InUse ?? false;
             return Page();
         }
-        return Redirect($"/SalesPersons?msg={Uri.EscapeDataString($"'{Input.Name}' saved.")}");
+        return Redirect($"/SalesPersons?msg={Uri.EscapeDataString(_loc["'{0}' saved.", Input.Name].Value)}");
     }
 }

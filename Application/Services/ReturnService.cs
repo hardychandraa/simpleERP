@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Localization;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
+using SimpleERP.Application.Resources;
 using SimpleERP.Domain.Entities;
 using SimpleERP.Domain.Enums;
 using SimpleERP.Domain.Interfaces;
@@ -43,14 +45,16 @@ public class ReturnService : IReturnService
     private readonly RebateService             _rebates;
     private readonly IUnitOfWork               _uow;
 
+    private readonly IStringLocalizer<SharedResource> _loc;
     public ReturnService(ICustomerReturnRepository customerReturns,
         ISupplierReturnRepository supplierReturns, ICreditNoteRepository notes,
         ISaleRepository sales, IPurchaseRepository purchases, IBranchRepository branches,
         IAuditLogRepository audit, InventoryService inventory,
-        CommissionService commissions, RebateService rebates, IUnitOfWork uow)
+        CommissionService commissions, RebateService rebates, IUnitOfWork uow,
+        IStringLocalizer<SharedResource> loc)
     { _customerReturns=customerReturns; _supplierReturns=supplierReturns; _notes=notes;
       _sales=sales; _purchases=purchases; _branches=branches; _audit=audit;
-      _inventory=inventory; _commissions=commissions; _rebates=rebates; _uow=uow; }
+      _inventory=inventory; _commissions=commissions; _rebates=rebates; _uow=uow;  _loc = loc; }
 
     // ══ Sales returns ══════════════════════════════════════════════════════════
 
@@ -70,8 +74,7 @@ public class ReturnService : IReturnService
 
         if (sale.Status == SaleStatus.Cancelled)
         {
-            form.BlockReason = "This invoice is cancelled — its stock was already reversed, " +
-                               "so there is nothing to return against.";
+            form.BlockReason = _loc["This invoice is cancelled — its stock was already reversed, so there is nothing to return against."];
             return form;
         }
 
@@ -94,27 +97,24 @@ public class ReturnService : IReturnService
         CreateCustomerReturnDto dto, string user)
     {
         if (dto.Items == null || dto.Items.Count == 0)
-            return ServiceResult<CustomerReturnDto>.Fail("Add at least one line to return.");
+            return ServiceResult<CustomerReturnDto>.Fail(_loc["Add at least one line to return."]);
         var reason = SanitiseText(dto.Reason, 500);
         if (reason == null)
-            return ServiceResult<CustomerReturnDto>.Fail("A reason for the return is required.");
+            return ServiceResult<CustomerReturnDto>.Fail(_loc["A reason for the return is required."]);
 
         var sale = await _sales.GetByIdWithItemsAsync(dto.SaleId);
-        if (sale == null) return ServiceResult<CustomerReturnDto>.Fail("Invoice not found.");
+        if (sale == null) return ServiceResult<CustomerReturnDto>.Fail(_loc["Invoice not found."]);
         if (sale.Status == SaleStatus.Cancelled)
-            return ServiceResult<CustomerReturnDto>.Fail(
-                "This invoice is cancelled — its stock was already reversed, so there is " +
-                "nothing to return against.");
+            return ServiceResult<CustomerReturnDto>.Fail(_loc["This invoice is cancelled — its stock was already reversed, so there is nothing to return against."]);
 
         var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return ServiceResult<CustomerReturnDto>.Fail("Default branch not found.");
+        if (branch == null) return ServiceResult<CustomerReturnDto>.Fail(_loc["Default branch not found."]);
 
-        var dateError = ValidateReturnDate(dto.ReturnDate, sale.SaleDate, "invoice", out var returnDate);
+        var dateError = ValidateReturnDate(dto.ReturnDate, sale.SaleDate, againstInvoice: true, out var returnDate);
         if (dateError != null) return ServiceResult<CustomerReturnDto>.Fail(dateError);
 
         if (dto.Items.GroupBy(i => i.SourceItemId).Any(g => g.Count() > 1))
-            return ServiceResult<CustomerReturnDto>.Fail(
-                "The same invoice line appears twice — combine it into one row.");
+            return ServiceResult<CustomerReturnDto>.Fail(_loc["The same invoice line appears twice — combine it into one row."]);
 
         var already  = await _customerReturns.GetReturnedQtyBySaleItemAsync(dto.SaleId);
         var returnId = Guid.NewGuid();
@@ -129,19 +129,18 @@ public class ReturnService : IReturnService
         foreach (var input in dto.Items)
         {
             if (input.Qty <= 0)
-                return ServiceResult<CustomerReturnDto>.Fail("All return quantities must be greater than zero.");
+                return ServiceResult<CustomerReturnDto>.Fail(_loc["All return quantities must be greater than zero."]);
 
             var line = sale.SaleItems.FirstOrDefault(i => i.Id == input.SourceItemId);
             if (line == null)
-                return ServiceResult<CustomerReturnDto>.Fail("A line being returned is not on this invoice.");
+                return ServiceResult<CustomerReturnDto>.Fail(_loc["A line being returned is not on this invoice."]);
 
             var tally     = already.GetValueOrDefault(line.Id) ?? new ReturnedLineTally(0m, 0m);
             var available = line.Qty - tally.Qty;
             if (input.Qty > available)
-                return ServiceResult<CustomerReturnDto>.Fail(
-                    $"'{line.Product?.Name}': {input.Qty:N2} being returned but only " +
-                    $"{available:N2} of the {line.Qty:N2} sold is still returnable" +
-                    (tally.Qty > 0 ? $" ({tally.Qty:N2} already returned)." : "."));
+                return ServiceResult<CustomerReturnDto>.Fail(tally.Qty > 0
+                        ? _loc["'{0}': {1} being returned but only {2} of the {3} sold is still returnable ({4} already returned).", line.Product?.Name ?? "", input.Qty.ToString("N2"), available.ToString("N2"), line.Qty.ToString("N2"), tally.Qty.ToString("N2")]
+                        : _loc["'{0}': {1} being returned but only {2} of the {3} sold is still returnable.", line.Product?.Name ?? "", input.Qty.ToString("N2"), available.ToString("N2"), line.Qty.ToString("N2")]);
 
             var netLine  = line.LineTotal - line.AllocatedInvoiceDiscount;
             var creditAmount = SliceCredit(netLine, line.Qty, input.Qty, available, tally.Amount);
@@ -228,28 +227,22 @@ public class ReturnService : IReturnService
     public async Task<ServiceResult> CancelCustomerReturnAsync(Guid id, string user)
     {
         var ret = await _customerReturns.GetByIdWithItemsAsync(id);
-        if (ret == null) return ServiceResult.Fail("Return not found.");
+        if (ret == null) return ServiceResult.Fail(_loc["Return not found."]);
         if (ret.Status == ReturnStatus.Cancelled)
-            return ServiceResult.Fail("This return is already cancelled.");
+            return ServiceResult.Fail(_loc["This return is already cancelled."]);
 
         var note = ret.CreditNotes.FirstOrDefault(n => n.Status != CreditNoteStatus.Cancelled);
         if (note?.Status == CreditNoteStatus.Settled)
-            return ServiceResult.Fail(
-                $"Credit note {note.DocumentNumber} has already been settled — the customer " +
-                "has had the money or the credit. Cancelling the return now would leave that " +
-                "settlement unsupported; raise a fresh sale or debit note instead.");
+            return ServiceResult.Fail(_loc["Credit note {0} has already been settled — the customer has had the money or the credit. Cancelling the return now would leave that settlement unsupported; raise a fresh sale or debit note instead.", note.DocumentNumber]);
 
         // Same boundary as the settled-note check above: once commission has actually been
         // clawed back for a line on this return, undoing the return would leave that
         // clawback standing with nothing to justify it. See CommissionService.HasClawbackForSaleItemsAsync.
         if (await _commissions.HasClawbackForSaleItemsAsync(ret.SaleId, ret.Items.Select(i => i.SaleItemId)))
-            return ServiceResult.Fail(
-                "Commission has already been clawed back against this return — cancelling it " +
-                "now would leave that clawback standing with nothing to justify it. Raise a " +
-                "fresh sale instead if this return was a mistake.");
+            return ServiceResult.Fail(_loc["Commission has already been clawed back against this return — cancelling it now would leave that clawback standing with nothing to justify it. Raise a fresh sale instead if this return was a mistake."]);
 
         var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return ServiceResult.Fail("Default branch not found.");
+        if (branch == null) return ServiceResult.Fail(_loc["Default branch not found."]);
 
         // Guarded: the returned units may already have been sold again.
         var reversal = await _inventory.StockOutForCustomerReturnCancelAsync(
@@ -298,8 +291,7 @@ public class ReturnService : IReturnService
 
         if (purchase.Status == PurchaseStatus.Cancelled)
         {
-            form.BlockReason = "This purchase is cancelled — its stock was already reversed, " +
-                               "so there is nothing to return.";
+            form.BlockReason = _loc["This purchase is cancelled — its stock was already reversed, so there is nothing to return."];
             return form;
         }
 
@@ -322,27 +314,24 @@ public class ReturnService : IReturnService
         CreateSupplierReturnDto dto, string user)
     {
         if (dto.Items == null || dto.Items.Count == 0)
-            return ServiceResult<SupplierReturnDto>.Fail("Add at least one line to return.");
+            return ServiceResult<SupplierReturnDto>.Fail(_loc["Add at least one line to return."]);
         var reason = SanitiseText(dto.Reason, 500);
         if (reason == null)
-            return ServiceResult<SupplierReturnDto>.Fail("A reason for the return is required.");
+            return ServiceResult<SupplierReturnDto>.Fail(_loc["A reason for the return is required."]);
 
         var purchase = await _purchases.GetByIdWithItemsAsync(dto.PurchaseId);
-        if (purchase == null) return ServiceResult<SupplierReturnDto>.Fail("Purchase not found.");
+        if (purchase == null) return ServiceResult<SupplierReturnDto>.Fail(_loc["Purchase not found."]);
         if (purchase.Status == PurchaseStatus.Cancelled)
-            return ServiceResult<SupplierReturnDto>.Fail(
-                "This purchase is cancelled — its stock was already reversed, so there is " +
-                "nothing to return.");
+            return ServiceResult<SupplierReturnDto>.Fail(_loc["This purchase is cancelled — its stock was already reversed, so there is nothing to return."]);
 
         var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return ServiceResult<SupplierReturnDto>.Fail("Default branch not found.");
+        if (branch == null) return ServiceResult<SupplierReturnDto>.Fail(_loc["Default branch not found."]);
 
-        var dateError = ValidateReturnDate(dto.ReturnDate, purchase.PurchaseDate, "purchase", out var returnDate);
+        var dateError = ValidateReturnDate(dto.ReturnDate, purchase.PurchaseDate, againstInvoice: false, out var returnDate);
         if (dateError != null) return ServiceResult<SupplierReturnDto>.Fail(dateError);
 
         if (dto.Items.GroupBy(i => i.SourceItemId).Any(g => g.Count() > 1))
-            return ServiceResult<SupplierReturnDto>.Fail(
-                "The same purchase line appears twice — combine it into one row.");
+            return ServiceResult<SupplierReturnDto>.Fail(_loc["The same purchase line appears twice — combine it into one row."]);
 
         var already  = await _supplierReturns.GetReturnedQtyByPurchaseItemAsync(dto.PurchaseId);
         var returnId = Guid.NewGuid();
@@ -351,19 +340,18 @@ public class ReturnService : IReturnService
         foreach (var input in dto.Items)
         {
             if (input.Qty <= 0)
-                return ServiceResult<SupplierReturnDto>.Fail("All return quantities must be greater than zero.");
+                return ServiceResult<SupplierReturnDto>.Fail(_loc["All return quantities must be greater than zero."]);
 
             var line = purchase.PurchaseItems.FirstOrDefault(i => i.Id == input.SourceItemId);
             if (line == null)
-                return ServiceResult<SupplierReturnDto>.Fail("A line being returned is not on this purchase.");
+                return ServiceResult<SupplierReturnDto>.Fail(_loc["A line being returned is not on this purchase."]);
 
             var tally     = already.GetValueOrDefault(line.Id) ?? new ReturnedLineTally(0m, 0m);
             var available = line.Qty - tally.Qty;
             if (input.Qty > available)
-                return ServiceResult<SupplierReturnDto>.Fail(
-                    $"'{line.Product?.Name}': {input.Qty:N2} being returned but only " +
-                    $"{available:N2} of the {line.Qty:N2} received is still returnable" +
-                    (tally.Qty > 0 ? $" ({tally.Qty:N2} already returned)." : "."));
+                return ServiceResult<SupplierReturnDto>.Fail(tally.Qty > 0
+                        ? _loc["'{0}': {1} being returned but only {2} of the {3} received is still returnable ({4} already returned).", line.Product?.Name ?? "", input.Qty.ToString("N2"), available.ToString("N2"), line.Qty.ToString("N2"), tally.Qty.ToString("N2")]
+                        : _loc["'{0}': {1} being returned but only {2} of the {3} received is still returnable.", line.Product?.Name ?? "", input.Qty.ToString("N2"), available.ToString("N2"), line.Qty.ToString("N2")]);
 
             var netLine = line.LineTotal - line.AllocatedInvoiceDiscount;
 
@@ -451,29 +439,23 @@ public class ReturnService : IReturnService
     public async Task<ServiceResult> CancelSupplierReturnAsync(Guid id, string user)
     {
         var ret = await _supplierReturns.GetByIdWithItemsAsync(id);
-        if (ret == null) return ServiceResult.Fail("Return not found.");
+        if (ret == null) return ServiceResult.Fail(_loc["Return not found."]);
         if (ret.Status == ReturnStatus.Cancelled)
-            return ServiceResult.Fail("This return is already cancelled.");
+            return ServiceResult.Fail(_loc["This return is already cancelled."]);
 
         var note = ret.CreditNotes.FirstOrDefault(n => n.Status != CreditNoteStatus.Cancelled);
         if (note?.Status == CreditNoteStatus.Settled)
-            return ServiceResult.Fail(
-                $"Debit note {note.DocumentNumber} has already been settled — the supplier " +
-                "has already credited it. Cancelling the return now would leave that " +
-                "settlement unsupported; raise a fresh purchase instead.");
+            return ServiceResult.Fail(_loc["Debit note {0} has already been settled — the supplier has already credited it. Cancelling the return now would leave that settlement unsupported; raise a fresh purchase instead.", note.DocumentNumber]);
 
         // Same boundary as the settled-note check above: once a Volume rebate accrual has
         // actually been clawed back because of this return, undoing the return would leave
         // that clawback standing with nothing to justify it. See
         // RebateService.HasClawbackForPurchaseItemsAsync.
         if (await _rebates.HasClawbackForPurchaseItemsAsync(ret.PurchaseId, ret.Items.Select(i => i.PurchaseItemId)))
-            return ServiceResult.Fail(
-                "Rebate has already been clawed back against this return — cancelling it now " +
-                "would leave that clawback standing with nothing to justify it. Raise a fresh " +
-                "purchase instead if this return was a mistake.");
+            return ServiceResult.Fail(_loc["Rebate has already been clawed back against this return — cancelling it now would leave that clawback standing with nothing to justify it. Raise a fresh purchase instead if this return was a mistake."]);
 
         var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return ServiceResult.Fail("Default branch not found.");
+        if (branch == null) return ServiceResult.Fail(_loc["Default branch not found."]);
 
         // Back in at exactly the value they left at, not at the drifted average.
         await _inventory.StockInForSupplierReturnCancelAsync(
@@ -529,16 +511,20 @@ public class ReturnService : IReturnService
     /// rather than the server's UTC calendar day. Returns the error message, or null and
     /// the resolved date.
     /// </summary>
-    private static string? ValidateReturnDate(DateTime? supplied, DateTime sourceDate,
-        string sourceLabel, out DateTime returnDate)
+    // Instance rather than static now: it needs the localizer. The source document is passed
+    // as a flag rather than a spliced noun ("invoice"/"purchase") because a mid-sentence noun
+    // cannot be translated independently of the sentence around it — each case gets its own key.
+    private string? ValidateReturnDate(DateTime? supplied, DateTime sourceDate,
+        bool againstInvoice, out DateTime returnDate)
     {
         var todayLocal = DateTime.Now.Date;
         returnDate = supplied?.Date ?? todayLocal;
         if (returnDate > todayLocal)
-            return "Return date cannot be in the future.";
+            return _loc["Return date cannot be in the future."].Value;
         if (returnDate < sourceDate.Date)
-            return $"Return date cannot be before the {sourceLabel} date " +
-                   $"({sourceDate:dd MMM yyyy}).";
+            return againstInvoice
+                ? _loc["Return date cannot be before the invoice date ({0}).", sourceDate.ToString("dd MMM yyyy")].Value
+                : _loc["Return date cannot be before the purchase date ({0}).", sourceDate.ToString("dd MMM yyyy")].Value;
         return null;
     }
 

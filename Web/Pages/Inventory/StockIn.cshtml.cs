@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -5,7 +7,8 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 namespace SimpleERP.Web.Pages.Inventory;
 public class StockInModel:PageModel{
     private readonly IInventoryService _inv;private readonly IProductService _prod;
-    public StockInModel(IInventoryService i,IProductService p){_inv=i;_prod=p;}
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public StockInModel(IInventoryService i,IProductService p, IStringLocalizer<SharedResource> loc){_inv=i;_prod=p; _loc = loc; }
     [BindProperty]public StockInDto Input{get;set;}=new();
     public List<SelectListItem> Products{get;set;}=new();
     public string? Error{get;set;} public string? Success{get;set;}
@@ -15,7 +18,7 @@ public class StockInModel:PageModel{
         if(!ModelState.IsValid)return Page();
         var r=await _inv.StockInAsync(Input);
         if(!r.Success){Error=r.Error;return Page();}
-        Success="Stock received successfully.";Input=new StockInDto();return Page();
+        Success=_loc["Stock received successfully."];Input=new StockInDto();return Page();
     }
     private async Task Load(){
         var list=await _prod.GetAllActiveAsync();

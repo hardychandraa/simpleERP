@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Localization;
+using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +9,8 @@ namespace SimpleERP.Web.Pages.Inventory;
 public class AdjustModel : PageModel {
     private readonly IInventoryService _inv;
     private readonly IProductService   _prod;
-    public AdjustModel(IInventoryService i, IProductService p) { _inv=i; _prod=p; }
+    private readonly IStringLocalizer<SharedResource> _loc;
+    public AdjustModel(IInventoryService i, IProductService p, IStringLocalizer<SharedResource> loc) { _inv=i; _prod=p;  _loc = loc; }
     [BindProperty] public StockAdjustmentDto Input { get; set; } = new();
     public List<SelectListItem> Products { get; set; } = new();
     public decimal CurrentStock { get; set; }
@@ -28,11 +31,11 @@ public class AdjustModel : PageModel {
         ViewData["Title"] = "Stock Adjustment";
         await Load();
         if (!ModelState.IsValid) return Page();
-        if (string.IsNullOrWhiteSpace(Input.Reason)) { Error="Reason is required."; return Page(); }
+        if (string.IsNullOrWhiteSpace(Input.Reason)) { Error=_loc["Reason is required."]; return Page(); }
         CurrentStock = await _inv.GetCurrentStockAsync(Input.ProductId);
         var r = await _inv.AdjustStockAsync(Input, User.Identity?.Name ?? "staff");
         if (!r.Success) { Error=r.Error; return Page(); }
-        Success = $"Stock adjusted. New stock: {Input.QtyActual:N0}";
+        Success = _loc["Stock adjusted. New stock: {0}", Input.QtyActual.ToString("N0")];
         Input = new StockAdjustmentDto();
         CurrentStock = 0;
         return Page();
