@@ -22,7 +22,12 @@ public class CommissionAccrual
     public Guid SalesPersonId    { get; set; }
     public Guid CommissionRuleId { get; set; }
 
-    /// <summary>The revenue slice this commission was figured on (ex-PPN).</summary>
+    /// <summary>
+    /// The invoice slice this commission was figured on. Tax-inclusive for accruals
+    /// raised from 2026-08-05 onward; rows written before that date are ex-PPN and are
+    /// deliberately left as they were earned — like TaxRate on a posted invoice, this is
+    /// a snapshot, not a live calculation.
+    /// </summary>
     public decimal BaseAmount { get; set; }
     /// <summary>Rate snapshot at accrual time — the rule may change later.</summary>
     public decimal Rate       { get; set; }

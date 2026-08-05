@@ -23,7 +23,7 @@
                 <label>@Localizer["Rate (%)"] *</label>
                 <input type="number" asp-for="Input.Rate" min="0.01" max="99.99" step="0.01" required placeholder="0" />
                 @* PPN stays bare — identical in both languages. *@
-                <div style="font-size:11px;color:#9ca3af;margin-top:4px">@Localizer["Percent of revenue (ex-PPN)."]</div>
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">@Localizer["Percent of the invoice total, including PPN."]</div>
             </div>
             <div class="fg" style="flex:1">
                 <label>@Localizer["Priority"]</label>

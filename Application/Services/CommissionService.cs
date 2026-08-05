@@ -12,11 +12,17 @@ namespace SimpleERP.Application.Services;
 /// The commission engine: accrues commission for a salesperson as revenue is collected,
 /// and settles it in payouts. Mirrors RebateService's accrual/settlement shape.
 ///
-/// Commission is a percentage of **revenue** (ex-PPN), not gross margin, earned **on
-/// collection** — never at invoice time. A cash sale collects in full at creation; a
-/// credit sale accrues in slices as each payment arrives, so commission is never paid
-/// on debt that isn't collected. Accruals are per SaleItem so a future product- or
-/// category-specific rate needs no redesign.
+/// Commission is a percentage of the **tax-inclusive invoice total** (GrandTotal), not
+/// gross margin and not ex-PPN revenue, earned **on collection** — never at invoice time.
+/// A cash sale collects in full at creation; a credit sale accrues in slices as each
+/// payment arrives, so commission is never paid on debt that isn't collected. Accruals
+/// are per SaleItem so a product- or category-specific rate needs no redesign.
+///
+/// The basis changed from TaxBase to GrandTotal on 2026-08-05 (HC's decision). It means
+/// commission is paid on the PPN portion as well — money collected on the government's
+/// behalf rather than earned — which is a deliberate trade for a figure staff can check
+/// against the number printed on the invoice. Raised explicitly before the change; see
+/// decisions.md. Rates still come from CommissionRule, unchanged.
 /// </summary>
 public class CommissionService : ICommissionService
 {
@@ -56,8 +62,10 @@ public class CommissionService : ICommissionService
         var rules = await _rules.GetActiveForSalesPersonAsync(sale.SalesPersonId.Value);
         if (rules.Count == 0) return;
 
-        // Each line's ex-PPN revenue share is prorated from the sale's TaxBase by its
-        // net-of-discount line total, so the commission base matches the P&L's revenue.
+        // Each line's share of the tax-inclusive invoice total, prorated by its
+        // net-of-discount line total. Deliberately GrandTotal rather than TaxBase: the
+        // commission base is what the customer was actually billed, so 0.5% of a
+        // 1,110,000 invoice is 5,550 — a figure that ties to the printed document.
         var totalNet = items.Sum(i => i.LineTotal - i.AllocatedInvoiceDiscount);
         if (totalNet <= 0m) return;
 
@@ -68,7 +76,7 @@ public class CommissionService : ICommissionService
             var rule = BestRule(rules, sale.SalesPersonId.Value, item, sale.SaleDate);
             if (rule == null) continue;
 
-            var itemRevenue = sale.TaxBase * ((item.LineTotal - item.AllocatedInvoiceDiscount) / totalNet);
+            var itemRevenue = sale.GrandTotal * ((item.LineTotal - item.AllocatedInvoiceDiscount) / totalNet);
             var baseAmount  = Math.Round(itemRevenue * collectedFraction, 2, MidpointRounding.AwayFromZero);
             var amount      = Math.Round(baseAmount * rule.Rate / 100m, 2, MidpointRounding.AwayFromZero);
             if (amount <= 0m) continue;

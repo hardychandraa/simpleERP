@@ -370,7 +370,7 @@
   <data name="Collected later" xml:space="preserve"><value>Ditagih kemudian</value></data>
   <data name="Commission Accrued" xml:space="preserve"><value>Komisi Diakru</value></data>
   <data name="Commission accrues automatically as sales are collected. Pay a salesperson out here — one payout settles all their unpaid accruals." xml:space="preserve"><value>Komisi diakru otomatis seiring penjualan tertagih. Bayarkan ke sales di sini — satu pembayaran melunasi semua akrual mereka yang belum dibayar.</value></data>
-  <data name="Commission is a percentage of revenue (ex-PPN), earned when payment is collected — a credit sale accrues in slices as it's paid. When more than one rule matches a line, the highest priority wins. Settle accruals on the" xml:space="preserve"><value>Komisi adalah persentase dari pendapatan (di luar PPN), diperoleh saat pembayaran tertagih — penjualan kredit diakru bertahap seiring pembayarannya. Bila lebih dari satu aturan cocok untuk satu baris, prioritas tertinggi yang menang. Selesaikan akrual di halaman</value></data>
+  <data name="Commission is a percentage of the invoice total including PPN, earned when payment is collected — a credit sale accrues in slices as it's paid. When more than one rule matches a line, the highest priority wins. Settle accruals on the" xml:space="preserve"><value>Komisi adalah persentase dari total faktur termasuk PPN, diperoleh saat pembayaran tertagih — penjualan kredit diakru bertahap seiring pembayarannya. Bila lebih dari satu aturan cocok untuk satu baris, prioritas tertinggi yang menang. Selesaikan akrual di halaman</value></data>
   <data name="Commission Payouts" xml:space="preserve"><value>Pembayaran Komisi</value></data>
   <data name="Condition" xml:space="preserve"><value>Kondisi</value></data>
   <data name="Condition — what earns the rebate" xml:space="preserve"><value>Kondisi — apa yang menghasilkan rebat</value></data>
@@ -668,7 +668,7 @@
   <data name="Payout History" xml:space="preserve"><value>Riwayat Pembayaran</value></data>
   <data name="People already credited with a sale can't be deleted — set them inactive instead, so they stop appearing on new sales while existing invoices (and the commission calculated from them) keep showing their name." xml:space="preserve"><value>Orang yang sudah diatribusikan pada sebuah penjualan tidak bisa dihapus — nonaktifkan saja, sehingga namanya berhenti muncul pada penjualan baru sementara faktur yang sudah ada (dan komisi yang dihitung darinya) tetap menampilkan namanya.</value></data>
   <data name="Percent discount — % of purchase value" xml:space="preserve"><value>Diskon persentase — % dari nilai pembelian</value></data>
-  <data name="Percent of revenue (ex-PPN)." xml:space="preserve"><value>Persentase dari pendapatan (di luar PPN).</value></data>
+  <data name="Percent of the invoice total, including PPN." xml:space="preserve"><value>Persentase dari total faktur, termasuk PPN.</value></data>
   <data name="Period End" xml:space="preserve"><value>Akhir Periode</value></data>
   <data name="Period Start" xml:space="preserve"><value>Awal Periode</value></data>
   <data name="Phone" xml:space="preserve"><value>Telepon</value></data>
