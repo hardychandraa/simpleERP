@@ -114,7 +114,8 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
     <a href="/CommissionRules"   class="@(page.StartsWith("/CommissionRules")?"active":"")">🎯 @Localizer["Commission Rules"]</a>
 
     <div class="sb-sec">@Localizer["System"]</div>
-    <a href="/Settings" class="@(page.StartsWith("/Settings")?"active":"")">⚙️ @Localizer["Settings"]</a>
+    <a href="/Settings" class="@(page=="/Settings/Index"?"active":"")">⚙️ @Localizer["Settings"]</a>
+    <a href="/Settings/Logs" class="@(page=="/Settings/Logs"?"active":"")">🩺 @Localizer["Diagnostic Log"]</a>
   </div>
   <div class="sb-foot">@Localizer["PostgreSQL · Auto-backup daily"]</div>
 </nav>

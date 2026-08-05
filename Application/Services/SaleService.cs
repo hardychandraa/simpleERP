@@ -1,4 +1,5 @@
-using Microsoft.Extensions.Localization;
+﻿using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Application.Resources;
@@ -27,6 +28,7 @@ public class SaleService : ISaleService
     private readonly IUnitOfWork                _uow;
 
     private readonly IStringLocalizer<SharedResource> _loc;
+    private readonly ILogger<SaleService> _log;
     public SaleService(ISaleRepository sales, IProductRepository products,
         ICustomerRepository customers, IBranchRepository branches,
         IPaymentRecordRepository payments,
@@ -35,29 +37,29 @@ public class SaleService : ISaleService
         ISalesPersonRepository people, ICustomerReturnRepository returns,
         ICreditNoteRepository notes, IPaymentBatchRepository batches,
         CommissionService commissions, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc)
+        IStringLocalizer<SharedResource> loc, ILogger<SaleService> log)
     { _sales=sales; _products=products; _customers=customers; _branches=branches;
       _payments=payments;
       _audit=audit; _inventory=inventory; _settings=settings; _terms=terms;
       _people=people; _returns=returns; _notes=notes; _batches=batches;
-      _commissions=commissions; _uow=uow;  _loc = loc; }
+      _commissions=commissions; _uow=uow;  _loc = loc; _log = log; }
 
     public async Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user)
     {
         if (dto.Items == null || dto.Items.Count == 0)
-            return ServiceResult<SaleDto>.Fail(_loc["Add at least one item."]);
+            return _log.Refuse<SaleDto>(_loc["Add at least one item."]);
         if (dto.CustomerId == Guid.Empty)
-            return ServiceResult<SaleDto>.Fail(_loc["Customer is required."]);
+            return _log.Refuse<SaleDto>(_loc["Customer is required."]);
 
         // Checked up front, like every other counterparty: without this a bogus id only
         // failed at save time as an FK violation, and a deactivated customer could still
         // be invoiced — the one gap in the app's otherwise consistent inactive guards.
         var customer = await _customers.GetByIdAsync(dto.CustomerId);
-        if (customer == null)   return ServiceResult<SaleDto>.Fail(_loc["Customer not found."]);
-        if (!customer.IsActive) return ServiceResult<SaleDto>.Fail(_loc["Customer '{0}' is inactive.", customer.Name]);
+        if (customer == null)   return _log.Refuse<SaleDto>(_loc["Customer not found."]);
+        if (!customer.IsActive) return _log.Refuse<SaleDto>(_loc["Customer '{0}' is inactive.", customer.Name]);
 
         var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return ServiceResult<SaleDto>.Fail(_loc["Default branch not found."]);
+        if (branch == null) return _log.Refuse<SaleDto>(_loc["Default branch not found."]);
 
         // Attribution is optional, but a supplied one must be real and still active —
         // checked up front, before the ledger is touched.
@@ -66,9 +68,9 @@ public class SaleService : ISaleService
         {
             var person = await _people.GetByIdAsync(dto.SalesPersonId.Value);
             if (person == null)
-                return ServiceResult<SaleDto>.Fail(_loc["Selected sales person not found."]);
+                return _log.Refuse<SaleDto>(_loc["Selected sales person not found."]);
             if (!person.IsActive)
-                return ServiceResult<SaleDto>.Fail(_loc["Sales person '{0}' is no longer active.", person.Name]);
+                return _log.Refuse<SaleDto>(_loc["Sales person '{0}' is no longer active.", person.Name]);
             salesPersonId = person.Id;
         }
 
@@ -83,7 +85,7 @@ public class SaleService : ISaleService
         var todayLocal  = DateTime.Now.Date;
         var pickedLocal = dto.SaleDate?.Date ?? todayLocal;
         if (pickedLocal > todayLocal)
-            return ServiceResult<SaleDto>.Fail(_loc["Sale date cannot be in the future."]);
+            return _log.Refuse<SaleDto>(_loc["Sale date cannot be in the future."]);
 
         // Today keeps the real clock time, so same-day ordering and EndOfDay are unchanged.
         // A backdated entry anchors to that day's local midnight, converted to UTC — SaleDate
@@ -96,8 +98,8 @@ public class SaleService : ISaleService
         // Validate all items BEFORE touching ledger
         foreach (var item in dto.Items)
         {
-            if (item.Qty <= 0) return ServiceResult<SaleDto>.Fail(_loc["All quantities must be > 0."]);
-            if (item.UnitPrice < 0) return ServiceResult<SaleDto>.Fail(_loc["Price cannot be negative."]);
+            if (item.Qty <= 0) return _log.Refuse<SaleDto>(_loc["All quantities must be > 0."]);
+            if (item.UnitPrice < 0) return _log.Refuse<SaleDto>(_loc["Price cannot be negative."]);
 
             // A percentage discount is resolved to a per-unit amount here, before any
             // validation runs, so both entry modes go through exactly the same guards
@@ -105,26 +107,26 @@ public class SaleService : ISaleService
             if (item.DiscountPercent.HasValue)
             {
                 if (item.DiscountPercent < 0 || item.DiscountPercent >= 100)
-                    return ServiceResult<SaleDto>.Fail(_loc["Discount percent must be between 0 and 100."]);
+                    return _log.Refuse<SaleDto>(_loc["Discount percent must be between 0 and 100."]);
                 item.DiscountAmount = Math.Round(
                     item.UnitPrice * item.DiscountPercent.Value / 100m, 2, MidpointRounding.AwayFromZero);
             }
 
-            if (item.DiscountAmount < 0) return ServiceResult<SaleDto>.Fail(_loc["Discount cannot be negative."]);
+            if (item.DiscountAmount < 0) return _log.Refuse<SaleDto>(_loc["Discount cannot be negative."]);
             if (item.DiscountAmount >= item.UnitPrice && item.UnitPrice > 0)
-                return ServiceResult<SaleDto>.Fail(_loc["Discount cannot equal or exceed unit price."]);
+                return _log.Refuse<SaleDto>(_loc["Discount cannot equal or exceed unit price."]);
 
             // Sanitize text fields
             item.Notes       = SanitiseText(item.Notes, 500);
             item.PriceReason = SanitiseText(item.PriceReason, 300);
 
             var p = await _products.GetByIdAsync(item.ProductId);
-            if (p == null)   return ServiceResult<SaleDto>.Fail(_loc["Product not found."]);
-            if (!p.IsActive) return ServiceResult<SaleDto>.Fail(_loc["Product '{0}' is inactive.", p.Name]);
+            if (p == null)   return _log.Refuse<SaleDto>(_loc["Product not found."]);
+            if (!p.IsActive) return _log.Refuse<SaleDto>(_loc["Product '{0}' is inactive.", p.Name]);
 
             // Price override reason is required when price deviates from master price
             if (item.UnitPrice != p.UnitPrice && string.IsNullOrWhiteSpace(item.PriceReason))
-                return ServiceResult<SaleDto>.Fail(_loc["Price for '{0}' differs from master price ({1}). Please provide a reason for the price override.", p.Name, p.UnitPrice.ToString("N0")]);
+                return _log.Refuse<SaleDto>(_loc["Price for '{0}' differs from master price ({1}). Please provide a reason for the price override.", p.Name, p.UnitPrice.ToString("N0")]);
         }
 
         var saleId   = Guid.NewGuid();
@@ -134,7 +136,7 @@ public class SaleService : ISaleService
         foreach (var itemDto in dto.Items)
         {
             var stockResult = await _inventory.StockOutAsync(itemDto.ProductId, itemDto.Qty, saleId, branch.Id);
-            if (!stockResult.Success) return ServiceResult<SaleDto>.Fail(stockResult.Error!);
+            if (!stockResult.Success) return _log.Refuse<SaleDto>(stockResult.Error!);
 
             var product  = await _products.GetByIdAsync(itemDto.ProductId);
             var cost     = await _inventory.GetCurrentAvgCostAsync(itemDto.ProductId);
@@ -168,14 +170,14 @@ public class SaleService : ISaleService
         if (dto.InvoiceDiscountPercent.HasValue)
         {
             if (dto.InvoiceDiscountPercent < 0 || dto.InvoiceDiscountPercent >= 100)
-                return ServiceResult<SaleDto>.Fail(_loc["Invoice discount percent must be between 0 and 100."]);
+                return _log.Refuse<SaleDto>(_loc["Invoice discount percent must be between 0 and 100."]);
             invoiceDiscount = Math.Round(
                 lineNetTotal * dto.InvoiceDiscountPercent.Value / 100m, 2, MidpointRounding.AwayFromZero);
         }
         if (invoiceDiscount < 0)
-            return ServiceResult<SaleDto>.Fail(_loc["Invoice discount cannot be negative."]);
+            return _log.Refuse<SaleDto>(_loc["Invoice discount cannot be negative."]);
         if (invoiceDiscount >= lineNetTotal && lineNetTotal > 0)
-            return ServiceResult<SaleDto>.Fail(_loc["Invoice discount ({0}) cannot equal or exceed the total ({1}).", invoiceDiscount.ToString("N0"), lineNetTotal.ToString("N0")]);
+            return _log.Refuse<SaleDto>(_loc["Invoice discount ({0}) cannot equal or exceed the total ({1}).", invoiceDiscount.ToString("N0"), lineNetTotal.ToString("N0")]);
 
         AllocateInvoiceDiscount(saleItems, invoiceDiscount, lineNetTotal);
 
@@ -219,9 +221,9 @@ public class SaleService : ISaleService
         {
             var term = await _terms.GetByIdAsync(dto.PaymentTermId.Value);
             if (term == null)
-                return ServiceResult<SaleDto>.Fail(_loc["Selected payment term not found."]);
+                return _log.Refuse<SaleDto>(_loc["Selected payment term not found."]);
             if (!term.IsActive)
-                return ServiceResult<SaleDto>.Fail(_loc["Payment term '{0}' is no longer active.", term.Name]);
+                return _log.Refuse<SaleDto>(_loc["Payment term '{0}' is no longer active.", term.Name]);
 
             termId  = term.Id;
             // Counted from the sale's own date, not from today — backdating a credit sale
@@ -275,6 +277,12 @@ public class SaleService : ISaleService
             (overrides.Any() ? " | PriceOverrides: " + string.Join("; ", overrides) : "");
         await _audit.LogAsync(user, "Sale.Create", auditDetail);
 
+        _log.LogInformation(
+            "Sale {InvoiceNumber} posted — customer {Customer}, {LineCount} line(s), " +
+            "{GrandTotal} gross ({PaymentType}), {PriceOverrideCount} price override(s), by {User}",
+            sale.InvoiceNumber, customer.Name, saleItems.Count, sale.GrandTotal,
+            sale.PaymentType, overrides.Count, user);
+
         await _uow.SaveChangesAsync();
 
         var created = await _sales.GetByIdWithItemsAsync(saleId);
@@ -284,17 +292,17 @@ public class SaleService : ISaleService
     public async Task<ServiceResult> CancelAsync(Guid saleId, string user)
     {
         var sale = await _sales.GetByIdWithItemsAsync(saleId);
-        if (sale == null) return ServiceResult.Fail(_loc["Sale not found."]);
-        if (sale.Status == SaleStatus.Cancelled) return ServiceResult.Fail(_loc["Sale is already cancelled."]);
+        if (sale == null) return _log.Refuse(_loc["Sale not found."]);
+        if (sale.Status == SaleStatus.Cancelled) return _log.Refuse(_loc["Sale is already cancelled."]);
 
         // Cancelling restocks every unit sold. If a return has already put some of them
         // back, doing that would receive the same goods twice and leave a credit note
         // hanging against an invoice that no longer exists.
         if (await _returns.HasActiveReturnAsync(saleId))
-            return ServiceResult.Fail(_loc["This invoice has a sales return against it. Cancel the return first — cancelling the invoice now would put the returned goods back into stock twice."]);
+            return _log.Refuse(_loc["This invoice has a sales return against it. Cancel the return first — cancelling the invoice now would put the returned goods back into stock twice."]);
 
         var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return ServiceResult.Fail(_loc["Default branch not found."]);
+        if (branch == null) return _log.Refuse(_loc["Default branch not found."]);
 
         foreach (var item in sale.SaleItems)
             await _inventory.StockInForCancelAsync(item.ProductId, item.Qty, item.CostAtSale, saleId, branch.Id);
@@ -306,6 +314,12 @@ public class SaleService : ISaleService
         await _commissions.VoidForSaleAsync(saleId);
 
         await _audit.LogAsync(user, "Sale.Cancel", sale.InvoiceNumber);
+        // Worth Information rather than Debug: a cancellation reverses stock and voids
+        // commission, so it is the event most likely to be behind "the numbers moved and
+        // nobody knows why".
+        _log.LogInformation(
+            "Sale {InvoiceNumber} cancelled — {LineCount} line(s) restocked, {GrandTotal} reversed, by {User}",
+            sale.InvoiceNumber, sale.SaleItems.Count, sale.GrandTotal, user);
         await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
     }
@@ -313,24 +327,27 @@ public class SaleService : ISaleService
     public async Task<ServiceResult<PaymentRecordDto>> RecordPaymentAsync(RecordPaymentDto dto, string user)
     {
         if (dto.Amount <= 0)
-            return ServiceResult<PaymentRecordDto>.Fail(_loc["Payment amount must be > 0."]);
+            return _log.Refuse<PaymentRecordDto>(_loc["Payment amount must be > 0."]);
 
         var sale = await _sales.GetByIdWithItemsAsync(dto.SaleId);
-        if (sale == null) return ServiceResult<PaymentRecordDto>.Fail(_loc["Sale not found."]);
+        if (sale == null) return _log.Refuse<PaymentRecordDto>(_loc["Sale not found."]);
         if (sale.Status == SaleStatus.Cancelled)
-            return ServiceResult<PaymentRecordDto>.Fail(_loc["Cannot record payment on a cancelled sale."]);
+            return _log.Refuse<PaymentRecordDto>(_loc["Cannot record payment on a cancelled sale."]);
 
         // Allow payment on Due AND all TOP terms
         if (sale.PaymentType == PaymentType.Cash)
-            return ServiceResult<PaymentRecordDto>.Fail(_loc["This is a Cash sale — payment already collected."]);
+            return _log.Refuse<PaymentRecordDto>(_loc["This is a Cash sale — payment already collected."]);
 
         var currentBalance = sale.GrandTotal - sale.AmountPaid;
         if (dto.Amount > currentBalance)
-            return ServiceResult<PaymentRecordDto>.Fail(_loc["Amount ({0}) exceeds balance due ({1}).", dto.Amount.ToString("N0"), currentBalance.ToString("N0")]);
+            return _log.Refuse<PaymentRecordDto>(_loc["Amount ({0}) exceeds balance due ({1}).", dto.Amount.ToString("N0"), currentBalance.ToString("N0")]);
 
         var record = await RecordPaymentCoreAsync(sale, dto.Amount, dto.Notes, batchId: null, user);
 
         await _audit.LogAsync(user, "Payment.Record", $"{sale.InvoiceNumber} +{dto.Amount:N0}");
+        _log.LogInformation(
+            "Payment {Amount} received against {InvoiceNumber} — paid {AmountPaid} of {GrandTotal}, by {User}",
+            dto.Amount, sale.InvoiceNumber, sale.AmountPaid, sale.GrandTotal, user);
         await _uow.SaveChangesAsync();
 
         return ServiceResult<PaymentRecordDto>.Ok(new PaymentRecordDto {
@@ -373,15 +390,15 @@ public class SaleService : ISaleService
         var noteIds = (dto.ApplyCreditNoteIds ?? new()).Distinct().ToList();
 
         if (lines.Count == 0 && noteIds.Count == 0)
-            return ServiceResult<PaymentBatchDto>.Fail(_loc["Enter an amount on at least one invoice."]);
+            return _log.Refuse<PaymentBatchDto>(_loc["Enter an amount on at least one invoice."]);
 
         var customer = await _customers.GetByIdAsync(dto.CustomerId);
-        if (customer == null) return ServiceResult<PaymentBatchDto>.Fail(_loc["Customer not found."]);
+        if (customer == null) return _log.Refuse<PaymentBatchDto>(_loc["Customer not found."]);
 
         // One invoice can only appear once. Without this, two lines could each pass a
         // balance check read before either was applied, and jointly overpay.
         if (lines.GroupBy(l => l.SaleId).Any(g => g.Count() > 1))
-            return ServiceResult<PaymentBatchDto>.Fail(_loc["The same invoice appears twice — combine it into one row."]);
+            return _log.Refuse<PaymentBatchDto>(_loc["The same invoice appears twice — combine it into one row."]);
 
         // ── Validate every invoice line before anything is written ────────────────
         var sales = await _sales.GetByIdsWithItemsAsync(lines.Select(l => l.SaleId));
@@ -390,32 +407,32 @@ public class SaleService : ISaleService
         foreach (var line in lines)
         {
             if (!byId.TryGetValue(line.SaleId, out var sale))
-                return ServiceResult<PaymentBatchDto>.Fail(_loc["An invoice on this settlement no longer exists."]);
+                return _log.Refuse<PaymentBatchDto>(_loc["An invoice on this settlement no longer exists."]);
             if (sale.CustomerId != dto.CustomerId)
-                return ServiceResult<PaymentBatchDto>.Fail(_loc["Invoice {0} belongs to a different customer.", sale.InvoiceNumber]);
+                return _log.Refuse<PaymentBatchDto>(_loc["Invoice {0} belongs to a different customer.", sale.InvoiceNumber]);
             if (sale.Status == SaleStatus.Cancelled)
-                return ServiceResult<PaymentBatchDto>.Fail(_loc["Invoice {0} is cancelled.", sale.InvoiceNumber]);
+                return _log.Refuse<PaymentBatchDto>(_loc["Invoice {0} is cancelled.", sale.InvoiceNumber]);
             if (sale.PaymentType == PaymentType.Cash)
-                return ServiceResult<PaymentBatchDto>.Fail(_loc["Invoice {0} is a cash sale — already collected.", sale.InvoiceNumber]);
+                return _log.Refuse<PaymentBatchDto>(_loc["Invoice {0} is a cash sale — already collected.", sale.InvoiceNumber]);
 
             var balance = sale.GrandTotal - sale.AmountPaid;
             if (line.Amount > balance)
-                return ServiceResult<PaymentBatchDto>.Fail(_loc["Invoice {0}: {1} exceeds its balance of {2}.", sale.InvoiceNumber, line.Amount.ToString("N0"), balance.ToString("N0")]);
+                return _log.Refuse<PaymentBatchDto>(_loc["Invoice {0}: {1} exceeds its balance of {2}.", sale.InvoiceNumber, line.Amount.ToString("N0"), balance.ToString("N0")]);
         }
 
         // ── Validate every note before anything is written ────────────────────────
         var notes = noteIds.Count == 0 ? new List<CreditNote>() : await _notes.GetByIdsAsync(noteIds);
         if (notes.Count != noteIds.Count)
-            return ServiceResult<PaymentBatchDto>.Fail(_loc["A credit note on this settlement no longer exists."]);
+            return _log.Refuse<PaymentBatchDto>(_loc["A credit note on this settlement no longer exists."]);
 
         foreach (var note in notes)
         {
             if (note.Type != CreditDebitType.Credit)
-                return ServiceResult<PaymentBatchDto>.Fail(_loc["{0} is a debit note and cannot be applied to money received.", note.DocumentNumber]);
+                return _log.Refuse<PaymentBatchDto>(_loc["{0} is a debit note and cannot be applied to money received.", note.DocumentNumber]);
             if (note.CustomerId != dto.CustomerId)
-                return ServiceResult<PaymentBatchDto>.Fail(_loc["{0} belongs to a different customer.", note.DocumentNumber]);
+                return _log.Refuse<PaymentBatchDto>(_loc["{0} belongs to a different customer.", note.DocumentNumber]);
             if (note.Status != CreditNoteStatus.Open)
-                return ServiceResult<PaymentBatchDto>.Fail(_loc["{0} is already {1}.", note.DocumentNumber, _loc["CreditNoteStatus_" + note.Status].Value]);
+                return _log.Refuse<PaymentBatchDto>(_loc["{0} is already {1}.", note.DocumentNumber, _loc["CreditNoteStatus_" + note.Status].Value]);
         }
 
         // ── Post ─────────────────────────────────────────────────────────────────
@@ -426,7 +443,7 @@ public class SaleService : ISaleService
         // collected would settle notes whose value this settlement can't absorb — quietly
         // destroying the customer's remaining credit. Refuse, and say what to change.
         if (notesApplied > gross)
-            return ServiceResult<PaymentBatchDto>.Fail(_loc["The selected credit notes ({0}) exceed the {1} being collected. Include more invoices, or untick a note and settle it against a later payment.", notesApplied.ToString("N0"), gross.ToString("N0")]);
+            return _log.Refuse<PaymentBatchDto>(_loc["The selected credit notes ({0}) exceed the {1} being collected. Include more invoices, or untick a note and settle it against a later payment.", notesApplied.ToString("N0"), gross.ToString("N0")]);
 
         var batchNotes   = SanitiseText(dto.Notes, 500);
 
@@ -460,6 +477,12 @@ public class SaleService : ISaleService
         await _audit.LogAsync(user, "PaymentBatch.Record",
             $"{batch.BatchNumber} | {customer.Name} | net {batch.NetAmount:N0} " +
             $"({gross:N0} gross − {notesApplied:N0} notes) across {lines.Count} invoice(s)");
+        _log.LogInformation(
+            "Settlement {BatchNumber} received from {Customer} — {NetAmount} net " +
+            "({Gross} gross less {NotesApplied} in notes) across {InvoiceCount} invoice(s) " +
+            "and {NoteCount} note(s), by {User}",
+            batch.BatchNumber, customer.Name, batch.NetAmount, gross, notesApplied,
+            lines.Count, notes.Count, user);
         await _uow.SaveChangesAsync();
 
         return ServiceResult<PaymentBatchDto>.Ok(MapBatch(batch, customer.Name, lines.Count, notes.Count));

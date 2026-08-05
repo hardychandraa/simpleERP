@@ -1,4 +1,5 @@
-using Microsoft.Extensions.Localization;
+﻿using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Application.Resources;
@@ -21,9 +22,10 @@ public class PaymentTermService : IPaymentTermService
     private readonly IUnitOfWork            _uow;
 
     private readonly IStringLocalizer<SharedResource> _loc;
+    private readonly ILogger<PaymentTermService> _log;
     public PaymentTermService(IPaymentTermRepository terms, IAuditLogRepository audit, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc)
-    { _terms = terms; _audit = audit; _uow = uow;  _loc = loc; }
+        IStringLocalizer<SharedResource> loc, ILogger<PaymentTermService> log)
+    { _terms = terms; _audit = audit; _uow = uow;  _loc = loc; _log = log; }
 
     public async Task<List<PaymentTermDto>> GetAllAsync(bool activeOnly = false)
     {
@@ -61,7 +63,7 @@ public class PaymentTermService : IPaymentTermService
     public async Task<ServiceResult> UpdateAsync(PaymentTermDto dto, string user)
     {
         var term = await _terms.GetByIdAsync(dto.Id);
-        if (term == null) return ServiceResult.Fail(_loc["Payment term not found."]);
+        if (term == null) return _log.Refuse(_loc["Payment term not found."]);
 
         var invalid = await ValidateAsync(dto, dto.Id);
         if (invalid != null) return invalid;
@@ -85,10 +87,10 @@ public class PaymentTermService : IPaymentTermService
     public async Task<ServiceResult> DeleteAsync(Guid id, string user)
     {
         var term = await _terms.GetByIdAsync(id);
-        if (term == null) return ServiceResult.Fail(_loc["Payment term not found."]);
+        if (term == null) return _log.Refuse(_loc["Payment term not found."]);
 
         if (await _terms.IsInUseAsync(id))
-            return ServiceResult.Fail(_loc["'{0}' is used by existing sales and cannot be deleted. Set it to inactive instead — it will stop appearing on new sales while existing invoices keep showing it.", term.Name]);
+            return _log.Refuse(_loc["'{0}' is used by existing sales and cannot be deleted. Set it to inactive instead — it will stop appearing on new sales while existing invoices keep showing it.", term.Name]);
 
         _terms.Remove(term);
         await _audit.LogAsync(user, "PaymentTerm.Delete", term.Name);
@@ -99,13 +101,13 @@ public class PaymentTermService : IPaymentTermService
     private async Task<ServiceResult?> ValidateAsync(PaymentTermDto dto, Guid? excludeId)
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
-            return ServiceResult.Fail(_loc["Term name is required."]);
+            return _log.Refuse(_loc["Term name is required."]);
         if (dto.DueDays < 0)
-            return ServiceResult.Fail(_loc["Due days cannot be negative."]);
+            return _log.Refuse(_loc["Due days cannot be negative."]);
         if (dto.DueDays > MaxDueDays)
-            return ServiceResult.Fail(_loc["Due days cannot exceed {0}.", MaxDueDays]);
+            return _log.Refuse(_loc["Due days cannot exceed {0}.", MaxDueDays]);
         if (await _terms.NameExistsAsync(dto.Name.Trim(), excludeId))
-            return ServiceResult.Fail(_loc["A payment term named '{0}' already exists.", dto.Name.Trim()]);
+            return _log.Refuse(_loc["A payment term named '{0}' already exists.", dto.Name.Trim()]);
         return null;
     }
 

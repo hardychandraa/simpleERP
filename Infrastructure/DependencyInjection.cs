@@ -23,6 +23,9 @@ public static class DependencyInjection
         services.AddScoped<IPaymentRecordRepository,    PaymentRecordRepository>();
         services.AddScoped<IStockAdjustmentRepository,  StockAdjustmentRepository>();
         services.AddScoped<IAuditLogRepository,         AuditLogRepository>();
+        // Reads only. Writes go through AppLogSink over raw Npgsql, outside DI scope —
+        // see the note on IAppLogRepository.
+        services.AddScoped<IAppLogRepository,           AppLogRepository>();
         services.AddScoped<IAppSettingsRepository,      AppSettingsRepository>();
         services.AddScoped<IPaymentTermRepository,      PaymentTermRepository>();
         services.AddScoped<ISalesPersonRepository,      SalesPersonRepository>();
@@ -78,6 +81,7 @@ public static class DependencyInjection
         services.AddScoped<SimpleERP.Application.Services.AuditService>();
         services.AddScoped<IAuditService>(
             sp => sp.GetRequiredService<SimpleERP.Application.Services.AuditService>());
+        services.AddScoped<IAppLogService,       AppLogService>();
 
         return services;
     }

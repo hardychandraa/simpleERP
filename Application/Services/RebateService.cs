@@ -1,4 +1,5 @@
-using Microsoft.Extensions.Localization;
+﻿using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Application.Resources;
@@ -43,15 +44,16 @@ public class RebateService : IRebateService
     private readonly IUnitOfWork                  _uow;
 
     private readonly IStringLocalizer<SharedResource> _loc;
+    private readonly ILogger<RebateService> _log;
     public RebateService(IRebateRuleRepository rules, IRebateAccrualRepository accruals,
         IRebateRealizationRepository realizations, IPurchaseRepository purchases,
         ISupplierRepository suppliers, IProductRepository products, IBranchRepository branches,
         IAppSettingsRepository settings, IAuditLogRepository audit,
         InventoryService inventory, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc)
+        IStringLocalizer<SharedResource> loc, ILogger<RebateService> log)
     { _rules=rules; _accruals=accruals; _realizations=realizations; _purchases=purchases;
       _suppliers=suppliers; _products=products; _branches=branches; _settings=settings;
-      _audit=audit; _inventory=inventory; _uow=uow;  _loc = loc; }
+      _audit=audit; _inventory=inventory; _uow=uow;  _loc = loc; _log = log; }
 
     // ── Evaluation (called inside the PurchaseService transaction — no SaveChanges) ──
 
@@ -268,8 +270,17 @@ public class RebateService : IRebateService
         }
 
         if (voided > 0)
+        {
             await _audit.LogAsync(user, "Rebate.ClawBackVolumeForReturn",
                 $"purchase {purchase.PurchaseNumber}: {voided} accrual(s) no longer clear their threshold");
+            // Clawbacks are the least visible money movement in the app — nobody asks for
+            // one, it happens as a consequence of a return — so it is the first thing to
+            // check when a supplier disputes a rebate figure.
+            _log.LogInformation(
+                "Rebate volume clawed back on {PurchaseNumber} — {ReversedCount} accrual(s) " +
+                "no longer clear their threshold, by {User}",
+                purchase.PurchaseNumber, voided, user);
+        }
     }
 
     /// <summary>
@@ -293,9 +304,9 @@ public class RebateService : IRebateService
 
     public async Task<ServiceResult> RealizeCashAsync(RealizeCashDto dto, string user)
     {
-        if (dto.GrossAmount <= 0) return ServiceResult.Fail(_loc["Gross amount must be greater than zero."]);
+        if (dto.GrossAmount <= 0) return _log.Refuse(_loc["Gross amount must be greater than zero."]);
         var supplier = await _suppliers.GetByIdAsync(dto.SupplierId);
-        if (supplier == null) return ServiceResult.Fail(_loc["Supplier not found."]);
+        if (supplier == null) return _log.Refuse(_loc["Supplier not found."]);
 
         // Settle all outstanding cash accruals for the supplier as one lump — the shape
         // the supplier reconciliation sheet actually uses (many accruals, one payment).
@@ -304,7 +315,7 @@ public class RebateService : IRebateService
                      && a.RewardType != RebateRewardType.LuckyDraw)
             .ToList();
         if (outstanding.Count == 0)
-            return ServiceResult.Fail(_loc["This supplier has no outstanding cash rebates to settle."]);
+            return _log.Refuse(_loc["This supplier has no outstanding cash rebates to settle."]);
 
         var settings = await _settings.GetAsync();
         await RealizeCashCore(outstanding, dto.SupplierId, RebateRewardType.CreditNote,
@@ -317,13 +328,13 @@ public class RebateService : IRebateService
 
     public async Task<ServiceResult> RealizeLuckyDrawAsync(RealizeLuckyDrawDto dto, string user)
     {
-        if (dto.GrossAmount <= 0) return ServiceResult.Fail(_loc["Settled amount must be greater than zero."]);
+        if (dto.GrossAmount <= 0) return _log.Refuse(_loc["Settled amount must be greater than zero."]);
         var accrual = await _accruals.GetByIdAsync(dto.AccrualId);
-        if (accrual == null) return ServiceResult.Fail(_loc["Accrual not found."]);
+        if (accrual == null) return _log.Refuse(_loc["Accrual not found."]);
         if (accrual.RewardType != RebateRewardType.LuckyDraw)
-            return ServiceResult.Fail(_loc["That accrual is not a Lucky Draw."]);
+            return _log.Refuse(_loc["That accrual is not a Lucky Draw."]);
         if (accrual.RebateRealizationId != null || accrual.IsVoided)
-            return ServiceResult.Fail(_loc["That accrual is already settled or voided."]);
+            return _log.Refuse(_loc["That accrual is already settled or voided."]);
 
         var settings = await _settings.GetAsync();
         // The value is only known now — record it on the accrual too, so effective-cost
@@ -342,15 +353,15 @@ public class RebateService : IRebateService
     public async Task<ServiceResult> RealizeInKindAsync(RealizeInKindDto dto, string user)
     {
         var accrual = await _accruals.GetByIdAsync(dto.AccrualId);
-        if (accrual == null) return ServiceResult.Fail(_loc["Accrual not found."]);
+        if (accrual == null) return _log.Refuse(_loc["Accrual not found."]);
         if (accrual.RewardType != RebateRewardType.InKindGoods)
-            return ServiceResult.Fail(_loc["That accrual is not an in-kind reward."]);
+            return _log.Refuse(_loc["That accrual is not an in-kind reward."]);
         if (accrual.RebateRealizationId != null || accrual.IsVoided)
-            return ServiceResult.Fail(_loc["That accrual is already settled or voided."]);
+            return _log.Refuse(_loc["That accrual is already settled or voided."]);
 
         var rule = await _rules.GetByIdAsync(accrual.RebateRuleId);
         if (rule?.RewardProductId == null)
-            return ServiceResult.Fail(_loc["The rebate rule has no reward product to receive."]);
+            return _log.Refuse(_loc["The rebate rule has no reward product to receive."]);
 
         await RealizeInKindCore(accrual, rule.RewardProductId.Value, accrual.Qty,
             accrual.SupplierId, Trim(dto.ReferenceId, 100), Trim(dto.Notes, 500), user);
@@ -386,6 +397,10 @@ public class RebateService : IRebateService
 
         await _audit.LogAsync(user, "Rebate.RealizeCash",
             $"{gross:N0} gross − {withholding:N0} WHT = {net:N0} net, {accruals.Count} accrual(s)");
+        _log.LogInformation(
+            "Rebate settled in cash — {Gross} gross less {Withholding} withholding = {Net} net, " +
+            "clearing {AccrualCount} accrual(s), reference {Reference}, by {User}",
+            gross, withholding, net, accruals.Count, reference ?? "—", user);
     }
 
     private async Task RealizeInKindCore(RebateAccrual accrual, Guid productId, decimal qty,
@@ -414,6 +429,13 @@ public class RebateService : IRebateService
 
         var product = await _products.GetByIdAsync(productId);
         await _audit.LogAsync(user, "Rebate.RealizeInKind", $"{qty:N0} x {product?.Name} received free");
+        // Free goods enter stock at zero cost, which pulls the product's moving average
+        // down. That is intended, but it makes margin move without a purchase behind it —
+        // so the event needs to be findable when someone asks why cost changed.
+        _log.LogInformation(
+            "Rebate settled in kind — {Qty} x {Product} received free at zero cost, " +
+            "reference {Reference}, by {User}",
+            qty, product?.Name ?? "unknown product", reference ?? "—", user);
     }
 
     // ── Accrual builders ──
@@ -509,7 +531,7 @@ public class RebateService : IRebateService
     public async Task<ServiceResult> UpdateRuleAsync(RebateRuleDto dto, string user)
     {
         var rule = await _rules.GetByIdAsync(dto.Id);
-        if (rule == null) return ServiceResult.Fail(_loc["Rebate rule not found."]);
+        if (rule == null) return _log.Refuse(_loc["Rebate rule not found."]);
         var invalid = await ValidateRuleAsync(dto, dto.Id);
         if (invalid != null) return invalid;
 
@@ -523,9 +545,9 @@ public class RebateService : IRebateService
     public async Task<ServiceResult> DeleteRuleAsync(Guid id, string user)
     {
         var rule = await _rules.GetByIdAsync(id);
-        if (rule == null) return ServiceResult.Fail(_loc["Rebate rule not found."]);
+        if (rule == null) return _log.Refuse(_loc["Rebate rule not found."]);
         if (await _rules.IsInUseAsync(id))
-            return ServiceResult.Fail(_loc["'{0}' has already accrued rebates and cannot be deleted. Set it inactive instead — it stops applying to new purchases while existing accruals keep their link to it.", rule.Name]);
+            return _log.Refuse(_loc["'{0}' has already accrued rebates and cannot be deleted. Set it inactive instead — it stops applying to new purchases while existing accruals keep their link to it.", rule.Name]);
         _rules.Remove(rule);
         await _audit.LogAsync(user, "RebateRule.Delete", rule.Name);
         await _uow.SaveChangesAsync();
@@ -534,26 +556,26 @@ public class RebateService : IRebateService
 
     private async Task<ServiceResult?> ValidateRuleAsync(RebateRuleDto dto, Guid? excludeId)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail(_loc["Rule name is required."]);
-        if (dto.SupplierId == Guid.Empty) return ServiceResult.Fail(_loc["Supplier is required."]);
+        if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Rule name is required."]);
+        if (dto.SupplierId == Guid.Empty) return _log.Refuse(_loc["Supplier is required."]);
         if (await _rules.NameExistsAsync(dto.Name.Trim(), excludeId))
-            return ServiceResult.Fail(_loc["A rebate rule named '{0}' already exists.", dto.Name.Trim()]);
+            return _log.Refuse(_loc["A rebate rule named '{0}' already exists.", dto.Name.Trim()]);
         if (await _suppliers.GetByIdAsync(dto.SupplierId) == null)
-            return ServiceResult.Fail(_loc["Supplier not found."]);
+            return _log.Refuse(_loc["Supplier not found."]);
 
         switch (dto.ConditionType)
         {
             case RebateConditionType.Volume:
                 if (dto.ThresholdQty is < 0 || dto.ThresholdValue is < 0)
-                    return ServiceResult.Fail(_loc["Volume thresholds cannot be negative."]);
+                    return _log.Refuse(_loc["Volume thresholds cannot be negative."]);
                 break;
             case RebateConditionType.PriceDrop:
                 if (!(dto.ReferenceCost > 0))
-                    return ServiceResult.Fail(_loc["Price-drop rules need a reference cost greater than zero."]);
+                    return _log.Refuse(_loc["Price-drop rules need a reference cost greater than zero."]);
                 break;
             case RebateConditionType.OnTimePayment:
                 if (dto.OnTimePaymentDays is < 0)
-                    return ServiceResult.Fail(_loc["On-time grace days cannot be negative."]);
+                    return _log.Refuse(_loc["On-time grace days cannot be negative."]);
                 break;
         }
 
@@ -561,24 +583,24 @@ public class RebateService : IRebateService
         {
             case RebateRewardType.PercentDiscount:
                 if (!(dto.RewardRate > 0) || dto.RewardRate >= 100)
-                    return ServiceResult.Fail(_loc["Percent reward must be between 0 and 100."]);
+                    return _log.Refuse(_loc["Percent reward must be between 0 and 100."]);
                 break;
             case RebateRewardType.FixedCash:
             case RebateRewardType.CreditNote:
                 if (!(dto.RewardAmount > 0))
-                    return ServiceResult.Fail(_loc["Cash reward amount must be greater than zero."]);
+                    return _log.Refuse(_loc["Cash reward amount must be greater than zero."]);
                 break;
             case RebateRewardType.InKindGoods:
                 if (dto.RewardProductId == null || !(dto.RewardQty > 0))
-                    return ServiceResult.Fail(_loc["In-kind reward needs a product and a quantity."]);
+                    return _log.Refuse(_loc["In-kind reward needs a product and a quantity."]);
                 if (await _products.GetByIdAsync(dto.RewardProductId.Value) == null)
-                    return ServiceResult.Fail(_loc["Reward product not found."]);
+                    return _log.Refuse(_loc["Reward product not found."]);
                 break;
             // LuckyDraw needs no reward fields — value is unknown until settled.
         }
 
         if (dto.PeriodStart.HasValue && dto.PeriodEnd.HasValue && dto.PeriodEnd < dto.PeriodStart)
-            return ServiceResult.Fail(_loc["Period end cannot be before period start."]);
+            return _log.Refuse(_loc["Period end cannot be before period start."]);
         return null;
     }
 

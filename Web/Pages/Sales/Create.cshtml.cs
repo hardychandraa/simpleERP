@@ -20,11 +20,13 @@ public class CreateModel : PageModel
     private readonly IAppSettingsService _settings;
 
     private readonly IStringLocalizer<SharedResource> _loc;
+    private readonly ILogger<CreateModel> _log;
     public CreateModel(ISaleService sales, ICustomerService customers,
                        IProductService products, IPaymentTermService terms,
-                       ISalesPersonService people, IAppSettingsService settings, IStringLocalizer<SharedResource> loc)
+                       ISalesPersonService people, IAppSettingsService settings, IStringLocalizer<SharedResource> loc,
+                       ILogger<CreateModel> log)
     { _sales=sales; _customers=customers; _products=products; _terms=terms;
-      _people=people; _settings=settings;  _loc = loc; }
+      _people=people; _settings=settings;  _loc = loc; _log = log; }
 
     [BindProperty] public Guid        CustomerId  { get; set; }
     /// <summary>Business date of the sale. Defaults to today; may be backdated for
@@ -72,7 +74,17 @@ public class CreateModel : PageModel
         List<CreateSaleItemDto>? items;
         try { items = JsonSerializer.Deserialize<List<CreateSaleItemDto>>(ItemsJson,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
-        catch { Error = _loc["Invalid item data."]; return Page(); }
+        catch (JsonException ex)
+        {
+            // The line items are built client-side and posted as JSON, so this firing means
+            // the page's own JavaScript produced something malformed — a real defect, not
+            // user error, and it costs the operator a whole invoice's worth of typing.
+            // It used to be discarded entirely, leaving nothing to diagnose. The payload is
+            // logged because the fault is almost always in one specific line's shape, and
+            // it is the customer's own order data, not credentials.
+            _log.LogError(ex, "Sale line items failed to deserialize. Raw payload: {ItemsJson}", ItemsJson);
+            Error = _loc["Invalid item data."]; return Page();
+        }
 
         if (items == null || items.Count == 0) { Error = _loc["Add at least one item."]; return Page(); }
         if (items.Count > 100) { Error = _loc["Too many items in one sale."]; return Page(); }

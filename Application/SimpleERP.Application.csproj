@@ -13,5 +13,11 @@
       are localized (Phase B); the resource files themselves need no package.
     -->
     <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="8.0.0" />
+    <!--
+      ILogger<T> lives here, for the same reason. Abstractions only, deliberately: the
+      services declare what happened, and the Web project alone decides where that goes
+      (console, rolling file, Postgres). Nothing in Application knows Serilog exists.
+    -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
   </ItemGroup>
 </Project>

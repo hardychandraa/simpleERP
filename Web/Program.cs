@@ -1,7 +1,11 @@
-using SimpleERP.Infrastructure;
+﻿using SimpleERP.Infrastructure;
+using SimpleERP.Infrastructure.Logging;
+using SimpleERP.Web.Services;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Localization;
 using System.Globalization;
+using Serilog;
+using Serilog.Events;
 
 // Npgsql maps DateTime to `timestamp with time zone` by default and throws at runtime on
 // any DateTime whose Kind isn't Utc. This codebase mixes DateTime.UtcNow, DateTime.Now and
@@ -12,6 +16,58 @@ using System.Globalization;
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ── Logging ───────────────────────────────────────────────────────────────────
+// Configured immediately after the builder so that everything below — a missing
+// connection string, a failed migration, a DI misconfiguration — is recorded rather
+// than only printed to a console nobody is watching. Before this existed, closing the
+// console window destroyed every diagnostic the app had ever produced.
+//
+// Two sinks, and the split is deliberate:
+//   • Rolling file in logs/ — the AUTHORITATIVE record. Every level, one file per day,
+//     30 days retained (the same discipline as backups/), with a size cap so a runaway
+//     loop cannot fill the disk. It keeps working when PostgreSQL does not, which is
+//     precisely when the log matters most.
+//   • AppLogs table — Warning and above only, so incidents are queryable in SQL like
+//     everything else here and can back the viewer page. It can never record a database
+//     outage, hence it is the convenience and the file is the source of truth.
+//
+// EF Core is pinned to Warning: at Information it logs the text of every SQL statement,
+// which would bury the business events this exists to capture and churn the disk for no
+// benefit. Raise it deliberately and temporarily when debugging a query.
+const int LogRetainedFileCount = 30;
+var logDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
+Directory.CreateDirectory(logDirectory);
+
+var logConfig = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft",                     LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore",          LogEventLevel.Warning)
+    .MinimumLevel.Override("System",                        LogEventLevel.Warning)
+    // Required for the per-request CorrelationId/RequestPath properties pushed below to
+    // reach the sinks.
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(
+        path                  : Path.Combine(logDirectory, "simpleerp-.log"),
+        rollingInterval       : RollingInterval.Day,
+        retainedFileCountLimit: LogRetainedFileCount,
+        fileSizeLimitBytes    : 50L * 1024 * 1024,
+        rollOnFileSizeLimit   : true,
+        outputTemplate:
+            "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff} {Level:u3}] {Message:lj}" +
+            " «{SourceContext}»{NewLine}{Exception}");
+
+// Only when there is a database to write to. A missing connection string is itself an
+// error worth logging — to the file, which is why the file sink is configured first.
+var logConnectionString = builder.Configuration.GetConnectionString("SimpleERP");
+if (!string.IsNullOrWhiteSpace(logConnectionString))
+    logConfig = logConfig.WriteTo.AppLogTable(logConnectionString, LogEventLevel.Warning);
+
+Log.Logger = logConfig.CreateLogger();
+builder.Host.UseSerilog();
 
 // ── Security headers ─────────────────────────────────────────────────────────
 builder.Services.AddAntiforgery(options => {
@@ -51,15 +107,53 @@ builder.Services.AddInfrastructure(connectionString);
 // unregistered BackupService. Now consolidated onto the single hosted service.)
 builder.Services.AddHostedService<SimpleERP.Web.Services.BackupService>();
 
+// ── Log retention ─────────────────────────────────────────────────────────────
+// Keeps the AppLogs table to the same 30-day window as the log files. The files are
+// pruned by the sink itself; the table needs sweeping because it rides along in every
+// nightly pg_dump.
+builder.Services.AddHostedService<LogRetentionService>();
+
 var app = builder.Build();
+
+// ── Startup diagnostics ───────────────────────────────────────────────────────
+// The first thing in every log file. When "it worked yesterday", this line is what
+// tells you which build, which environment and which database yesterday actually meant.
+// The connection string is parsed rather than printed: it carries the password.
+var startupDb = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+// Given a SourceContext of its own so startup entries are attributable in the file and
+// filterable in the table, rather than showing an empty source like any bare Log call.
+var startupLog = Log.ForContext("SourceContext", "SimpleERP.Startup");
+startupLog.Information(
+    "SimpleERP starting — environment {Environment}, database {Database} on {Host}:{Port}, " +
+    "default culture {Culture}, logs kept {RetainedDays} days in {LogDirectory}",
+    app.Environment.EnvironmentName, startupDb.Database, startupDb.Host, startupDb.Port,
+    "id", LogRetainedFileCount, logDirectory);
 
 // ── DB init ──────────────────────────────────────────────────────────────────
 // Applies pending EF Core migrations.
-await DependencyInjection.InitDatabaseAsync(app.Services);
+try
+{
+    await DependencyInjection.InitDatabaseAsync(app.Services);
+    startupLog.Information("Database migrations applied.");
+}
+catch (Exception ex)
+{
+    // A failed migration leaves the app running against a schema it does not expect, so
+    // it must be recorded loudly rather than surfacing later as a column-not-found.
+    startupLog.Fatal(ex, "Database migration failed — the application cannot serve requests reliably.");
+    throw;
+}
 
 // ── Middleware pipeline ───────────────────────────────────────────────────────
-if (!app.Environment.IsDevelopment())
-    app.UseExceptionHandler("/Error");
+// Registered in every environment now, not just Production. In Development the framework
+// still puts its own developer exception page ahead of this one, so the rich diagnostic
+// page is unchanged — but the middleware below now logs the exception on the way past in
+// both environments, which is the part that was missing.
+app.UseExceptionHandler("/Error");
+
+// Correlation ID + unhandled-exception logging. As early as possible, so everything
+// below is covered and every log line the request emits carries its reference.
+app.UseMiddleware<RequestDiagnosticsMiddleware>();
 
 // Security headers on every response
 app.Use(async (ctx, next) => {
@@ -141,4 +235,21 @@ app.MapGet("/set-language", (string culture, string? returnUrl, HttpContext ctx)
     return Results.LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
 });
 
-app.Run();
+try
+{
+    app.Run();
+    startupLog.Information("SimpleERP stopped cleanly.");
+}
+catch (Exception ex)
+{
+    // The host itself fell over — a port already in use, a bad certificate. Without this
+    // the process would simply vanish, which is the single most confusing failure mode.
+    startupLog.Fatal(ex, "SimpleERP terminated unexpectedly.");
+    throw;
+}
+finally
+{
+    // Both sinks buffer. Without this flush the last — and most interesting — entries
+    // before a crash are the ones guaranteed to be lost.
+    Log.CloseAndFlush();
+}

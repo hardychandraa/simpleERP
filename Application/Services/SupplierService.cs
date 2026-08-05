@@ -1,4 +1,5 @@
-using Microsoft.Extensions.Localization;
+﻿using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Application.Resources;
@@ -20,10 +21,11 @@ public class SupplierService : ISupplierService
     private readonly IUnitOfWork            _uow;
 
     private readonly IStringLocalizer<SharedResource> _loc;
+    private readonly ILogger<SupplierService> _log;
     public SupplierService(ISupplierRepository suppliers, IPaymentTermRepository terms,
         IAuditLogRepository audit, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc)
-    { _suppliers = suppliers; _terms = terms; _audit = audit; _uow = uow;  _loc = loc; }
+        IStringLocalizer<SharedResource> loc, ILogger<SupplierService> log)
+    { _suppliers = suppliers; _terms = terms; _audit = audit; _uow = uow;  _loc = loc; _log = log; }
 
     public async Task<List<SupplierDto>> GetAllAsync(bool activeOnly = false)
     {
@@ -65,7 +67,7 @@ public class SupplierService : ISupplierService
     public async Task<ServiceResult> UpdateAsync(SupplierDto dto, string user)
     {
         var supplier = await _suppliers.GetByIdAsync(dto.Id);
-        if (supplier == null) return ServiceResult.Fail(_loc["Supplier not found."]);
+        if (supplier == null) return _log.Refuse(_loc["Supplier not found."]);
 
         var invalid = await ValidateAsync(dto, dto.Id);
         if (invalid != null) return invalid;
@@ -89,10 +91,10 @@ public class SupplierService : ISupplierService
     public async Task<ServiceResult> DeleteAsync(Guid id, string user)
     {
         var supplier = await _suppliers.GetByIdAsync(id);
-        if (supplier == null) return ServiceResult.Fail(_loc["Supplier not found."]);
+        if (supplier == null) return _log.Refuse(_loc["Supplier not found."]);
 
         if (await _suppliers.IsInUseAsync(id))
-            return ServiceResult.Fail(_loc["'{0}' has posted purchases and cannot be deleted. Set them to inactive instead — they will stop appearing on new purchases while existing documents keep showing them.", supplier.Name]);
+            return _log.Refuse(_loc["'{0}' has posted purchases and cannot be deleted. Set them to inactive instead — they will stop appearing on new purchases while existing documents keep showing them.", supplier.Name]);
 
         _suppliers.Remove(supplier);
         await _audit.LogAsync(user, "Supplier.Delete", supplier.Name);
@@ -103,16 +105,16 @@ public class SupplierService : ISupplierService
     private async Task<ServiceResult?> ValidateAsync(SupplierDto dto, Guid? excludeId)
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
-            return ServiceResult.Fail(_loc["Supplier name is required."]);
+            return _log.Refuse(_loc["Supplier name is required."]);
         if (dto.Name.Trim().Length > 300)
-            return ServiceResult.Fail(_loc["Supplier name cannot exceed 300 characters."]);
+            return _log.Refuse(_loc["Supplier name cannot exceed 300 characters."]);
         if (await _suppliers.NameExistsAsync(dto.Name.Trim(), excludeId))
-            return ServiceResult.Fail(_loc["A supplier named '{0}' already exists.", dto.Name.Trim()]);
+            return _log.Refuse(_loc["A supplier named '{0}' already exists.", dto.Name.Trim()]);
 
         if (dto.PaymentTermId.HasValue)
         {
             var term = await _terms.GetByIdAsync(dto.PaymentTermId.Value);
-            if (term == null) return ServiceResult.Fail(_loc["Selected payment term not found."]);
+            if (term == null) return _log.Refuse(_loc["Selected payment term not found."]);
         }
         return null;
     }

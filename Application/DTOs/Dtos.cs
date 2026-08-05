@@ -1074,6 +1074,31 @@ public class AuditLogDto {
     public string?  Detail    { get; set; }
 }
 
+// ── Diagnostic log ────────────────────────────────────────────────────────────
+/// <summary>
+/// One diagnostic entry for the log viewer. Distinct from <see cref="AuditLogDto"/>:
+/// that is the business trail of what happened, this is the record of what went wrong.
+/// </summary>
+public class AppLogDto {
+    public long     Id            { get; set; }
+    public DateTime Timestamp     { get; set; }
+    public string   Level         { get; set; } = "";
+    public string   Message       { get; set; } = "";
+    public string?  Exception     { get; set; }
+    /// <summary>Emitting type, already shortened to the class name for display.</summary>
+    public string?  Source        { get; set; }
+    public string?  CorrelationId { get; set; }
+    public string?  RequestPath   { get; set; }
+}
+
+/// <summary>Level tallies shown above the log list.</summary>
+public class AppLogSummaryDto {
+    public int Warnings { get; set; }
+    public int Errors   { get; set; }
+    public int Fatals   { get; set; }
+    public int Total    => Warnings + Errors + Fatals;
+}
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 public class AppSettingsDto {
     public string AppName        { get; set; } = "SimpleERP";

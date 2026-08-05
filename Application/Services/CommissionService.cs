@@ -1,4 +1,5 @@
-using Microsoft.Extensions.Localization;
+﻿using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Application.Resources;
@@ -28,12 +29,13 @@ public class CommissionService : ICommissionService
     private readonly IUnitOfWork                  _uow;
 
     private readonly IStringLocalizer<SharedResource> _loc;
+    private readonly ILogger<CommissionService> _log;
     public CommissionService(ICommissionRuleRepository rules, ICommissionAccrualRepository accruals,
         ICommissionPayoutRepository payouts, ISalesPersonRepository people,
         IProductRepository products, IAuditLogRepository audit, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc)
+        IStringLocalizer<SharedResource> loc, ILogger<CommissionService> log)
     { _rules=rules; _accruals=accruals; _payouts=payouts; _people=people;
-      _products=products; _audit=audit; _uow=uow;  _loc = loc; }
+      _products=products; _audit=audit; _uow=uow;  _loc = loc; _log = log; }
 
     // ── Accrual (called inside the SaleService transaction — no SaveChanges) ──
 
@@ -137,8 +139,15 @@ public class CommissionService : ICommissionService
         }
 
         if (clawedBack > 0)
+        {
             await _audit.LogAsync(user, "Commission.ClawBackForReturn",
                 $"sale {saleId}: {clawedBack} accrual(s) reversed");
+            // Same reasoning as the rebate clawback: this reduces someone's pay as a side
+            // effect of a return, so it must be traceable when the figure is queried.
+            _log.LogInformation(
+                "Commission clawed back on sale {SaleId} — {ReversedCount} accrual(s) reversed, by {User}",
+                saleId, clawedBack, user);
+        }
     }
 
     /// <summary>
@@ -184,11 +193,11 @@ public class CommissionService : ICommissionService
     public async Task<ServiceResult> PayoutAsync(PayoutCommissionDto dto, string user)
     {
         var person = await _people.GetByIdAsync(dto.SalesPersonId);
-        if (person == null) return ServiceResult.Fail(_loc["Sales person not found."]);
+        if (person == null) return _log.Refuse(_loc["Sales person not found."]);
 
         var unpaid = await _accruals.GetUnpaidBySalesPersonAsync(dto.SalesPersonId);
         if (unpaid.Count == 0)
-            return ServiceResult.Fail(_loc["{0} has no unpaid commission to pay out.", person.Name]);
+            return _log.Refuse(_loc["{0} has no unpaid commission to pay out.", person.Name]);
 
         var total = unpaid.Sum(a => a.Amount);
         var payout = new CommissionPayout {
@@ -202,6 +211,9 @@ public class CommissionService : ICommissionService
 
         await _audit.LogAsync(user, "Commission.Payout",
             $"{person.Name}: {total:N0} across {unpaid.Count} accrual(s)");
+        _log.LogInformation(
+            "Commission paid out to {SalesPerson} — {Amount} across {AccrualCount} accrual(s), by {User}",
+            person.Name, total, unpaid.Count, user);
         await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
     }
@@ -237,7 +249,7 @@ public class CommissionService : ICommissionService
     public async Task<ServiceResult> UpdateRuleAsync(CommissionRuleDto dto, string user)
     {
         var rule = await _rules.GetByIdAsync(dto.Id);
-        if (rule == null) return ServiceResult.Fail(_loc["Commission rule not found."]);
+        if (rule == null) return _log.Refuse(_loc["Commission rule not found."]);
         var invalid = await ValidateRuleAsync(dto, dto.Id);
         if (invalid != null) return invalid;
         ApplyRule(rule, dto);
@@ -250,9 +262,9 @@ public class CommissionService : ICommissionService
     public async Task<ServiceResult> DeleteRuleAsync(Guid id, string user)
     {
         var rule = await _rules.GetByIdAsync(id);
-        if (rule == null) return ServiceResult.Fail(_loc["Commission rule not found."]);
+        if (rule == null) return _log.Refuse(_loc["Commission rule not found."]);
         if (await _rules.IsInUseAsync(id))
-            return ServiceResult.Fail(_loc["'{0}' has already accrued commission and cannot be deleted. Set it inactive instead — it stops applying to new collections while existing accruals keep their link to it.", rule.Name]);
+            return _log.Refuse(_loc["'{0}' has already accrued commission and cannot be deleted. Set it inactive instead — it stops applying to new collections while existing accruals keep their link to it.", rule.Name]);
         _rules.Remove(rule);
         await _audit.LogAsync(user, "CommissionRule.Delete", rule.Name);
         await _uow.SaveChangesAsync();
@@ -261,16 +273,16 @@ public class CommissionService : ICommissionService
 
     private async Task<ServiceResult?> ValidateRuleAsync(CommissionRuleDto dto, Guid? excludeId)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail(_loc["Rule name is required."]);
-        if (!(dto.Rate > 0) || dto.Rate >= 100)  return ServiceResult.Fail(_loc["Rate must be between 0 and 100 percent."]);
+        if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Rule name is required."]);
+        if (!(dto.Rate > 0) || dto.Rate >= 100)  return _log.Refuse(_loc["Rate must be between 0 and 100 percent."]);
         if (await _rules.NameExistsAsync(dto.Name.Trim(), excludeId))
-            return ServiceResult.Fail(_loc["A commission rule named '{0}' already exists.", dto.Name.Trim()]);
+            return _log.Refuse(_loc["A commission rule named '{0}' already exists.", dto.Name.Trim()]);
         if (dto.SalesPersonId.HasValue && await _people.GetByIdAsync(dto.SalesPersonId.Value) == null)
-            return ServiceResult.Fail(_loc["Sales person not found."]);
+            return _log.Refuse(_loc["Sales person not found."]);
         if (dto.ProductId.HasValue && await _products.GetByIdAsync(dto.ProductId.Value) == null)
-            return ServiceResult.Fail(_loc["Product not found."]);
+            return _log.Refuse(_loc["Product not found."]);
         if (dto.EffectiveFrom.HasValue && dto.EffectiveTo.HasValue && dto.EffectiveTo < dto.EffectiveFrom)
-            return ServiceResult.Fail(_loc["Effective end cannot be before effective start."]);
+            return _log.Refuse(_loc["Effective end cannot be before effective start."]);
         return null;
     }
 

@@ -1,0 +1,130 @@
+@page "/Settings/Logs"
+@model SimpleERP.Web.Pages.Settings.LogsModel
+@{ ViewData["Title"] = Localizer["Diagnostic Log"].Value; }
+
+@*
+   Log message text is deliberately NOT localized, for the same reason the audit log
+   isn't (HC's decision, 2026-08-01): these strings are written into a file and a table
+   at the moment they happen, so translating at write time would make the stored record
+   depend on whichever language the operator had selected. The page chrome IS localized.
+*@
+
+<div class="stats" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat orange">
+    <div class="stat-lbl">@Localizer["Warnings"]</div>
+    <div class="stat-val">@Model.Summary.Warnings.ToString("N0")</div>
+  </div>
+  <div class="stat red">
+    <div class="stat-lbl">@Localizer["Errors"]</div>
+    <div class="stat-val">@Model.Summary.Errors.ToString("N0")</div>
+  </div>
+  <div class="stat purple">
+    <div class="stat-lbl">@Localizer["Fatal"]</div>
+    <div class="stat-val">@Model.Summary.Fatals.ToString("N0")</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">🔎 @Localizer["Filter"]</div>
+  <form method="get" class="search-bar">
+    <div class="fg" style="margin:0;flex:2;min-width:200px">
+      <label>@Localizer["Search"]</label>
+      <input type="text" name="search" value="@Model.Search"
+             placeholder="@Localizer["Message, exception, source or reference"]" />
+    </div>
+    <div class="fg" style="margin:0;width:150px">
+      <label>@Localizer["Level"]</label>
+      <select name="level">
+        <option value=""        selected="@(Model.Level == null)">@Localizer["All"]</option>
+        <option value="Warning" selected="@(Model.Level == "Warning")">@Localizer["Warning and above"]</option>
+        <option value="Error"   selected="@(Model.Level == "Error")">@Localizer["Error and above"]</option>
+        <option value="Fatal"   selected="@(Model.Level == "Fatal")">@Localizer["Fatal only"]</option>
+      </select>
+    </div>
+    <div class="fg" style="margin:0;width:160px">
+      <label>@Localizer["From"]</label>
+      <input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <div class="fg" style="margin:0;width:160px">
+      <label>@Localizer["To"]</label>
+      <input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <button type="submit" class="btn btn-primary">@Localizer["Apply"]</button>
+    <a href="/Settings/Logs" class="btn btn-outline">@Localizer["Reset"]</a>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    @Localizer["Recent Entries"]
+    @if (Model.AtRowLimit)
+    {
+        <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#d97706">
+            — @Localizer["showing the newest {0} only; narrow the filter to see further back", 200]
+        </span>
+    }
+  </div>
+
+  @if (Model.Entries.Count == 0)
+  {
+    <p style="color:#9ca3af;font-size:13px">
+      @Localizer["Nothing recorded for this filter. That is the good outcome — only warnings, errors and fatal problems are kept here."]
+    </p>
+  }
+  else
+  {
+    <table>
+      <thead>
+        <tr>
+          <th style="width:150px">@Localizer["Time"]</th>
+          <th style="width:80px">@Localizer["Level"]</th>
+          <th style="width:150px">@Localizer["Source"]</th>
+          <th>@Localizer["Message"]</th>
+          <th style="width:120px">@Localizer["Reference"]</th>
+        </tr>
+      </thead>
+      <tbody>
+      @foreach (var e in Model.Entries)
+      {
+          var badge = e.Level switch {
+              "Fatal"   => "err",
+              "Error"   => "err",
+              "Warning" => "warn",
+              _         => "gray"
+          };
+        <tr>
+          @* Stored UTC, shown local — consistent with every other screen in the app. *@
+          <td style="font-size:12px;white-space:nowrap">@e.Timestamp.ToLocalTime().ToString("dd-MMM-yy HH:mm:ss")</td>
+          <td><span class="badge @badge">@e.Level</span></td>
+          <td style="font-size:12px;color:#6b7280">@(e.Source ?? "—")</td>
+          <td style="font-size:12px;color:#374151">
+            @e.Message
+            @if (e.RequestPath != null)
+            {
+              <div style="font-size:11px;color:#9ca3af;margin-top:2px">@e.RequestPath</div>
+            }
+            @if (e.Exception != null)
+            {
+              @* Collapsed by default: a stack trace is 30+ lines and would make the
+                 list unreadable, but it is the whole point of the entry when needed. *@
+              <details style="margin-top:5px">
+                <summary style="cursor:pointer;font-size:11px;color:#dc2626;font-weight:600">
+                  @Localizer["Show technical detail"]
+                </summary>
+                <pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;color:#6b7280;background:#f9fafb;border:1px solid #f3f4f6;border-radius:6px;padding:8px;margin-top:5px;max-height:320px;overflow:auto">@e.Exception</pre>
+              </details>
+            }
+          </td>
+          <td style="font-family:'Courier New',monospace;font-size:11px;color:#6b7280">@(e.CorrelationId ?? "—")</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+
+  <p style="font-size:11px;color:#9ca3af;margin-top:14px;line-height:1.6">
+    @Localizer["Only warnings and above are kept in the database. The complete record, at every level, is in the rolling log files under logs/ — kept for 30 days, the same as backups. Those files also keep working when the database does not, which is why they are the authoritative copy."]
+    <br />
+    @Localizer["The Reference column matches the code shown on the error page, so a reported problem can be found here directly."]
+  </p>
+</div>

@@ -23,11 +23,13 @@ public class CreateModel : PageModel
     private readonly IAppSettingsService _settings;
 
     private readonly IStringLocalizer<SharedResource> _loc;
+    private readonly ILogger<CreateModel> _log;
     public CreateModel(IPurchaseService purchases, ISupplierService suppliers,
                        IProductService products, IPaymentTermService terms,
-                       IAppSettingsService settings, IStringLocalizer<SharedResource> loc)
+                       IAppSettingsService settings, IStringLocalizer<SharedResource> loc,
+                       ILogger<CreateModel> log)
     { _purchases=purchases; _suppliers=suppliers; _products=products;
-      _terms=terms; _settings=settings;  _loc = loc; }
+      _terms=terms; _settings=settings;  _loc = loc; _log = log; }
 
     [BindProperty] public Guid        SupplierId  { get; set; }
     [BindProperty] public string?     SupplierDocumentNumber { get; set; }
@@ -63,7 +65,14 @@ public class CreateModel : PageModel
         List<CreatePurchaseItemDto>? items;
         try { items = JsonSerializer.Deserialize<List<CreatePurchaseItemDto>>(ItemsJson,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
-        catch { Error = _loc["Invalid item data."]; return Page(); }
+        catch (JsonException ex)
+        {
+            // Same reasoning as Sales/Create: this is a client-side defect that costs the
+            // operator a whole supplier invoice's worth of entry, and it used to leave no
+            // trace at all.
+            _log.LogError(ex, "Purchase line items failed to deserialize. Raw payload: {ItemsJson}", ItemsJson);
+            Error = _loc["Invalid item data."]; return Page();
+        }
 
         if (items == null || items.Count == 0) { Error = _loc["Add at least one item."]; return Page(); }
         if (items.Count > 200) { Error = _loc["Too many items in one purchase."]; return Page(); }

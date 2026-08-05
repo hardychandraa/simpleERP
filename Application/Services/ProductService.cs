@@ -1,4 +1,5 @@
-using Microsoft.Extensions.Localization;
+﻿using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Application.Resources;
@@ -15,10 +16,11 @@ public class ProductService : IProductService
     private readonly IUnitOfWork _uow;
 
     private readonly IStringLocalizer<SharedResource> _loc;
+    private readonly ILogger<ProductService> _log;
     public ProductService(IProductRepository products, IInventoryLedgerRepository ledger,
         IBranchRepository branches, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc)
-    { _products = products; _ledger = ledger; _branches = branches; _uow = uow;  _loc = loc; }
+        IStringLocalizer<SharedResource> loc, ILogger<ProductService> log)
+    { _products = products; _ledger = ledger; _branches = branches; _uow = uow;  _loc = loc; _log = log; }
 
     public async Task<List<ProductDto>> GetAllAsync(string? search = null)
         => await MapList(await _products.GetAllAsync(), search);
@@ -38,14 +40,14 @@ public class ProductService : IProductService
 
     public async Task<ServiceResult> CreateAsync(CreateProductDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail(_loc["Product name is required."]);
-        if (string.IsNullOrWhiteSpace(dto.SKU))  return ServiceResult.Fail(_loc["SKU is required."]);
-        if (dto.UnitPrice < 0)   return ServiceResult.Fail(_loc["Unit price cannot be negative."]);
-        if (dto.LowStockThreshold < 0) return ServiceResult.Fail(_loc["Low stock threshold cannot be negative."]);
+        if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Product name is required."]);
+        if (string.IsNullOrWhiteSpace(dto.SKU))  return _log.Refuse(_loc["SKU is required."]);
+        if (dto.UnitPrice < 0)   return _log.Refuse(_loc["Unit price cannot be negative."]);
+        if (dto.LowStockThreshold < 0) return _log.Refuse(_loc["Low stock threshold cannot be negative."]);
 
         var sku = dto.SKU.Trim().ToUpper();
         if (await _products.SkuExistsAsync(sku))
-            return ServiceResult.Fail(_loc["SKU '{0}' is already used by another product.", sku]);
+            return _log.Refuse(_loc["SKU '{0}' is already used by another product.", sku]);
 
         await _products.AddAsync(new Product {
             Id = Guid.NewGuid(), Name = dto.Name.Trim(), SKU = sku,
@@ -61,15 +63,15 @@ public class ProductService : IProductService
     public async Task<ServiceResult> UpdateAsync(UpdateProductDto dto)
     {
         var p = await _products.GetByIdAsync(dto.Id);
-        if (p == null) return ServiceResult.Fail(_loc["Product not found."]);
-        if (string.IsNullOrWhiteSpace(dto.Name)) return ServiceResult.Fail(_loc["Product name is required."]);
-        if (string.IsNullOrWhiteSpace(dto.SKU))  return ServiceResult.Fail(_loc["SKU is required."]);
-        if (dto.UnitPrice < 0)   return ServiceResult.Fail(_loc["Unit price cannot be negative."]);
-        if (dto.LowStockThreshold < 0) return ServiceResult.Fail(_loc["Threshold cannot be negative."]);
+        if (p == null) return _log.Refuse(_loc["Product not found."]);
+        if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Product name is required."]);
+        if (string.IsNullOrWhiteSpace(dto.SKU))  return _log.Refuse(_loc["SKU is required."]);
+        if (dto.UnitPrice < 0)   return _log.Refuse(_loc["Unit price cannot be negative."]);
+        if (dto.LowStockThreshold < 0) return _log.Refuse(_loc["Threshold cannot be negative."]);
 
         var sku = dto.SKU.Trim().ToUpper();
         if (await _products.SkuExistsAsync(sku, dto.Id))
-            return ServiceResult.Fail(_loc["SKU '{0}' is already used by another product.", sku]);
+            return _log.Refuse(_loc["SKU '{0}' is already used by another product.", sku]);
 
         p.Name = dto.Name.Trim(); p.SKU = sku;
         p.UnitPrice = dto.UnitPrice; p.Category = dto.Category?.Trim();
@@ -83,7 +85,7 @@ public class ProductService : IProductService
     public async Task<ServiceResult> DeactivateAsync(Guid id)
     {
         var p = await _products.GetByIdAsync(id);
-        if (p == null) return ServiceResult.Fail(_loc["Product not found."]);
+        if (p == null) return _log.Refuse(_loc["Product not found."]);
         p.IsActive = false; _products.Update(p); await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
     }

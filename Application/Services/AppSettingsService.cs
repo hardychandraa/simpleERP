@@ -1,4 +1,5 @@
-using Microsoft.Extensions.Localization;
+﻿using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Application.Resources;
@@ -10,8 +11,9 @@ public class AppSettingsService : IAppSettingsService
 {
     private readonly IAppSettingsRepository _repo;
     private readonly IStringLocalizer<SharedResource> _loc;
+    private readonly ILogger<AppSettingsService> _log;
     public AppSettingsService(IAppSettingsRepository repo,
-        IStringLocalizer<SharedResource> loc) { _repo = repo; _loc = loc; }
+        IStringLocalizer<SharedResource> loc, ILogger<AppSettingsService> log) { _repo = repo; _loc = loc; _log = log; }
 
     public async Task<AppSettingsDto> GetAsync()
     {
@@ -29,11 +31,11 @@ public class AppSettingsService : IAppSettingsService
 
     public async Task<ServiceResult> SaveAsync(AppSettingsDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.StoreName)) return ServiceResult.Fail(_loc["Store name is required."]);
+        if (string.IsNullOrWhiteSpace(dto.StoreName)) return _log.Refuse(_loc["Store name is required."]);
         if (dto.VatRatePercent < 0m || dto.VatRatePercent > 100m)
-            return ServiceResult.Fail(_loc["PPN rate must be between 0 and 100 percent."]);
+            return _log.Refuse(_loc["PPN rate must be between 0 and 100 percent."]);
         if (dto.RebateWithholdingPercent < 0m || dto.RebateWithholdingPercent > 100m)
-            return ServiceResult.Fail(_loc["Rebate withholding rate must be between 0 and 100 percent."]);
+            return _log.Refuse(_loc["Rebate withholding rate must be between 0 and 100 percent."]);
         var s = await _repo.GetAsync();
         s.AppName      = string.IsNullOrWhiteSpace(dto.AppName) ? "SimpleERP" : dto.AppName.Trim();
         s.StoreName    = dto.StoreName.Trim();

@@ -47,11 +47,26 @@ public static class RawPrinter
         } finally { ClosePrinter(hPrinter); }
     }
 
-    public static List<string> GetInstalledPrinters()
+    /// <summary>
+    /// Enumerates Windows printers, returning an empty list rather than throwing — the
+    /// Settings page must still render when the print spooler is unavailable.
+    ///
+    /// The logger is optional only because this is a static helper with no container
+    /// behind it; pass one wherever there is one. Previously this was a bare
+    /// <c>catch { }</c>, so a stopped spooler or a broken driver looked exactly like a
+    /// machine with no printers installed — the single most confusing way this can fail.
+    /// </summary>
+    public static List<string> GetInstalledPrinters(ILogger? logger = null)
     {
         var list = new List<string>();
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return list;
-        try { foreach (string p in System.Drawing.Printing.PrinterSettings.InstalledPrinters) list.Add(p); } catch { }
+        try { foreach (string p in System.Drawing.Printing.PrinterSettings.InstalledPrinters) list.Add(p); }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex,
+                "Could not enumerate installed printers — the printer list will appear empty. " +
+                "This usually means the Windows print spooler is stopped or a driver is faulty.");
+        }
         return list;
     }
 }

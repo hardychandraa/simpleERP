@@ -1217,6 +1217,63 @@ public class AuditLogRepository : IAuditLogRepository
         _db.AuditLogs.OrderByDescending(l => l.Id).Take(count).ToListAsync();
 }
 
+public class AppLogRepository : IAppLogRepository
+{
+    private readonly AppDbContext _db;
+    public AppLogRepository(AppDbContext db) => _db = db;
+
+    /// <summary>
+    /// Severity order, so "Warning and above" can be expressed as a set rather than a
+    /// string comparison — "Error" &gt; "Warning" is true alphabetically but that is a
+    /// coincidence, and "Fatal" &lt; "Warning" shows why relying on it would break.
+    /// </summary>
+    private static readonly Dictionary<string, string[]> AtOrAbove = new(StringComparer.OrdinalIgnoreCase) {
+        ["Warning"] = new[] { "Warning", "Error", "Fatal" },
+        ["Error"]   = new[] { "Error", "Fatal" },
+        ["Fatal"]   = new[] { "Fatal" },
+    };
+
+    public Task<List<AppLog>> GetAsync(string? minLevel = null, DateTime? from = null, DateTime? to = null,
+                                       string? search = null, int count = 200)
+    {
+        var q = _db.AppLogs.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(minLevel) && AtOrAbove.TryGetValue(minLevel, out var levels))
+            q = q.Where(l => levels.Contains(l.Level));
+
+        if (from.HasValue) q = q.Where(l => l.Timestamp >= from.Value);
+        if (to.HasValue)   q = q.Where(l => l.Timestamp <  to.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            // ILIKE via EF.Functions so the match happens in Postgres, not after
+            // materialising rows — this table is the one that grows fastest in the app.
+            var pattern = $"%{search.Trim()}%";
+            q = q.Where(l => EF.Functions.ILike(l.Message, pattern)
+                          || (l.Exception != null && EF.Functions.ILike(l.Exception, pattern))
+                          || (l.Source    != null && EF.Functions.ILike(l.Source,    pattern))
+                          || (l.CorrelationId != null && EF.Functions.ILike(l.CorrelationId, pattern)));
+        }
+
+        return q.OrderByDescending(l => l.Id).Take(count).ToListAsync();
+    }
+
+    public async Task<List<AppLogLevelCount>> GetLevelCountsAsync(DateTime? from = null, DateTime? to = null)
+    {
+        var q = _db.AppLogs.AsNoTracking();
+        if (from.HasValue) q = q.Where(l => l.Timestamp >= from.Value);
+        if (to.HasValue)   q = q.Where(l => l.Timestamp <  to.Value);
+
+        var rows = await q.GroupBy(l => l.Level)
+                          .Select(g => new { Level = g.Key, Count = g.Count() })
+                          .ToListAsync();
+        return rows.Select(r => new AppLogLevelCount(r.Level, r.Count)).ToList();
+    }
+
+    public Task<int> PurgeOlderThanAsync(DateTime cutoffUtc) =>
+        _db.AppLogs.Where(l => l.Timestamp < cutoffUtc).ExecuteDeleteAsync();
+}
+
 public class AppSettingsRepository : IAppSettingsRepository
 {
     private readonly AppDbContext _db;

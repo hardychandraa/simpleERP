@@ -483,6 +483,34 @@ public interface IAuditLogRepository {
     Task<List<AuditLog>> GetRecentAsync(int count = 100);
 }
 
+/// <summary>
+/// Reads the diagnostic log. Deliberately read-only: entries are written by the Serilog
+/// sink over raw Npgsql, outside any request scope and outside <see cref="IUnitOfWork"/>,
+/// because a log write must not join — or be rolled back with — the business transaction
+/// that produced it.
+/// </summary>
+public interface IAppLogRepository {
+    /// <summary>
+    /// Newest first, filtered. <paramref name="minLevel"/> is a level name (Warning,
+    /// Error, Fatal); null means all. <paramref name="search"/> matches message,
+    /// exception text and source, case-insensitively.
+    /// </summary>
+    Task<List<AppLog>> GetAsync(string? minLevel = null, DateTime? from = null, DateTime? to = null,
+                                string? search = null, int count = 200);
+    /// <summary>Per-level counts over the same window, for the summary tiles.</summary>
+    Task<List<AppLogLevelCount>> GetLevelCountsAsync(DateTime? from = null, DateTime? to = null);
+    /// <summary>
+    /// Drops entries older than the cutoff, returning how many went. Keeps this table
+    /// from growing without bound, the same discipline as the 30-dump backup retention —
+    /// and it lands in every nightly pg_dump, so unbounded growth would be paid for 30
+    /// times over.
+    /// </summary>
+    Task<int> PurgeOlderThanAsync(DateTime cutoffUtc);
+}
+
+/// <summary>One row of the log viewer's level summary.</summary>
+public record AppLogLevelCount(string Level, int Count);
+
 public interface IUnitOfWork {
     Task<int> SaveChangesAsync();
 }

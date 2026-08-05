@@ -1150,4 +1150,22 @@
   <data name="Quantity must be greater than zero." xml:space="preserve"><value>Kuantitas harus lebih dari nol.</value></data>
   <data name="Save Settings first, then open any invoice and click &quot;Print to [printer]&quot; to test." xml:space="preserve"><value>Simpan Pengaturan dulu, lalu buka faktur mana pun dan klik "Cetak ke [printer]" untuk menguji.</value></data>
   <data name="Sending..." xml:space="preserve"><value>Mengirim...</value></data>
+  <data name="Diagnostic Log" xml:space="preserve"><value>Log Diagnostik</value></data>
+  <data name="Warnings" xml:space="preserve"><value>Peringatan</value></data>
+  <data name="Errors" xml:space="preserve"><value>Kesalahan</value></data>
+  <data name="Fatal" xml:space="preserve"><value>Fatal</value></data>
+  <data name="Level" xml:space="preserve"><value>Tingkat</value></data>
+  <data name="Apply" xml:space="preserve"><value>Terapkan</value></data>
+  <data name="Message" xml:space="preserve"><value>Pesan</value></data>
+  <data name="Recent Entries" xml:space="preserve"><value>Entri Terbaru</value></data>
+  <data name="Show technical detail" xml:space="preserve"><value>Tampilkan detail teknis</value></data>
+  <data name="Message, exception, source or reference" xml:space="preserve"><value>Pesan, exception, sumber atau referensi</value></data>
+  <data name="Warning and above" xml:space="preserve"><value>Peringatan ke atas</value></data>
+  <data name="Error and above" xml:space="preserve"><value>Kesalahan ke atas</value></data>
+  <data name="Fatal only" xml:space="preserve"><value>Hanya Fatal</value></data>
+  <data name="showing the newest {0} only; narrow the filter to see further back" xml:space="preserve"><value>menampilkan {0} terbaru saja; persempit filter untuk melihat lebih jauh ke belakang</value></data>
+  <data name="Nothing recorded for this filter. That is the good outcome — only warnings, errors and fatal problems are kept here." xml:space="preserve"><value>Tidak ada yang tercatat untuk filter ini. Itu hasil yang baik — hanya peringatan, kesalahan, dan masalah fatal yang disimpan di sini.</value></data>
+  <data name="Only warnings and above are kept in the database. The complete record, at every level, is in the rolling log files under logs/ — kept for 30 days, the same as backups. Those files also keep working when the database does not, which is why they are the authoritative copy." xml:space="preserve"><value>Hanya peringatan ke atas yang disimpan di basis data. Catatan lengkap, di semua tingkat, ada di berkas log bergulir dalam folder logs/ — disimpan 30 hari, sama seperti cadangan. Berkas itu juga tetap berjalan saat basis data tidak, itulah sebabnya berkas menjadi salinan utama.</value></data>
+  <data name="The Reference column matches the code shown on the error page, so a reported problem can be found here directly." xml:space="preserve"><value>Kolom Referensi cocok dengan kode yang ditampilkan di halaman error, sehingga masalah yang dilaporkan bisa langsung ditemukan di sini.</value></data>
+  <data name="Quote this reference when reporting the problem — the full details are recorded against it." xml:space="preserve"><value>Sebutkan referensi ini saat melaporkan masalah — detail lengkapnya tercatat dengan kode tersebut.</value></data>
 </root>

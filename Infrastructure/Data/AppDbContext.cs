@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<PaymentRecord>   PaymentRecords    => Set<PaymentRecord>();
     public DbSet<StockAdjustment> StockAdjustments  => Set<StockAdjustment>();
     public DbSet<AuditLog>        AuditLogs         => Set<AuditLog>();
+    public DbSet<AppLog>          AppLogs           => Set<AppLog>();
     public DbSet<AppSettings>     AppSettings       => Set<AppSettings>();
     public DbSet<PaymentTerm>     PaymentTerms      => Set<PaymentTerm>();
     public DbSet<SalesPerson>     SalesPersons      => Set<SalesPerson>();
@@ -157,6 +158,23 @@ public class AppDbContext : DbContext
             e.Property(l => l.Detail).HasMaxLength(500);
             e.Property(l => l.IpAddress).HasMaxLength(45);
             e.HasIndex(l => l.Timestamp);
+        });
+
+        m.Entity<AppLog>(e => {
+            e.HasKey(l => l.Id);
+            e.Property(l => l.Id).ValueGeneratedOnAdd();
+            e.Property(l => l.Level).IsRequired().HasMaxLength(20);
+            // Message and Exception are deliberately unbounded: a stack trace truncated
+            // at 500 characters loses the frame that actually matters. Postgres text
+            // costs nothing extra for short values.
+            e.Property(l => l.Message).IsRequired();
+            e.Property(l => l.Source).HasMaxLength(300);
+            e.Property(l => l.CorrelationId).HasMaxLength(64);
+            e.Property(l => l.RequestPath).HasMaxLength(500);
+            // Descending: every query against this table reads the newest entries first,
+            // both from the viewer page and by hand.
+            e.HasIndex(l => l.Timestamp).IsDescending();
+            e.HasIndex(l => l.CorrelationId);
         });
 
         m.Entity<PaymentTerm>(e => {

@@ -7,6 +7,17 @@ public interface IAuditService
 {
     Task<List<AuditLogDto>> GetRecentAsync(int count = 200);
 }
+
+/// <summary>
+/// Reads the diagnostic log for the viewer page. Read-only by design — entries are
+/// written by the Serilog sink, never by application code calling into here.
+/// </summary>
+public interface IAppLogService
+{
+    Task<List<AppLogDto>> GetAsync(string? minLevel = null, DateTime? from = null, DateTime? to = null,
+                                   string? search = null, int count = 200);
+    Task<AppLogSummaryDto> GetSummaryAsync(DateTime? from = null, DateTime? to = null);
+}
 public interface IProductService {
     Task<List<ProductDto>> GetAllAsync(string? search = null);
     Task<List<ProductDto>> GetAllActiveAsync(string? search = null);

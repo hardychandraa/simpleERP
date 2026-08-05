@@ -8,5 +8,13 @@
     <ProjectReference Include="..\Application\SimpleERP.Application.csproj" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.11" />
+    <!--
+      Serilog core only (not the ASP.NET Core integration, which stays in Web) — just
+      enough to implement ILogEventSink for AppLogSink, which writes Warning-and-above
+      into Postgres. It lives here because it talks to the database, which is
+      Infrastructure's job; it uses raw Npgsql rather than EF, so no DbContext scope is
+      needed on the logging path. Version pinned to the one Serilog.AspNetCore resolves.
+    -->
+    <PackageReference Include="Serilog" Version="3.1.1" />
   </ItemGroup>
 </Project>

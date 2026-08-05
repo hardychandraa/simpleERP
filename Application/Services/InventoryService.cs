@@ -1,4 +1,5 @@
-using Microsoft.Extensions.Localization;
+﻿using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Application.Resources;
@@ -17,19 +18,26 @@ public class InventoryService : IInventoryService
     private readonly IUnitOfWork                 _uow;
 
     private readonly IStringLocalizer<SharedResource> _loc;
+    private readonly ILogger<InventoryService> _log;
     public InventoryService(IInventoryLedgerRepository ledger, IProductRepository products,
         IBranchRepository branches, IStockAdjustmentRepository adjustments, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc)
-    { _ledger=ledger; _products=products; _branches=branches; _adjustments=adjustments; _uow=uow;  _loc = loc; }
+        IStringLocalizer<SharedResource> loc, ILogger<InventoryService> log)
+    { _ledger=ledger; _products=products; _branches=branches; _adjustments=adjustments; _uow=uow;  _loc = loc; _log = log; }
 
     public async Task<ServiceResult> StockInAsync(StockInDto dto)
     {
-        if (dto.Qty <= 0)    return ServiceResult.Fail(_loc["Quantity must be > 0."]);
-        if (dto.UnitCost < 0) return ServiceResult.Fail(_loc["Cost cannot be negative."]);
-        if (await _products.GetByIdAsync(dto.ProductId) == null) return ServiceResult.Fail(_loc["Product not found."]);
+        if (dto.Qty <= 0)    return _log.Refuse(_loc["Quantity must be > 0."]);
+        if (dto.UnitCost < 0) return _log.Refuse(_loc["Cost cannot be negative."]);
+        if (await _products.GetByIdAsync(dto.ProductId) == null) return _log.Refuse(_loc["Product not found."]);
         var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return ServiceResult.Fail(_loc["Default branch not found."]);
+        if (branch == null) return _log.Refuse(_loc["Default branch not found."]);
         await StockInCore(dto.ProductId, dto.Qty, dto.UnitCost, Guid.NewGuid(), branch.Id, ReferenceType.Purchase);
+        // Manual stock-in has no document behind it and — unlike sales, purchases and
+        // returns — writes no audit entry either, so before this it moved stock and cost
+        // leaving nothing but a ledger row tagged Purchase.
+        _log.LogInformation(
+            "Manual stock in — {Qty} units of product {ProductId} at {UnitCost} each",
+            dto.Qty, dto.ProductId, dto.UnitCost);
         await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
     }
@@ -37,9 +45,9 @@ public class InventoryService : IInventoryService
     // Called inside SaleService transaction — does NOT SaveChanges
     public async Task<ServiceResult> StockOutAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId)
     {
-        if (qty <= 0) return ServiceResult.Fail(_loc["Quantity must be > 0."]);
+        if (qty <= 0) return _log.Refuse(_loc["Quantity must be > 0."]);
         var stock = await _ledger.GetCurrentStockAsync(productId, branchId);
-        if (stock < qty) return ServiceResult.Fail(_loc["Insufficient stock. Available: {0}, Requested: {1}", stock.ToString("N2"), qty.ToString("N2")]);
+        if (stock < qty) return _log.Refuse(_loc["Insufficient stock. Available: {0}, Requested: {1}", stock.ToString("N2"), qty.ToString("N2")]);
         var cost = await _ledger.GetCurrentAvgCostAsync(productId, branchId);
         await _ledger.AddAsync(new InventoryLedger {
             Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
@@ -196,18 +204,18 @@ public class InventoryService : IInventoryService
 
     public async Task<ServiceResult> AdjustStockAsync(StockAdjustmentDto dto, string user)
     {
-        if (string.IsNullOrWhiteSpace(dto.Reason)) return ServiceResult.Fail(_loc["Reason is required."]);
-        if (dto.QtyActual < 0) return ServiceResult.Fail(_loc["Actual quantity cannot be negative."]);
+        if (string.IsNullOrWhiteSpace(dto.Reason)) return _log.Refuse(_loc["Reason is required."]);
+        if (dto.QtyActual < 0) return _log.Refuse(_loc["Actual quantity cannot be negative."]);
 
         var product = await _products.GetByIdAsync(dto.ProductId);
-        if (product == null) return ServiceResult.Fail(_loc["Product not found."]);
+        if (product == null) return _log.Refuse(_loc["Product not found."]);
 
         var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return ServiceResult.Fail(_loc["Default branch not found."]);
+        if (branch == null) return _log.Refuse(_loc["Default branch not found."]);
 
         var currentStock = await _ledger.GetCurrentStockAsync(dto.ProductId, branch.Id);
         var delta = dto.QtyActual - currentStock;
-        if (delta == 0) return ServiceResult.Fail(_loc["No difference between current stock and actual count. No adjustment needed."]);
+        if (delta == 0) return _log.Refuse(_loc["No difference between current stock and actual count. No adjustment needed."]);
 
         var currentCost = await _ledger.GetCurrentAvgCostAsync(dto.ProductId, branch.Id);
         var refId = Guid.NewGuid();
@@ -225,6 +233,14 @@ public class InventoryService : IInventoryService
             Id = Guid.NewGuid(), ProductId = dto.ProductId, BranchId = branch.Id,
             AdjustmentDate = DateTime.UtcNow, QtyBefore = currentStock,
             QtyAfter = dto.QtyActual, Reason = dto.Reason.Trim(), CreatedBy = user });
+
+        // A stock adjustment writes off or writes on real value with no document behind
+        // it, which makes it the most sensitive operation in the app to leave untraced.
+        // The reason is logged verbatim because it is the only explanation that exists.
+        _log.LogInformation(
+            "Stock adjusted — {Product}: {QtyBefore} counted as {QtyActual} ({Delta:+#;-#;0}) " +
+            "at {UnitCost} each, reason \"{Reason}\", by {User}",
+            product.Name, currentStock, dto.QtyActual, delta, currentCost, dto.Reason.Trim(), user);
 
         await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
@@ -321,7 +337,7 @@ public class InventoryService : IInventoryService
                 currentCost[line.ProductId] = await _ledger.GetCurrentAvgCostAsync(line.ProductId, branchId);
             }
             if (stock < line.Qty)
-                return ServiceResult.Fail(shortfall(line.ProductName, stock, line.Qty));
+                return _log.Refuse(shortfall(line.ProductName, stock, line.Qty));
             available[line.ProductId] = stock - line.Qty;
         }
 
