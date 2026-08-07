@@ -4,6 +4,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Suppliers;
 
@@ -46,8 +47,8 @@ public class EditModel : PageModel
         ViewData["Title"] = IsNew ? "New Supplier" : "Edit Supplier";
 
         var result = IsNew
-            ? await _svc.CreateAsync(Input, User.Identity?.Name ?? "staff")
-            : await _svc.UpdateAsync(Input, User.Identity?.Name ?? "staff");
+            ? await _svc.CreateAsync(Input, this.CurrentUserName())
+            : await _svc.UpdateAsync(Input, this.CurrentUserName());
 
         if (!result.Success)
         {

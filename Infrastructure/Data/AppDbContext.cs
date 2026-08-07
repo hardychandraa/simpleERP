@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<AppSettings>     AppSettings       => Set<AppSettings>();
     public DbSet<PaymentTerm>     PaymentTerms      => Set<PaymentTerm>();
     public DbSet<SalesPerson>     SalesPersons      => Set<SalesPerson>();
+    public DbSet<User>            Users             => Set<User>();
     public DbSet<Supplier>        Suppliers         => Set<Supplier>();
     public DbSet<Purchase>        Purchases         => Set<Purchase>();
     public DbSet<PurchaseItem>    PurchaseItems     => Set<PurchaseItem>();
@@ -316,6 +317,14 @@ public class AppDbContext : DbContext
             e.Property(p => p.Name).IsRequired().HasMaxLength(200);
             e.Property(p => p.Phone).HasMaxLength(50);
             e.HasIndex(p => p.Name).IsUnique();
+        });
+
+        m.Entity<User>(e => {
+            e.HasKey(u => u.Id);
+            e.Property(u => u.Username).IsRequired().HasMaxLength(100);
+            e.Property(u => u.PasswordHash).IsRequired().HasMaxLength(400);
+            e.Property(u => u.DisplayName).IsRequired().HasMaxLength(200);
+            e.HasIndex(u => u.Username).IsUnique();
         });
 
         m.Entity<CommissionRule>(e => {

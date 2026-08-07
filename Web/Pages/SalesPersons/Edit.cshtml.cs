@@ -4,6 +4,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.SalesPersons;
 
@@ -29,7 +30,7 @@ public class EditModel : PageModel
     public async Task<IActionResult> OnPostAsync()
     {
         ViewData["Title"] = "Edit Sales Person";
-        var result = await _svc.UpdateAsync(Input, User.Identity?.Name ?? "staff");
+        var result = await _svc.UpdateAsync(Input, this.CurrentUserName());
         if (!result.Success)
         {
             Error = result.Error;

@@ -4,6 +4,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Expenses;
 
@@ -40,7 +41,7 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid id, DateTime from, DateTime to)
     {
-        var result = await _svc.DeleteAsync(id, User.Identity?.Name ?? "staff");
+        var result = await _svc.DeleteAsync(id, this.CurrentUserName());
         var range  = $"from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}";
         return Redirect(result.Success
             ? $"/Expenses?{range}&msg={Uri.EscapeDataString(_loc["Expense deleted."].Value)}"

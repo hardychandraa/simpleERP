@@ -5,6 +5,7 @@ using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using SimpleERP.Web.Services;
 namespace SimpleERP.Web.Pages.Inventory;
 public class AdjustModel : PageModel {
     private readonly IInventoryService _inv;
@@ -33,7 +34,7 @@ public class AdjustModel : PageModel {
         if (!ModelState.IsValid) return Page();
         if (string.IsNullOrWhiteSpace(Input.Reason)) { Error=_loc["Reason is required."]; return Page(); }
         CurrentStock = await _inv.GetCurrentStockAsync(Input.ProductId);
-        var r = await _inv.AdjustStockAsync(Input, User.Identity?.Name ?? "staff");
+        var r = await _inv.AdjustStockAsync(Input, this.CurrentUserName());
         if (!r.Success) { Error=r.Error; return Page(); }
         Success = _loc["Stock adjusted. New stock: {0}", Input.QtyActual.ToString("N0")];
         Input = new StockAdjustmentDto();

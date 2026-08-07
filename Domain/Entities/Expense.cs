@@ -14,7 +14,7 @@ public class Expense {
     public string?  Description       { get; set; }
     /// <summary>Receipt/invoice number, so an entry can be traced to paper.</summary>
     public string?  ReferenceNo       { get; set; }
-    public string   CreatedBy         { get; set; } = "staff";
+    public string   CreatedBy         { get; set; } = string.Empty;
     public DateTime CreatedAt         { get; set; } = DateTime.UtcNow;
 
     public ExpenseCategory? Category  { get; set; }

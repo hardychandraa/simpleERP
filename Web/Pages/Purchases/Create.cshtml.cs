@@ -6,6 +6,7 @@ using SimpleERP.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Text.Json;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Purchases;
 
@@ -90,7 +91,7 @@ public class CreateModel : PageModel
             InvoiceDiscountAmount  = InvoiceDiscountIsPercent ? 0m : InvoiceDiscountInput,
             InvoiceDiscountPercent = InvoiceDiscountIsPercent ? InvoiceDiscountInput : null,
             Items                  = items
-        }, User.Identity?.Name ?? "staff");
+        }, this.CurrentUserName());
 
         if (!result.Success) { Error = result.Error; return Page(); }
         return RedirectToPage("/Purchases/Detail", new { id = result.Data!.Id });

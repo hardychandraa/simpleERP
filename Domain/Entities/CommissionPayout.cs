@@ -12,7 +12,7 @@ public class CommissionPayout
     public DateTime PayoutDate    { get; set; } = DateTime.UtcNow;
     public decimal  Amount        { get; set; }
     public string?  Notes         { get; set; }
-    public string   CreatedBy     { get; set; } = "staff";
+    public string   CreatedBy     { get; set; } = string.Empty;
 
     public SalesPerson? SalesPerson { get; set; }
     public ICollection<CommissionAccrual> Accruals { get; set; } = new List<CommissionAccrual>();

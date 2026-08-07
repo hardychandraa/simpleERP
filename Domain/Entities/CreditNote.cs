@@ -55,7 +55,7 @@ public class CreditNote
     /// <summary>Why the note exists. Required.</summary>
     public string          Reason         { get; set; } = string.Empty;
     public string?         Notes          { get; set; }
-    public string          CreatedBy      { get; set; } = "staff";
+    public string          CreatedBy      { get; set; } = string.Empty;
     public DateTime        CreatedAt      { get; set; } = DateTime.UtcNow;
 
     public Customer?       Customer       { get; set; }

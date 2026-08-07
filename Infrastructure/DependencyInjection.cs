@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IAppSettingsRepository,      AppSettingsRepository>();
         services.AddScoped<IPaymentTermRepository,      PaymentTermRepository>();
         services.AddScoped<ISalesPersonRepository,      SalesPersonRepository>();
+        services.AddScoped<IUserRepository,             UserRepository>();
         services.AddScoped<ISupplierRepository,         SupplierRepository>();
         services.AddScoped<IPurchaseRepository,         PurchaseRepository>();
         services.AddScoped<ISupplierPaymentRepository,  SupplierPaymentRepository>();
@@ -61,6 +62,10 @@ public static class DependencyInjection
         services.AddScoped<IFinancialReportService, FinancialReportService>();
         services.AddScoped<IPaymentTermService,  PaymentTermService>();
         services.AddScoped<ISalesPersonService,  SalesPersonService>();
+        // Stateless and thread-safe; the hasher itself holds no per-request state.
+        services.AddSingleton<IPasswordHasher, SimpleERP.Infrastructure.Security.PasswordHasherAdapter>();
+        services.AddScoped<IAuthService,         AuthService>();
+        services.AddScoped<IUserService,         UserService>();
         services.AddScoped<ISupplierService,     SupplierService>();
         // RebateService chains writes into InventoryService (in-kind stock) within one
         // transaction, and PurchaseService chains into RebateService, so both are

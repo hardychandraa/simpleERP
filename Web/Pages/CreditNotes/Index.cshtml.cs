@@ -5,6 +5,7 @@ using SimpleERP.Application.Interfaces;
 using SimpleERP.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.CreditNotes;
 
@@ -60,7 +61,7 @@ public class IndexModel : PageModel
         NewNote.NoteDate ??= DateTime.Now.Date;
     }
 
-    private string User_ => User.Identity?.Name ?? "staff";
+    private string User_ => this.CurrentUserName();
 
     public async Task<IActionResult> OnPostCreateAsync()
     {

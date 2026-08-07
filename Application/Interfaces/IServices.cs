@@ -142,6 +142,45 @@ public interface ISalesPersonService {
     Task<ServiceResult> UpdateAsync(SalesPersonDto dto, string user);
     Task<ServiceResult> DeleteAsync(Guid id, string user);
 }
+/// <summary>
+/// Verifies credentials. Deliberately separate from <see cref="IUserService"/>: this is
+/// the only path that reads a password hash, and it is reachable anonymously, so it is
+/// worth keeping distinct from the account-management surface that requires Admin.
+/// </summary>
+public interface IAuthService {
+    /// <summary>
+    /// Returns the account on success. Failure is deliberately undifferentiated — wrong
+    /// password, unknown user, deactivated and locked out all return the same message, so
+    /// the login form cannot be used to discover which usernames exist.
+    /// </summary>
+    Task<ServiceResult<AuthenticatedUserDto>> LoginAsync(string username, string password);
+    /// <summary>Records the logout in the audit trail. No state to clear server-side.</summary>
+    Task LogoutAsync(string user);
+}
+
+/// <summary>Account management. Every method here is Admin-only except ChangeOwnPasswordAsync.</summary>
+public interface IUserService {
+    /// <summary>
+    /// True when no account exists at all. Without a way to detect this the app would be
+    /// permanently unusable on a new database: every page needs a login, and creating a
+    /// login needs an Admin who does not exist yet.
+    /// </summary>
+    Task<bool> AnyUserExistsAsync();
+    /// <summary>
+    /// Creates the very first account, always as an Admin. Refuses once any account
+    /// exists, so the anonymous setup page cannot be replayed later to mint an Admin.
+    /// </summary>
+    Task<ServiceResult> CreateFirstAdminAsync(string username, string displayName, string password);
+    Task<List<UserDto>> GetAllAsync(bool activeOnly = false);
+    Task<UserDto?> GetByIdAsync(Guid id);
+    Task<ServiceResult> CreateAsync(UserDto dto, string password, string user);
+    /// <summary>Display name, role and active flag only — never the username or password.</summary>
+    Task<ServiceResult> UpdateAsync(UserDto dto, string user);
+    /// <summary>Admin-driven reset. There is no email in this app, so there is no self-service link.</summary>
+    Task<ServiceResult> ResetPasswordAsync(Guid id, string newPassword, string user);
+    Task<ServiceResult> ChangeOwnPasswordAsync(string username, string currentPassword, string newPassword);
+}
+
 public interface ICommissionService {
     // Rules
     Task<List<CommissionRuleDto>> GetRulesAsync(bool activeOnly = false);

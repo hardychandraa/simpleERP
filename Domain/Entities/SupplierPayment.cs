@@ -13,7 +13,7 @@ public class SupplierPayment
     public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
     public decimal  Amount      { get; set; }
     public string?  Notes       { get; set; }
-    public string   CreatedBy   { get; set; } = "staff";
+    public string   CreatedBy   { get; set; } = string.Empty;
     /// <summary>
     /// Set when this payment was one line of a multi-purchase settlement. Null for an
     /// ordinary single-purchase payment, which is the unchanged default path.

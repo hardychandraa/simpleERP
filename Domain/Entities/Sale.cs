@@ -55,7 +55,7 @@ public class Sale
     public decimal     AmountPaid    { get; set; }
     public SaleStatus  Status        { get; set; } = SaleStatus.Active;
     public string?     Notes         { get; set; }
-    public string      CreatedBy     { get; set; } = "staff";
+    public string      CreatedBy     { get; set; } = string.Empty;
     public DateTime    CreatedAt     { get; set; } = DateTime.UtcNow;
 
     public Customer?                  Customer       { get; set; }

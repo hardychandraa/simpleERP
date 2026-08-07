@@ -20,6 +20,18 @@ public enum PaymentType
     Due  = 2
 }
 
+/// <summary>
+/// What a login account is allowed to reach. Append only.
+///
+/// <c>Admin</c>: everything, including the money-visibility screens — commission,
+/// rebate income, expenses, P&amp;L, Position Summary, the audit and diagnostic logs, and
+/// user management.
+/// <c>Staff</c>: day-to-day operations only — sales, purchases, payments, returns,
+/// inventory and the operational reports. Deliberately cannot see what the business
+/// earns or what anyone is paid.
+/// </summary>
+public enum UserRole { Admin = 1, Staff = 2 }
+
 public enum SaleStatus     { Active = 1, Cancelled = 2 }
 public enum PurchaseStatus { Active = 1, Cancelled = 2 }
 /// <summary>Shared by CustomerReturn and SupplierReturn — a return is posted or reversed, never edited.</summary>

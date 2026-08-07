@@ -4,6 +4,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.RebateRules;
 
@@ -26,7 +27,7 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
-        var result = await _svc.DeleteRuleAsync(id, User.Identity?.Name ?? "staff");
+        var result = await _svc.DeleteRuleAsync(id, this.CurrentUserName());
         return Redirect(result.Success
             ? $"/RebateRules?msg={Uri.EscapeDataString(_loc["Rebate rule deleted."].Value)}"
             : $"/RebateRules?err=true&msg={Uri.EscapeDataString(result.Error!)}");

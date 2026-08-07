@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Text.Json;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Sales;
 
@@ -89,8 +90,7 @@ public class CreateModel : PageModel
         if (items == null || items.Count == 0) { Error = _loc["Add at least one item."]; return Page(); }
         if (items.Count > 100) { Error = _loc["Too many items in one sale."]; return Page(); }
 
-        // Determine user — in a 2-user system the role comes from a simple claim or falls back to "staff"
-        var user = User.Identity?.Name ?? "staff";
+        var user = this.CurrentUserName();
 
         var result = await _sales.CreateAsync(new CreateSaleDto {
             CustomerId     = CustomerId,

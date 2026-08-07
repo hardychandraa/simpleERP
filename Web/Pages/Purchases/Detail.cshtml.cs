@@ -2,6 +2,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Purchases;
 
@@ -54,7 +55,7 @@ public class DetailModel : PageModel
     {
         // The form only posts Amount/Notes; the purchase comes from the route.
         PayInput.PurchaseId = id;
-        var result = await _purchases.RecordPaymentAsync(PayInput, User.Identity?.Name ?? "staff");
+        var result = await _purchases.RecordPaymentAsync(PayInput, this.CurrentUserName());
         return RedirectToPage(new {
             id,
             msg = result.Success ? "Payment to supplier recorded." : result.Error,
@@ -64,7 +65,7 @@ public class DetailModel : PageModel
 
     public async Task<IActionResult> OnPostCancelAsync(Guid id)
     {
-        var result = await _purchases.CancelAsync(id, User.Identity?.Name ?? "staff");
+        var result = await _purchases.CancelAsync(id, this.CurrentUserName());
         return RedirectToPage(new {
             id,
             msg = result.Success ? "Purchase cancelled. Received stock reversed." : result.Error,
@@ -74,7 +75,7 @@ public class DetailModel : PageModel
 
     public async Task<IActionResult> OnPostReverseApplicationAsync(Guid id, Guid applicationId)
     {
-        var result = await _notes.ReverseApplicationAsync(applicationId, User.Identity?.Name ?? "staff");
+        var result = await _notes.ReverseApplicationAsync(applicationId, this.CurrentUserName());
         return RedirectToPage(new {
             id,
             msg = result.Success ? "Debit note application reversed." : result.Error,

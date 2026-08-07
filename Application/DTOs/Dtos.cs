@@ -709,6 +709,28 @@ public class SalesPersonDto {
     public bool    InUse    { get; set; }
 }
 
+// ── Users / auth ──────────────────────────────────────────────────────────────
+public class UserDto {
+    public Guid     Id          { get; set; }
+    public string   Username    { get; set; } = "";
+    public string   DisplayName { get; set; } = "";
+    public UserRole Role        { get; set; } = UserRole.Staff;
+    public bool     IsActive    { get; set; } = true;
+    public DateTime? LastLoginAt { get; set; }
+    /// <summary>True while a failed-login lockout is still in force.</summary>
+    public bool     IsLockedOut { get; set; }
+    /// <summary>True for the only remaining active Admin — the UI hides demote/deactivate.</summary>
+    public bool     IsLastAdmin { get; set; }
+}
+
+/// <summary>What a successful login hands back for the auth cookie's claims.</summary>
+public class AuthenticatedUserDto {
+    public Guid     Id          { get; set; }
+    public string   Username    { get; set; } = "";
+    public string   DisplayName { get; set; } = "";
+    public UserRole Role        { get; set; } = UserRole.Staff;
+}
+
 // ── Sales ─────────────────────────────────────────────────────────────────────
 public class CreateSaleDto {
     public Guid        CustomerId   { get; set; }

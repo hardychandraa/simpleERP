@@ -1213,4 +1213,54 @@
   <data name="of {0} — rest already applied" xml:space="preserve"><value>dari {0} — sisanya sudah diterapkan</value></data>
   <data name="Ticking a note settles whatever is left on it as part of this collection — the goods movement behind it already happened when the return was posted. A note already applied to a specific invoice shows only the balance it can still absorb." xml:space="preserve"><value>Mencentang nota akan menyelesaikan sisa nilainya sebagai bagian dari penagihan ini — pergerakan barang di baliknya sudah terjadi saat retur diposting. Nota yang sudah diterapkan ke faktur tertentu hanya menampilkan sisa yang masih bisa diserap.</value></data>
   <data name="Ticking a note settles whatever is left on it as part of this payment — the goods movement behind it already happened when the return was posted. A note already applied to a specific purchase shows only the balance it can still absorb." xml:space="preserve"><value>Mencentang nota akan menyelesaikan sisa nilainya sebagai bagian dari pembayaran ini — pergerakan barang di baliknya sudah terjadi saat retur diposting. Nota yang sudah diterapkan ke pembelian tertentu hanya menampilkan sisa yang masih bisa diserap.</value></data>
+  <data name="Sign in" xml:space="preserve"><value>Masuk</value></data>
+  <data name="Username" xml:space="preserve"><value>Nama Pengguna</value></data>
+  <data name="Password" xml:space="preserve"><value>Kata Sandi</value></data>
+  <data name="Log out" xml:space="preserve"><value>Keluar</value></data>
+  <data name="Users" xml:space="preserve"><value>Pengguna</value></data>
+  <data name="Add User" xml:space="preserve"><value>Tambah Pengguna</value></data>
+  <data name="Role" xml:space="preserve"><value>Peran</value></data>
+  <data name="Admin" xml:space="preserve"><value>Administrator</value></data>
+  <data name="Staff" xml:space="preserve"><value>Staf</value></data>
+  <data name="Display name" xml:space="preserve"><value>Nama Tampilan</value></data>
+  <data name="Last login" xml:space="preserve"><value>Masuk Terakhir</value></data>
+  <data name="Never" xml:space="preserve"><value>Belum pernah</value></data>
+  <data name="Locked" xml:space="preserve"><value>Terkunci</value></data>
+  <data name="New password" xml:space="preserve"><value>Kata sandi baru</value></data>
+  <data name="Reset password" xml:space="preserve"><value>Atur Ulang Kata Sandi</value></data>
+  <data name="Current password" xml:space="preserve"><value>Kata sandi saat ini</value></data>
+  <data name="Confirm new password" xml:space="preserve"><value>Konfirmasi kata sandi baru</value></data>
+  <data name="Change Password" xml:space="preserve"><value>Ubah Kata Sandi</value></data>
+  <data name="Password changed." xml:space="preserve"><value>Kata sandi berhasil diubah.</value></data>
+  <data name="Password reset." xml:space="preserve"><value>Kata sandi berhasil diatur ulang.</value></data>
+  <data name="User updated." xml:space="preserve"><value>Pengguna berhasil diperbarui.</value></data>
+  <data name="At least 8 characters." xml:space="preserve"><value>Minimal 8 karakter.</value></data>
+  <data name="Not permitted" xml:space="preserve"><value>Tidak diizinkan</value></data>
+  <data name="Back to Dashboard" xml:space="preserve"><value>Kembali ke Dasbor</value></data>
+  <data name="The only active administrator" xml:space="preserve"><value>Satu-satunya administrator aktif</value></data>
+  <data name="Invalid username or password." xml:space="preserve"><value>Nama pengguna atau kata sandi salah.</value></data>
+  <data name="Username is required." xml:space="preserve"><value>Nama pengguna wajib diisi.</value></data>
+  <data name="Username cannot exceed 100 characters." xml:space="preserve"><value>Nama pengguna tidak boleh lebih dari 100 karakter.</value></data>
+  <data name="Display name is required." xml:space="preserve"><value>Nama tampilan wajib diisi.</value></data>
+  <data name="Display name cannot exceed 200 characters." xml:space="preserve"><value>Nama tampilan tidak boleh lebih dari 200 karakter.</value></data>
+  <data name="Password is required." xml:space="preserve"><value>Kata sandi wajib diisi.</value></data>
+  <data name="User not found." xml:space="preserve"><value>Pengguna tidak ditemukan.</value></data>
+  <data name="Current password is incorrect." xml:space="preserve"><value>Kata sandi saat ini salah.</value></data>
+  <data name="The new passwords do not match." xml:space="preserve"><value>Kata sandi baru tidak cocok.</value></data>
+  <data name="The new password must be different from the current one." xml:space="preserve"><value>Kata sandi baru harus berbeda dari kata sandi saat ini.</value></data>
+  <data name="Password must be at least {0} characters." xml:space="preserve"><value>Kata sandi minimal {0} karakter.</value></data>
+  <data name="A user named '{0}' already exists." xml:space="preserve"><value>Pengguna bernama '{0}' sudah ada.</value></data>
+  <data name="User '{0}' added." xml:space="preserve"><value>Pengguna '{0}' ditambahkan.</value></data>
+  <data name="Reset the password for {0}?" xml:space="preserve"><value>Atur ulang kata sandi untuk {0}?</value></data>
+  <data name="'{0}' is the only active administrator. Give another user the Admin role first." xml:space="preserve"><value>'{0}' adalah satu-satunya administrator aktif. Berikan peran Administrator kepada pengguna lain terlebih dahulu.</value></data>
+  <data name="Too many failed sign-in attempts. Resetting the password clears it." xml:space="preserve"><value>Terlalu banyak percobaan masuk yang gagal. Mengatur ulang kata sandi akan membukanya kembali.</value></data>
+  <data name="If you need access to it, ask an administrator to change your role." xml:space="preserve"><value>Jika Anda memerlukan akses, mintalah administrator untuk mengubah peran Anda.</value></data>
+  <data name="This page is restricted to administrators. Commission, rebates, expenses and the financial reports are not part of the day-to-day operational screens." xml:space="preserve"><value>Halaman ini hanya untuk administrator. Komisi, rabat, biaya, dan laporan keuangan bukan bagian dari layar operasional sehari-hari.</value></data>
+  <data name="Changing your password signs nobody out — your current session stays open, but the old password stops working immediately." xml:space="preserve"><value>Mengubah kata sandi tidak mengeluarkan siapa pun — sesi Anda saat ini tetap terbuka, tetapi kata sandi lama langsung tidak berlaku.</value></data>
+  <data name="An Administrator sees everything, including commission, rebates, expenses and the financial reports. Staff run the day-to-day operation — sales, purchases, payments, returns and stock — and cannot open those screens." xml:space="preserve"><value>Administrator melihat semuanya, termasuk komisi, rabat, biaya, dan laporan keuangan. Staf menjalankan operasional harian — penjualan, pembelian, pembayaran, retur, dan stok — dan tidak dapat membuka layar tersebut.</value></data>
+  <data name="Accounts are deactivated, never deleted — every invoice, payment and audit entry records the username that made it, and those need to stay resolvable. The last active administrator cannot be demoted or deactivated." xml:space="preserve"><value>Akun dinonaktifkan, tidak pernah dihapus — setiap faktur, pembayaran, dan catatan audit merekam nama pengguna yang membuatnya, dan itu harus tetap dapat ditelusuri. Administrator aktif terakhir tidak dapat diturunkan perannya atau dinonaktifkan.</value></data>
+  <data name="First-time setup" xml:space="preserve"><value>Pengaturan awal</value></data>
+  <data name="Create administrator" xml:space="preserve"><value>Buat Administrator</value></data>
+  <data name="Setup has already been completed." xml:space="preserve"><value>Pengaturan awal sudah pernah diselesaikan.</value></data>
+  <data name="No accounts exist yet. Create the first administrator — it can see everything and manage all other users. This page disappears permanently once the account is created." xml:space="preserve"><value>Belum ada akun sama sekali. Buat administrator pertama — akun ini dapat melihat semuanya dan mengelola seluruh pengguna lain. Halaman ini hilang secara permanen setelah akun dibuat.</value></data>
 </root>

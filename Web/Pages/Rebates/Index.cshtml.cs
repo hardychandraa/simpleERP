@@ -5,6 +5,7 @@ using SimpleERP.Application.Interfaces;
 using SimpleERP.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Rebates;
 
@@ -48,7 +49,7 @@ public class IndexModel : PageModel
         WithholdingPercent = (await _settings.GetAsync()).RebateWithholdingPercent;
     }
 
-    private string User_ => User.Identity?.Name ?? "staff";
+    private string User_ => this.CurrentUserName();
 
     public async Task<IActionResult> OnPostRealizeCashAsync(RealizeCashDto input)
     {

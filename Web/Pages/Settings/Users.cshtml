@@ -1,0 +1,138 @@
+@page "/Settings/Users"
+@using SimpleERP.Domain.Enums
+@model SimpleERP.Web.Pages.Settings.UsersModel
+@{ ViewData["Title"] = Localizer["Users"].Value; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div class="card">
+    <div class="card-title">➕ @Localizer["Add User"]</div>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:14px;line-height:1.6">
+        @Localizer["An Administrator sees everything, including commission, rebates, expenses and the financial reports. Staff run the day-to-day operation — sales, purchases, payments, returns and stock — and cannot open those screens."]
+    </p>
+    <form method="post" asp-page-handler="Create">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="fg" style="margin:0;flex:1;min-width:150px">
+                <label>@Localizer["Username"] *</label>
+                <input type="text" asp-for="Input.Username" required maxlength="100" autocomplete="off" />
+            </div>
+            <div class="fg" style="margin:0;flex:1;min-width:150px">
+                <label>@Localizer["Display name"] *</label>
+                <input type="text" asp-for="Input.DisplayName" required maxlength="200" autocomplete="off" />
+            </div>
+            <div class="fg" style="margin:0;width:190px">
+                <label>@Localizer["Password"] *</label>
+                <input type="password" asp-for="NewPassword" required minlength="8" autocomplete="new-password" />
+            </div>
+            <div class="fg" style="margin:0;width:150px">
+                <label>@Localizer["Role"]</label>
+                <select asp-for="Input.Role">
+                    <option value="@((int)UserRole.Staff)">@Localizer["Staff"]</option>
+                    <option value="@((int)UserRole.Admin)">@Localizer["Admin"]</option>
+                </select>
+            </div>
+            <div class="fg" style="margin:0;display:flex;align-items:center;gap:8px;padding-bottom:9px">
+                <input type="checkbox" asp-for="Input.IsActive" style="width:18px;height:18px;margin:0" />
+                <label style="margin:0;white-space:nowrap">@Localizer["Active"]</label>
+            </div>
+            <button type="submit" class="btn btn-primary">@Localizer["Add"]</button>
+        </div>
+        <p style="font-size:11px;color:#9ca3af;margin-top:10px">@Localizer["At least 8 characters."]</p>
+    </form>
+</div>
+
+@*
+    One form per row, declared outside the table and referenced by the inputs' form=""
+    attribute. A <form> cannot legally span <td> boundaries, so this is the way to get an
+    editable row without either a separate Edit page or a form per cell.
+*@
+@foreach (var u in Model.Users)
+{
+    <form id="edit-@u.Id"  method="post" asp-page-handler="Update"><input type="hidden" name="Input.Id" value="@u.Id" /></form>
+    <form id="reset-@u.Id" method="post" asp-page-handler="ResetPassword" asp-route-id="@u.Id"></form>
+}
+
+<div class="card">
+    <div class="card-title">@Localizer["Users"] (@Model.Users.Count)</div>
+    <table>
+        <thead>
+            <tr>
+                <th>@Localizer["Username"]</th>
+                <th>@Localizer["Display name"]</th>
+                <th style="width:120px">@Localizer["Role"]</th>
+                <th style="width:80px;text-align:center">@Localizer["Active"]</th>
+                <th style="width:140px">@Localizer["Last login"]</th>
+                <th style="width:90px"></th>
+                <th style="width:220px">@Localizer["Reset password"]</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var u in Model.Users)
+        {
+            <tr>
+                <td style="font-weight:600">
+                    @u.Username
+                    @if (u.IsLockedOut)
+                    {
+                        <span class="badge warn" style="margin-left:6px"
+                              title="@Localizer["Too many failed sign-in attempts. Resetting the password clears it."]">@Localizer["Locked"]</span>
+                    }
+                </td>
+                <td>
+                    <input form="edit-@u.Id" type="text" name="Input.DisplayName"
+                           value="@u.DisplayName" required maxlength="200" />
+                </td>
+                <td>
+                    @if (u.IsLastAdmin)
+                    {
+                        @* The only active Admin: the service refuses the change anyway, but a
+                           disabled control explains why instead of failing after the click. *@
+                        <span class="badge info" title="@Localizer["The only active administrator"]">@Localizer["Admin"]</span>
+                        <input form="edit-@u.Id" type="hidden" name="Input.Role"     value="@((int)u.Role)" />
+                        <input form="edit-@u.Id" type="hidden" name="Input.IsActive" value="true" />
+                    }
+                    else
+                    {
+                        <select form="edit-@u.Id" name="Input.Role">
+                            <option value="@((int)UserRole.Staff)" selected="@(u.Role == UserRole.Staff)">@Localizer["Staff"]</option>
+                            <option value="@((int)UserRole.Admin)" selected="@(u.Role == UserRole.Admin)">@Localizer["Admin"]</option>
+                        </select>
+                    }
+                </td>
+                <td style="text-align:center">
+                    @if (u.IsLastAdmin)
+                    {
+                        <span style="color:#059669;font-weight:600;font-size:12px">@Localizer["Active"]</span>
+                    }
+                    else
+                    {
+                        <input form="edit-@u.Id" type="checkbox" name="Input.IsActive" value="true"
+                               checked="@u.IsActive" style="width:18px;height:18px" />
+                    }
+                </td>
+                <td style="font-size:12px;color:@(u.LastLoginAt == null ? "#9ca3af" : "inherit")">
+                    @(u.LastLoginAt == null
+                        ? Localizer["Never"].Value
+                        : u.LastLoginAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm"))
+                </td>
+                <td>
+                    <button form="edit-@u.Id" type="submit" class="btn btn-outline btn-sm">@Localizer["Save"]</button>
+                </td>
+                <td style="white-space:nowrap">
+                    <input form="reset-@u.Id" type="password" name="NewPassword" required minlength="8"
+                           autocomplete="new-password" placeholder="@Localizer["New password"]"
+                           style="width:125px;display:inline-block;padding:4px 8px;font-size:12px" />
+                    <button form="reset-@u.Id" type="submit" class="btn btn-outline btn-sm"
+                            onclick="return confirm('@Localizer["Reset the password for {0}?", u.Username]');">@Localizer["Reset"]</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <p style="font-size:11px;color:#9ca3af;margin-top:12px;line-height:1.6">
+        @Localizer["Accounts are deactivated, never deleted — every invoice, payment and audit entry records the username that made it, and those need to stay resolvable. The last active administrator cannot be demoted or deactivated."]
+    </p>
+</div>

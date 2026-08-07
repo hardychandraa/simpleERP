@@ -2,7 +2,11 @@
 using SimpleERP.Infrastructure.Logging;
 using SimpleERP.Web.Services;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Localization;
+using SimpleERP.Domain.Enums;
+using SimpleERP.Domain.Interfaces;
 using System.Globalization;
 using Serilog;
 using Serilog.Events;
@@ -77,8 +81,85 @@ builder.Services.AddAntiforgery(options => {
     options.Cookie.SameSite      = SameSiteMode.Strict;
 });
 
+// ── Authentication ───────────────────────────────────────────────────────────
+// Plain cookie authentication, no ASP.NET Core Identity. The app needs a username, a
+// password check and a role; Identity would bring UserManager, SignInManager and seven
+// tables for features this business does not have (email confirmation, 2FA, external
+// logins). Password hashes are still Identity's own format — see PasswordHasherAdapter —
+// so adopting the full framework later would not invalidate a single stored credential.
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options => {
+        options.LoginPath        = "/Account/Login";
+        options.AccessDeniedPath = "/Account/Denied";
+        options.LogoutPath       = "/Account/Logout";
+        // A working day, sliding: staff should not be logged out mid-invoice, but a
+        // machine left overnight should not still be signed in the next morning.
+        options.ExpireTimeSpan   = TimeSpan.FromHours(12);
+        options.SlidingExpiration = true;
+        options.Cookie.Name         = "SimpleERP.Auth";
+        options.Cookie.HttpOnly     = true;   // unlike the culture cookie, this IS a secret
+        options.Cookie.SameSite     = SameSiteMode.Strict;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.IsEssential  = true;
+
+        // Re-check the account on every request.
+        //
+        // An auth cookie is self-contained and signed: without this, deactivating someone
+        // only stops them logging in *again*, while the session they already have keeps
+        // working until the cookie expires — up to 12 hours of continued access to a
+        // person who was just switched off. Verified live: a cookie for a deleted user
+        // still opened /Sales/Create.
+        //
+        // A role change is picked up the same way, so demoting an Admin takes effect on
+        // their next click rather than at their next login.
+        options.Events.OnValidatePrincipal = async ctx => {
+            var username = ctx.Principal?.Identity?.Name;
+            var users    = ctx.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+            var account  = username == null ? null : await users.GetByUsernameAsync(username);
+
+            if (account == null || !account.IsActive
+                || !ctx.Principal!.IsInRole(account.Role.ToString()))
+            {
+                ctx.RejectPrincipal();
+                await ctx.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            }
+        };
+    });
+
+builder.Services.AddAuthorization(options => {
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole(nameof(UserRole.Admin)));
+});
+
 builder.Services.AddRazorPages(options => {
     // All Razor Pages require antiforgery by default (already the case, explicit for clarity)
+
+    // ── Access control ───────────────────────────────────────────────────────
+    // Deny by default: every page requires a login unless it is named below. Stated as
+    // a convention rather than ~50 [Authorize] attributes so that a page added later is
+    // protected because nobody did anything, rather than exposed because somebody forgot.
+    options.Conventions.AuthorizeFolder("/");
+    options.Conventions.AllowAnonymousToPage("/Account/Login");
+    options.Conventions.AllowAnonymousToPage("/Account/Denied");
+    options.Conventions.AllowAnonymousToPage("/Error");
+    // Creates the first Admin on an empty database, then refuses forever. Anonymous by
+    // necessity — there is nobody to authenticate as until it has been used once.
+    options.Conventions.AllowAnonymousToPage("/Account/Setup");
+
+    // Admin-only: what the business earns, what it spends, and what anyone is paid.
+    // Staff run the day-to-day operation (sales, purchases, payments, returns, stock)
+    // and deliberately cannot see commission, rebate income, expenses or the financial
+    // reports. HC's call, 2026-08-07.
+    options.Conventions.AuthorizeFolder("/Settings",        "AdminOnly");
+    options.Conventions.AuthorizeFolder("/Commissions",     "AdminOnly");
+    options.Conventions.AuthorizeFolder("/CommissionRules", "AdminOnly");
+    options.Conventions.AuthorizeFolder("/Rebates",         "AdminOnly");
+    options.Conventions.AuthorizeFolder("/RebateRules",     "AdminOnly");
+    options.Conventions.AuthorizeFolder("/Expenses",        "AdminOnly");
+    options.Conventions.AuthorizeFolder("/Audit",           "AdminOnly");
+    // /Reports is split, not gated wholesale: End of Day and Warranty are operational
+    // lookups staff need, while these two are the income picture.
+    options.Conventions.AuthorizePage("/Reports/ProfitLoss", "AdminOnly");
+    options.Conventions.AuthorizePage("/Reports/Position",   "AdminOnly");
 })
 .AddMvcOptions(o => {
     // <input type="number"> always posts an invariant floating-point number, but the
@@ -167,17 +248,6 @@ app.Use(async (ctx, next) => {
     await next();
 });
 
-// Inject antiforgery token into every page for use by fetch() JS calls
-app.Use(async (ctx, next) => {
-    if (ctx.Request.Path.StartsWithSegments("/api") == false) {
-        var antiforgery = ctx.RequestServices.GetRequiredService<IAntiforgery>();
-        var tokens = antiforgery.GetAndStoreTokens(ctx);
-        ctx.Response.Cookies.Append("XSRF-TOKEN", tokens.RequestToken!,
-            new CookieOptions { HttpOnly = false, SameSite = SameSiteMode.Strict });
-    }
-    await next();
-});
-
 // ── Language (EN/ID) ──────────────────────────────────────────────────────────
 // Must run before anything renders, so every page sees the right CurrentUICulture.
 //
@@ -209,6 +279,29 @@ app.UseRequestLocalization(localizationOptions);
 
 app.UseStaticFiles();
 app.UseRouting();
+// Between routing and antiforgery: routing has to have selected the endpoint before
+// authorization can know what it protects.
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Inject antiforgery token into every page for use by fetch() JS calls.
+//
+// Must run AFTER UseAuthentication(): an antiforgery token embeds the identity it was
+// issued to, and GetAndStoreTokens caches the pair for the rest of the request. This
+// block used to sit up beside the security headers, where ctx.User is still anonymous —
+// so every form rendered a token stamped "anonymous", which UseAntiforgery then compared
+// against the signed-in user and rejected. Every POST in the app returned 400 the moment
+// logins existed. Found live; a green build cannot see this.
+app.Use(async (ctx, next) => {
+    if (ctx.Request.Path.StartsWithSegments("/api") == false) {
+        var antiforgery = ctx.RequestServices.GetRequiredService<IAntiforgery>();
+        var tokens = antiforgery.GetAndStoreTokens(ctx);
+        ctx.Response.Cookies.Append("XSRF-TOKEN", tokens.RequestToken!,
+            new CookieOptions { HttpOnly = false, SameSite = SameSiteMode.Strict });
+    }
+    await next();
+});
+
 app.UseAntiforgery();
 app.MapRazorPages();
 app.MapControllers();

@@ -67,7 +67,12 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
     <small>@Localizer["Store Management System"]</small>
   </div>
   <div class="sb-nav">
-    @{ var page = ViewContext.RouteData.Values["page"]?.ToString() ?? ""; }
+    @{
+        var page = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
+        // Hides what Staff cannot reach anyway — the folder conventions in Program.cs are
+        // the actual gate. A link they can see but not open is just a dead end.
+        var isAdmin = User.IsInRole("Admin");
+    }
     <div class="sb-sec">@Localizer["Main"]</div>
     <a href="/" class="@(page=="/Index"?"active":"")">🏠 @Localizer["Dashboard"]</a>
 
@@ -79,13 +84,19 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
     <a href="/Sales/Create" class="@(page=="/Sales/Create"?"active":"")">🧾 @Localizer["New Sale"]</a>
     <a href="/Sales"        class="@(page.StartsWith("/Sales/")&&page!="/Sales/Create"?"active":"")">📋 @Localizer["Sales History"]</a>
     <a href="/Payments"     class="@(page.StartsWith("/Payments")?"active":"")">💳 @Localizer["Due Payments"]</a>
-    <a href="/Commissions"  class="@(page.StartsWith("/Commissions")?"active":"")">🧾 @Localizer["Commissions"]</a>
+    @if (isAdmin)
+    {
+        <a href="/Commissions"  class="@(page.StartsWith("/Commissions")?"active":"")">🧾 @Localizer["Commissions"]</a>
+    }
 
     <div class="sb-sec">@Localizer["Purchasing"]</div>
     <a href="/Purchases/Create" class="@(page=="/Purchases/Create"?"active":"")">📥 @Localizer["New Purchase"]</a>
     <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Create"&&page!="/Purchases/Due"&&page!="/Purchases/Statement"?"active":"")">📦 @Localizer["Purchases"]</a>
     <a href="/Purchases/Due"    class="@(page=="/Purchases/Due"||page=="/Purchases/Statement"?"active":"")">💰 @Localizer["Payables"]</a>
-    <a href="/Rebates"          class="@(page.StartsWith("/Rebates")?"active":"")">💰 @Localizer["Rebates"]</a>
+    @if (isAdmin)
+    {
+        <a href="/Rebates"      class="@(page.StartsWith("/Rebates")?"active":"")">💰 @Localizer["Rebates"]</a>
+    }
 
     <div class="sb-sec">@Localizer["Adjustments"]</div>
     <a href="/Returns"     class="@(page.StartsWith("/Returns")?"active":"")">↩ @Localizer["Returns"]</a>
@@ -99,23 +110,35 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
 
     <div class="sb-sec">@Localizer["Reports"]</div>
     <a href="/Reports/EndOfDay"  class="@(page=="/Reports/EndOfDay" ?"active":"")">📅 @Localizer["End of Day"]</a>
-    <a href="/Reports/ProfitLoss" class="@(page=="/Reports/ProfitLoss"?"active":"")">📊 @Localizer["Profit & Loss"]</a>
-    <a href="/Reports/Position"  class="@(page=="/Reports/Position" ?"active":"")">⚖️ @Localizer["Position Summary"]</a>
+    @if (isAdmin)
+    {
+        <a href="/Reports/ProfitLoss" class="@(page=="/Reports/ProfitLoss"?"active":"")">📊 @Localizer["Profit & Loss"]</a>
+        <a href="/Reports/Position"  class="@(page=="/Reports/Position" ?"active":"")">⚖️ @Localizer["Position Summary"]</a>
+    }
     <a href="/Reports/Warranty"  class="@(page=="/Reports/Warranty" ?"active":"")">🛡 @Localizer["Warranty"]</a>
-    <a href="/Audit"             class="@(page.StartsWith("/Audit") ?"active":"")">🔍 @Localizer["Audit Log"]</a>
-
-    <a href="/Expenses"          class="@(page.StartsWith("/Expenses")    ?"active":"")">💸 @Localizer["Expenses"]</a>
+    @if (isAdmin)
+    {
+        <a href="/Audit"         class="@(page.StartsWith("/Audit") ?"active":"")">🔍 @Localizer["Audit Log"]</a>
+        <a href="/Expenses"      class="@(page.StartsWith("/Expenses")    ?"active":"")">💸 @Localizer["Expenses"]</a>
+    }
 
     <div class="sb-sec">@Localizer["Master Data"]</div>
     <a href="/Suppliers"         class="@(page.StartsWith("/Suppliers")   ?"active":"")">🏭 @Localizer["Suppliers"]</a>
-    <a href="/RebateRules"       class="@(page.StartsWith("/RebateRules") ?"active":"")">🎁 @Localizer["Rebate Rules"]</a>
+    @if (isAdmin)
+    {
+        <a href="/RebateRules"   class="@(page.StartsWith("/RebateRules") ?"active":"")">🎁 @Localizer["Rebate Rules"]</a>
+    }
     <a href="/PaymentTerms"      class="@(page.StartsWith("/PaymentTerms")?"active":"")">📆 @Localizer["Payment Terms"]</a>
     <a href="/SalesPersons"      class="@(page.StartsWith("/SalesPersons")?"active":"")">👤 @Localizer["Sales People"]</a>
-    <a href="/CommissionRules"   class="@(page.StartsWith("/CommissionRules")?"active":"")">🎯 @Localizer["Commission Rules"]</a>
+    @if (isAdmin)
+    {
+        <a href="/CommissionRules" class="@(page.StartsWith("/CommissionRules")?"active":"")">🎯 @Localizer["Commission Rules"]</a>
 
-    <div class="sb-sec">@Localizer["System"]</div>
-    <a href="/Settings" class="@(page=="/Settings/Index"?"active":"")">⚙️ @Localizer["Settings"]</a>
-    <a href="/Settings/Logs" class="@(page=="/Settings/Logs"?"active":"")">🩺 @Localizer["Diagnostic Log"]</a>
+        <div class="sb-sec">@Localizer["System"]</div>
+        <a href="/Settings" class="@(page=="/Settings/Index"?"active":"")">⚙️ @Localizer["Settings"]</a>
+        <a href="/Settings/Users" class="@(page.StartsWith("/Settings/Users")?"active":"")">🔑 @Localizer["Users"]</a>
+        <a href="/Settings/Logs" class="@(page=="/Settings/Logs"?"active":"")">🩺 @Localizer["Diagnostic Log"]</a>
+    }
   </div>
   <div class="sb-foot">@Localizer["PostgreSQL · Auto-backup daily"]</div>
 </nav>
@@ -139,6 +162,21 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
         }
       </span>
       <span style="font-size:12px;color:#9ca3af">@DateTime.Now.ToString("ddd, dd MMM yyyy  HH:mm")</span>
+      @if (User.Identity?.IsAuthenticated == true)
+      {
+        <span class="no-print" style="display:flex;align-items:center;gap:8px;padding-left:14px;border-left:1px solid #e5e7eb">
+          <a href="/Account/ChangePassword" style="text-decoration:none;font-size:12px;color:#374151;font-weight:600"
+             title="@Localizer["Change Password"]">
+            @(User.FindFirst("DisplayName")?.Value ?? User.Identity.Name)
+            <span class="badge @(isAdmin ? "info" : "gray")" style="margin-left:4px">@Localizer[isAdmin ? "Admin" : "Staff"]</span>
+          </a>
+          @* POST, not a link: a GET logout can be triggered by any image tag on any page. *@
+          <form method="post" action="/Account/Logout" style="display:inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline btn-sm">@Localizer["Log out"]</button>
+          </form>
+        </span>
+      }
     </div>
   </div>
   <div class="content">

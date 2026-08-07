@@ -39,7 +39,7 @@ public class SupplierReturn
     public string   Reason       { get; set; } = string.Empty;
     public string?  Notes        { get; set; }
     public ReturnStatus Status   { get; set; } = ReturnStatus.Active;
-    public string   CreatedBy    { get; set; } = "staff";
+    public string   CreatedBy    { get; set; } = string.Empty;
     public DateTime CreatedAt    { get; set; } = DateTime.UtcNow;
 
     public Purchase? Purchase { get; set; }

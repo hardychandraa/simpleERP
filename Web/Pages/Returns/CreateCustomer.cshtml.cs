@@ -4,6 +4,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Returns;
 
@@ -65,7 +66,7 @@ public class CreateCustomerModel : PageModel
             Reason     = Reason,
             Notes      = Notes,
             Items      = items
-        }, User.Identity?.Name ?? "staff");
+        }, this.CurrentUserName());
 
         if (!result.Success) { Error = result.Error; return Page(); }
 

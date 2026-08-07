@@ -44,7 +44,7 @@ public class CreditNoteApplication
     public decimal  Amount          { get; set; }
     public DateTime ApplicationDate { get; set; } = DateTime.UtcNow;
     public string?  Notes           { get; set; }
-    public string   CreatedBy       { get; set; } = "staff";
+    public string   CreatedBy       { get; set; } = string.Empty;
     public DateTime CreatedAt       { get; set; } = DateTime.UtcNow;
 
     /// <summary>

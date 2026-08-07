@@ -35,7 +35,7 @@ public class RebateRealization
     /// <summary>Free-text reference — the supplier's reconciliation doc number, etc.</summary>
     public string? ReferenceId { get; set; }
     public string? Notes       { get; set; }
-    public string  CreatedBy   { get; set; } = "staff";
+    public string  CreatedBy   { get; set; } = string.Empty;
 
     public Supplier? Supplier      { get; set; }
     public Product?  InKindProduct { get; set; }

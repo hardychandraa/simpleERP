@@ -2,6 +2,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Returns;
 
@@ -27,7 +28,7 @@ public class CustomerDetailModel : PageModel
 
     public async Task<IActionResult> OnPostCancelAsync(Guid id)
     {
-        var result = await _returns.CancelCustomerReturnAsync(id, User.Identity?.Name ?? "staff");
+        var result = await _returns.CancelCustomerReturnAsync(id, this.CurrentUserName());
         return RedirectToPage(new {
             id,
             msg = result.Success

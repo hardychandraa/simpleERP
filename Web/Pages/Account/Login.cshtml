@@ -1,0 +1,73 @@
+@page "/Account/Login"
+@using System.Globalization
+@model SimpleERP.Web.Pages.Account.LoginModel
+@{
+    // No sidebar and no top bar: none of it is reachable yet, and a login screen that
+    // renders the whole app chrome behind it advertises what it is protecting.
+    Layout = null;
+    var currentLang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+}
+<!DOCTYPE html>
+<html lang="@currentLang">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>@Localizer["Sign in"] — SimpleERP</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;background:#1e2433;color:#1a1a2e;
+     min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.box{background:#fff;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.3);padding:32px;width:100%;max-width:380px}
+.brand{text-align:center;margin-bottom:24px}
+.brand h1{font-size:20px;font-weight:800;color:#1e2433;letter-spacing:.5px}
+.brand small{font-size:11px;color:#9ca3af}
+.fg{margin-bottom:15px}
+label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+input[type=text],input[type=password]{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:6px;
+     font-size:14px;color:#1a1a2e;background:#fff;outline:none;transition:border-color .12s}
+input:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.1)}
+.btn{display:block;width:100%;padding:10px;border-radius:6px;font-size:14px;font-weight:600;
+     cursor:pointer;border:none;background:#2563eb;color:#fff;transition:opacity .12s}
+.btn:hover{opacity:.88}
+.alert{padding:10px 13px;border-radius:6px;margin-bottom:15px;font-size:13px;line-height:1.5;
+     background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.lang{text-align:center;margin-top:18px;font-size:11px}
+.lang a{text-decoration:none;padding:2px 7px;border-radius:4px;color:#9ca3af}
+.lang a.on{font-weight:700;color:#2563eb;background:#eff6ff}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="brand">
+    <h1>⚡ SimpleERP</h1>
+    <small>@Localizer["Store Management System"]</small>
+  </div>
+
+  @if (Model.Error != null)
+  {
+      <div class="alert">@Model.Error</div>
+  }
+
+  <form method="post">
+    <input type="hidden" asp-for="ReturnUrl" />
+    <div class="fg">
+      <label>@Localizer["Username"]</label>
+      <input type="text" asp-for="Username" required maxlength="100" autofocus autocomplete="username" />
+    </div>
+    <div class="fg">
+      <label>@Localizer["Password"]</label>
+      <input type="password" asp-for="Password" required autocomplete="current-password" />
+    </div>
+    <button type="submit" class="btn">@Localizer["Sign in"]</button>
+  </form>
+
+  <div class="lang">
+    @foreach (var (code, label) in new[] { ("id", "ID"), ("en", "EN") })
+    {
+        <a class="@(currentLang == code ? "on" : "")"
+           href="/set-language?culture=@code&amp;returnUrl=@Uri.EscapeDataString("/Account/Login")">@label</a>
+    }
+  </div>
+</div>
+</body>
+</html>

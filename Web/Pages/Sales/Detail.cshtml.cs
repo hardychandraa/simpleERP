@@ -2,6 +2,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Sales;
 
@@ -57,7 +58,7 @@ public class DetailModel : PageModel
         // The form posts only Amount/Notes; the sale comes from the route. Without this
         // PayInput.SaleId is Guid.Empty on POST and the service rejects it as not found.
         PayInput.SaleId = id;
-        var user   = User.Identity?.Name ?? "staff";
+        var user   = this.CurrentUserName();
         var result = await _sales.RecordPaymentAsync(PayInput, user);
         return RedirectToPage(new {
             id,
@@ -68,7 +69,7 @@ public class DetailModel : PageModel
 
     public async Task<IActionResult> OnPostCancelAsync(Guid id)
     {
-        var user   = User.Identity?.Name ?? "staff";
+        var user   = this.CurrentUserName();
         var result = await _sales.CancelAsync(id, user);
         return RedirectToPage(new {
             id,
@@ -79,7 +80,7 @@ public class DetailModel : PageModel
 
     public async Task<IActionResult> OnPostReverseApplicationAsync(Guid id, Guid applicationId)
     {
-        var user   = User.Identity?.Name ?? "staff";
+        var user   = this.CurrentUserName();
         var result = await _notes.ReverseApplicationAsync(applicationId, user);
         return RedirectToPage(new {
             id,

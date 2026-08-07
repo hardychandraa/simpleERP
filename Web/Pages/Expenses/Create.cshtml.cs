@@ -4,6 +4,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Expenses;
 
@@ -27,7 +28,7 @@ public class CreateModel : PageModel
     public async Task<IActionResult> OnPostAsync()
     {
         ViewData["Title"] = "Record Expense";
-        var result = await _svc.CreateAsync(Input, User.Identity?.Name ?? "staff");
+        var result = await _svc.CreateAsync(Input, this.CurrentUserName());
         if (!result.Success)
         {
             Error = result.Error;

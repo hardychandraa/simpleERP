@@ -5,6 +5,7 @@ using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.RebateRules;
 
@@ -44,8 +45,8 @@ public class EditModel : PageModel
         ViewData["Title"] = IsNew ? "New Rebate Rule" : "Edit Rebate Rule";
 
         var result = IsNew
-            ? await _svc.CreateRuleAsync(Input, User.Identity?.Name ?? "staff")
-            : await _svc.UpdateRuleAsync(Input, User.Identity?.Name ?? "staff");
+            ? await _svc.CreateRuleAsync(Input, this.CurrentUserName())
+            : await _svc.UpdateRuleAsync(Input, this.CurrentUserName());
 
         if (!result.Success)
         {

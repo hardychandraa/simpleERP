@@ -4,6 +4,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Commissions;
 
@@ -37,7 +38,7 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostPayoutAsync(PayoutCommissionDto input)
     {
-        var r = await _svc.PayoutAsync(input, User.Identity?.Name ?? "staff");
+        var r = await _svc.PayoutAsync(input, this.CurrentUserName());
         return Redirect(r.Success
             ? $"/Commissions?msg={Uri.EscapeDataString(_loc["Commission paid out."].Value)}"
             : $"/Commissions?err=true&msg={Uri.EscapeDataString(r.Error!)}");

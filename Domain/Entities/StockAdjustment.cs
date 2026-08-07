@@ -11,7 +11,7 @@ public class StockAdjustment
     public decimal  QtyAfter       { get; set; }
     public decimal  QtyDelta       => QtyAfter - QtyBefore;
     public string   Reason         { get; set; } = string.Empty;
-    public string   CreatedBy      { get; set; } = "staff";
+    public string   CreatedBy      { get; set; } = string.Empty;
 
     // Navigation
     public Product? Product { get; set; }

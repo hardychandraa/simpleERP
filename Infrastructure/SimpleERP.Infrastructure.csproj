@@ -16,5 +16,17 @@
       needed on the logging path. Version pinned to the one Serilog.AspNetCore resolves.
     -->
     <PackageReference Include="Serilog" Version="3.1.1" />
+    <!--
+      PasswordHasher<T> only — not ASP.NET Core Identity itself (no UserManager,
+      SignInManager, or the seven Identity tables this app has no use for). It lives here
+      rather than in Application because Application is deliberately abstractions-only;
+      the interface it implements is IPasswordHasher in Application.
+
+      The hash format is Identity's own, so if this app ever adopts full Identity the
+      stored hashes stay valid and only this file is replaced. Pinned to the 8.0.x line:
+      `dotnet add package` resolves 10.x, which drags .NET 10 runtime libraries into this
+      net8.0 app — the same trap already hit with Serilog.
+    -->
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="8.0.11" />
   </ItemGroup>
 </Project>

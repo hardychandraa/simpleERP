@@ -4,6 +4,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.SalesPersons;
 
@@ -30,7 +31,7 @@ public class IndexModel : PageModel
         People = await _svc.GetAllAsync();
     }
 
-    private string User_ => User.Identity?.Name ?? "staff";
+    private string User_ => this.CurrentUserName();
 
     public async Task<IActionResult> OnPostCreateAsync()
     {

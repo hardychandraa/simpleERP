@@ -1098,6 +1098,40 @@ public class SalesPersonRepository : ISalesPersonRepository
     public void Remove(SalesPerson person) => _db.SalesPersons.Remove(person);
 }
 
+public class UserRepository : IUserRepository
+{
+    private readonly AppDbContext _db;
+    public UserRepository(AppDbContext db) => _db = db;
+
+    public Task<List<User>> GetAllAsync(bool activeOnly = false)
+    {
+        var q = _db.Users.AsQueryable();
+        if (activeOnly) q = q.Where(u => u.IsActive);
+        return q.OrderBy(u => u.Username).ToListAsync();
+    }
+
+    public Task<bool> AnyAsync() => _db.Users.AnyAsync();
+
+    public Task<User?> GetByIdAsync(Guid id) => _db.Users.FindAsync(id).AsTask();
+
+    public Task<User?> GetByUsernameAsync(string username) =>
+        _db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+
+    public Task<bool> UsernameExistsAsync(string username, Guid? excludeId = null) =>
+        _db.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()
+                             && (excludeId == null || u.Id != excludeId));
+
+    public async Task<bool> IsLastActiveAdminAsync(Guid id)
+    {
+        var user = await _db.Users.FindAsync(id);
+        if (user == null || !user.IsActive || user.Role != UserRole.Admin) return false;
+        return await _db.Users.CountAsync(u => u.IsActive && u.Role == UserRole.Admin) <= 1;
+    }
+
+    public async Task AddAsync(User user) => await _db.Users.AddAsync(user);
+    public void Update(User user) => _db.Users.Update(user);
+}
+
 public class ProductRepository : IProductRepository
 {
     private readonly AppDbContext _db;

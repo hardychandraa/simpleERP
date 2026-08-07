@@ -555,6 +555,20 @@ public interface ISalesPersonRepository {
     void Remove(SalesPerson person);
 }
 
+public interface IUserRepository {
+    Task<List<User>> GetAllAsync(bool activeOnly = false);
+    /// <summary>False only on a brand-new database, which is what unlocks first-run setup.</summary>
+    Task<bool> AnyAsync();
+    Task<User?> GetByIdAsync(Guid id);
+    /// <summary>Case-insensitive — "Budi" and "budi" are the same account.</summary>
+    Task<User?> GetByUsernameAsync(string username);
+    Task<bool> UsernameExistsAsync(string username, Guid? excludeId = null);
+    /// <summary>True if this is the last active Admin — blocks demoting or disabling it.</summary>
+    Task<bool> IsLastActiveAdminAsync(Guid id);
+    Task AddAsync(User user);
+    void Update(User user);
+}
+
 public interface IPaymentRecordRepository {
     Task AddAsync(PaymentRecord record);
     Task<List<PaymentRecord>> GetBySaleAsync(Guid saleId);
