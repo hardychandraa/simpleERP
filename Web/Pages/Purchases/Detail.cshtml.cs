@@ -10,17 +10,20 @@ public class DetailModel : PageModel
     private readonly IPurchaseService    _purchases;
     private readonly IRebateService      _rebates;
     private readonly IReturnService      _returns;
+    private readonly ICreditNoteService  _notes;
     private readonly IAppSettingsService _settings;
 
     public DetailModel(IPurchaseService purchases, IRebateService rebates,
-                       IReturnService returns, IAppSettingsService settings)
-    { _purchases = purchases; _rebates = rebates; _returns = returns; _settings = settings; }
+                       IReturnService returns, ICreditNoteService notes, IAppSettingsService settings)
+    { _purchases = purchases; _rebates = rebates; _returns = returns; _notes = notes; _settings = settings; }
 
     public PurchaseDto    Purchase       { get; set; } = null!;
     public AppSettingsDto AppSettings    { get; set; } = null!;
     public List<SupplierPaymentDto> Payments { get; set; } = new();
     public List<RebateAccrualDto>   Rebates  { get; set; } = new();
     public List<ReturnListDto>      Returns  { get; set; } = new();
+    /// <summary>Debit notes applied to this purchase, reversed ones included.</summary>
+    public List<CreditNoteApplicationDto> NoteApplications { get; set; } = new();
     public decimal        StillOwed      { get; set; }
 
     [BindProperty] public RecordSupplierPaymentDto PayInput { get; set; } = new();
@@ -38,7 +41,10 @@ public class DetailModel : PageModel
         Payments    = purchase.PaymentHistory;
         Rebates     = await _rebates.GetAccrualsForPurchaseAsync(id);
         Returns     = await _returns.GetReturnsForPurchaseAsync(id);
-        StillOwed   = Math.Max(0, purchase.GrandTotal - purchase.AmountPaid);
+        NoteApplications = await _notes.GetApplicationsForPurchaseAsync(id);
+        // Net of applied debit notes, so the payment form's cap matches what the service
+        // will actually accept rather than inviting a refusal.
+        StillOwed   = Math.Max(0, purchase.NetBalanceDue);
         PayInput.PurchaseId = id;
         Msg = msg; IsErr = err;
         return Page();
@@ -62,6 +68,16 @@ public class DetailModel : PageModel
         return RedirectToPage(new {
             id,
             msg = result.Success ? "Purchase cancelled. Received stock reversed." : result.Error,
+            err = !result.Success
+        });
+    }
+
+    public async Task<IActionResult> OnPostReverseApplicationAsync(Guid id, Guid applicationId)
+    {
+        var result = await _notes.ReverseApplicationAsync(applicationId, User.Identity?.Name ?? "staff");
+        return RedirectToPage(new {
+            id,
+            msg = result.Success ? "Debit note application reversed." : result.Error,
             err = !result.Success
         });
     }

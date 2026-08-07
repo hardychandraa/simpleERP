@@ -24,6 +24,7 @@ namespace SimpleERP.Application.Services;
 public class CreditNoteService : ICreditNoteService
 {
     private readonly ICreditNoteRepository  _notes;
+    private readonly ICreditNoteApplicationRepository _applications;
     private readonly ICustomerRepository    _customers;
     private readonly ISupplierRepository    _suppliers;
     private readonly ISaleRepository        _sales;
@@ -34,21 +35,98 @@ public class CreditNoteService : ICreditNoteService
 
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<CreditNoteService> _log;
-    public CreditNoteService(ICreditNoteRepository notes, ICustomerRepository customers,
+    public CreditNoteService(ICreditNoteRepository notes,
+        ICreditNoteApplicationRepository applications, ICustomerRepository customers,
         ISupplierRepository suppliers, ISaleRepository sales, IPurchaseRepository purchases,
         IAppSettingsRepository settings, IAuditLogRepository audit, IUnitOfWork uow,
         IStringLocalizer<SharedResource> loc, ILogger<CreditNoteService> log)
-    { _notes=notes; _customers=customers; _suppliers=suppliers; _sales=sales;
-      _purchases=purchases; _settings=settings; _audit=audit; _uow=uow;  _loc = loc; _log = log; }
+    { _notes=notes; _applications=applications; _customers=customers; _suppliers=suppliers;
+      _sales=sales; _purchases=purchases; _settings=settings; _audit=audit; _uow=uow;
+      _loc = loc; _log = log; }
 
     public async Task<List<CreditNoteDto>> GetAllAsync(CreditDebitType? type = null,
         CreditNoteStatus? status = null, DateTime? from = null, DateTime? to = null)
-        => (await _notes.GetAllAsync(type, status, from, to)).Select(MapDto).ToList();
+    {
+        var notes = await _notes.GetAllAsync(type, status, from, to);
+        return await EnrichAsync(notes);
+    }
 
     public async Task<CreditNoteDto?> GetByIdAsync(Guid id)
     {
         var note = await _notes.GetByIdAsync(id);
-        return note == null ? null : MapDto(note);
+        if (note == null) return null;
+        return (await EnrichAsync(new List<CreditNote> { note })).Single();
+    }
+
+    /// <summary>
+    /// Adds each note's remaining amount, its application history, and — for notes with
+    /// something left to apply — the documents it could go against.
+    ///
+    /// Batched deliberately: applied totals come back in one query for the whole list, and
+    /// the open-document lookup runs once per distinct counterparty rather than once per
+    /// note. The register routinely shows dozens of notes for a handful of customers.
+    /// </summary>
+    private async Task<List<CreditNoteDto>> EnrichAsync(List<CreditNote> notes)
+    {
+        var dtos = notes.Select(MapDto).ToList();
+        if (dtos.Count == 0) return dtos;
+
+        var appliedByNote = await _applications.GetAppliedTotalsForNotesAsync(notes.Select(n => n.Id));
+        foreach (var d in dtos)
+            d.RemainingAmount = d.Amount - appliedByNote.GetValueOrDefault(d.Id);
+
+        // History only for notes that actually have some — one query each, and most notes
+        // have none at all.
+        foreach (var d in dtos.Where(d => d.AppliedTotal > 0 || appliedByNote.ContainsKey(d.Id)))
+            d.Applications = (await _applications.GetByCreditNoteAsync(d.Id))
+                .Select(a => MapApplicationDto(a, canReverse: !a.IsReversed && d.Amount > 0))
+                .ToList();
+
+        // Reversibility depends on the note not being cancelled and the target document
+        // still being active. The note side is known here; the document side is checked
+        // properly in ReverseApplicationAsync, which is the authoritative guard.
+        foreach (var d in dtos)
+            foreach (var a in d.Applications)
+                a.CanReverse = !a.IsReversed && !string.Equals(d.Status, nameof(CreditNoteStatus.Cancelled), StringComparison.Ordinal);
+
+        var applicable = dtos.Where(d => d.IsOpen && d.RemainingAmount > 0).ToList();
+        if (applicable.Count > 0)
+        {
+            var noteById = notes.ToDictionary(n => n.Id);
+            // One lookup per counterparty, not per note.
+            foreach (var group in applicable.GroupBy(d => noteById[d.Id].CustomerId ?? noteById[d.Id].SupplierId ?? Guid.Empty))
+            {
+                if (group.Key == Guid.Empty) continue;
+                var isCredit = group.First().IsCredit;
+
+                // (id, number, dueDate, grossBalance) for every still-open document.
+                var docs = isCredit
+                    ? (await _sales.GetDueSalesAsync(group.Key))
+                        .Select(s => (s.Id, Number: s.InvoiceNumber, s.DueDate, Gross: s.GrandTotal - s.AmountPaid)).ToList()
+                    : (await _purchases.GetDuePurchasesAsync(group.Key))
+                        .Select(p => (p.Id, Number: p.PurchaseNumber, p.DueDate, Gross: p.GrandTotal - p.AmountPaid)).ToList();
+                if (docs.Count == 0) continue;
+
+                // Those queries already exclude fully-covered documents, but the picker
+                // needs each one's actual remaining headroom to cap the amount box.
+                var applied = isCredit
+                    ? await _applications.GetAppliedTotalsForSalesAsync(docs.Select(d => d.Id))
+                    : await _applications.GetAppliedTotalsForPurchasesAsync(docs.Select(d => d.Id));
+
+                var usable = docs
+                    .Select(doc => new ApplicableDocumentDto {
+                        DocumentId     = doc.Id,
+                        DocumentNumber = doc.Number,
+                        DueDate        = doc.DueDate,
+                        NetBalanceDue  = doc.Gross - applied.GetValueOrDefault(doc.Id)
+                    })
+                    .Where(o => o.NetBalanceDue > 0)
+                    .ToList();
+                foreach (var d in group) d.OpenDocuments = usable;
+            }
+        }
+
+        return dtos;
     }
 
     public Task<decimal> GetOpenTotalAsync(CreditDebitType type) => _notes.GetOpenTotalAsync(type);
@@ -177,6 +255,191 @@ public class CreditNoteService : ICreditNoteService
         return ServiceResult.Ok();
     }
 
+    /// <summary>
+    /// Apply a note against one specific document. This is what makes a note answerable
+    /// to "which invoice did it cover?" — the free-text SettleAsync above records an
+    /// intention, this records an actual reduction of a named document's balance.
+    ///
+    /// Deliberately NOT a payment: no PaymentRecord is written and RecordPaymentCoreAsync
+    /// is never called, so this accrues no commission and trips no on-time-payment rebate.
+    /// A note offsetting a balance is not cash collected.
+    /// </summary>
+    public async Task<ServiceResult> ApplyAsync(ApplyCreditNoteDto dto, string user)
+    {
+        if (dto.Amount <= 0) return _log.Refuse(_loc["Amount must be greater than zero."]);
+
+        var note = await _notes.GetByIdAsync(dto.CreditNoteId);
+        if (note == null) return _log.Refuse(_loc["Note not found."]);
+        if (note.Status == CreditNoteStatus.Cancelled)
+            return _log.Refuse(_loc["{0} is cancelled.", note.DocumentNumber]);
+        if (note.Status == CreditNoteStatus.Settled)
+            return _log.Refuse(_loc["{0} is already settled.", note.DocumentNumber]);
+
+        var todayLocal      = DateTime.Now.Date;
+        var applicationDate = dto.ApplicationDate?.Date ?? todayLocal;
+        if (applicationDate > todayLocal)
+            return _log.Refuse(_loc["Application date cannot be in the future."]);
+
+        var isCredit = note.Type == CreditDebitType.Credit;
+
+        // Direction fixes which document type this can touch: a credit note only ever
+        // reduces a receivable, a debit note only ever a payable.
+        if (isCredit && (dto.SaleId == null || dto.SaleId == Guid.Empty))
+            return _log.Refuse(_loc["Choose the invoice this credit note applies to."]);
+        if (!isCredit && (dto.PurchaseId == null || dto.PurchaseId == Guid.Empty))
+            return _log.Refuse(_loc["Choose the purchase this debit note applies to."]);
+        if (isCredit && dto.PurchaseId.HasValue)
+            return _log.Refuse(_loc["A credit note applies to an invoice, not a purchase."]);
+        if (!isCredit && dto.SaleId.HasValue)
+            return _log.Refuse(_loc["A debit note applies to a purchase, not an invoice."]);
+
+        var noteRemaining = note.Amount - await _applications.GetAppliedTotalForNoteAsync(note.Id);
+        if (dto.Amount > noteRemaining)
+            return _log.Refuse(_loc["Amount ({0}) exceeds what is left on {1} ({2}).",
+                dto.Amount.ToString("N0"), note.DocumentNumber, noteRemaining.ToString("N0")]);
+
+        string targetNumber;
+        decimal netBalance;
+
+        if (isCredit)
+        {
+            var sale = await _sales.GetByIdWithItemsAsync(dto.SaleId!.Value);
+            if (sale == null) return _log.Refuse(_loc["Invoice not found."]);
+            if (sale.Status == SaleStatus.Cancelled)
+                return _log.Refuse(_loc["Invoice {0} is cancelled.", sale.InvoiceNumber]);
+            if (sale.CustomerId != note.CustomerId)
+                return _log.Refuse(_loc["Invoice {0} belongs to a different customer.", sale.InvoiceNumber]);
+
+            targetNumber = sale.InvoiceNumber;
+            // Net, not gross: a second application has to respect the first. A cash sale
+            // lands here with nothing owing and is refused by the same check, which reads
+            // better than a separate payment-type rule would.
+            netBalance = sale.GrandTotal - sale.AmountPaid
+                       - await _applications.GetAppliedTotalForSaleAsync(sale.Id);
+        }
+        else
+        {
+            var purchase = await _purchases.GetByIdWithItemsAsync(dto.PurchaseId!.Value);
+            if (purchase == null) return _log.Refuse(_loc["Purchase not found."]);
+            if (purchase.Status == PurchaseStatus.Cancelled)
+                return _log.Refuse(_loc["Purchase {0} is cancelled.", purchase.PurchaseNumber]);
+            if (purchase.SupplierId != note.SupplierId)
+                return _log.Refuse(_loc["Purchase {0} belongs to a different supplier.", purchase.PurchaseNumber]);
+
+            targetNumber = purchase.PurchaseNumber;
+            netBalance = purchase.GrandTotal - purchase.AmountPaid
+                       - await _applications.GetAppliedTotalForPurchaseAsync(purchase.Id);
+        }
+
+        if (netBalance <= 0)
+            return _log.Refuse(_loc["{0} has nothing left owing to apply a note against.", targetNumber]);
+        if (dto.Amount > netBalance)
+            return _log.Refuse(_loc["Amount ({0}) exceeds what is still owed on {1} ({2}).",
+                dto.Amount.ToString("N0"), targetNumber, netBalance.ToString("N0")]);
+
+        await _applications.AddAsync(new CreditNoteApplication {
+            Id              = Guid.NewGuid(),
+            CreditNoteId    = note.Id,
+            SaleId          = isCredit ? dto.SaleId : null,
+            PurchaseId      = isCredit ? null : dto.PurchaseId,
+            Amount          = dto.Amount,
+            ApplicationDate = applicationDate,
+            Notes           = Trim(dto.Notes, 500),
+            CreatedBy       = user,
+            CreatedAt       = DateTime.UtcNow
+        });
+
+        // Nothing left to apply means the note has done its job. Same fields SettleAsync
+        // writes — this just reaches them by arithmetic instead of by free text.
+        var remainingAfter = noteRemaining - dto.Amount;
+        if (remainingAfter <= 0)
+        {
+            note.Status          = CreditNoteStatus.Settled;
+            note.SettledDate     = applicationDate;
+            note.SettlementNotes = $"Fully applied to {targetNumber} ({dto.Amount:N0})";
+            _notes.Update(note);
+        }
+
+        await _audit.LogAsync(user, $"{note.Type}Note.Apply",
+            $"{note.DocumentNumber} → {targetNumber} | {dto.Amount:N0} | {remainingAfter:N0} left");
+        _log.LogInformation(
+            "{NoteType} note {DocumentNumber} applied — {Amount} against {TargetDocument}, {Remaining} left on the note, by {User}",
+            note.Type, note.DocumentNumber, dto.Amount, targetNumber, remainingAfter, user);
+        await _uow.SaveChangesAsync();
+        return ServiceResult.Ok();
+    }
+
+    /// <summary>
+    /// Undo an application. Reversed rather than deleted, so the correction stays on the
+    /// record — and reopens the note if reversing frees anything back up.
+    /// </summary>
+    public async Task<ServiceResult> ReverseApplicationAsync(Guid applicationId, string user)
+    {
+        var application = await _applications.GetByIdAsync(applicationId);
+        if (application == null) return _log.Refuse(_loc["Application not found."]);
+        if (application.IsReversed)
+            return _log.Refuse(_loc["This application has already been reversed."]);
+
+        var note = await _notes.GetByIdAsync(application.CreditNoteId);
+        if (note == null) return _log.Refuse(_loc["Note not found."]);
+        if (note.Status == CreditNoteStatus.Cancelled)
+            return _log.Refuse(_loc["{0} is cancelled.", note.DocumentNumber]);
+
+        // The document has to still be live: reversing against a cancelled invoice would
+        // hand the amount back to a balance that no longer exists.
+        string targetNumber;
+        if (application.SaleId.HasValue)
+        {
+            var sale = await _sales.GetByIdWithItemsAsync(application.SaleId.Value);
+            if (sale == null) return _log.Refuse(_loc["Invoice not found."]);
+            if (sale.Status == SaleStatus.Cancelled)
+                return _log.Refuse(_loc["Invoice {0} is cancelled, so this application cannot be reversed. Raise an opposite note instead.", sale.InvoiceNumber]);
+            targetNumber = sale.InvoiceNumber;
+        }
+        else
+        {
+            var purchase = await _purchases.GetByIdWithItemsAsync(application.PurchaseId!.Value);
+            if (purchase == null) return _log.Refuse(_loc["Purchase not found."]);
+            if (purchase.Status == PurchaseStatus.Cancelled)
+                return _log.Refuse(_loc["Purchase {0} is cancelled, so this application cannot be reversed. Raise an opposite note instead.", purchase.PurchaseNumber]);
+            targetNumber = purchase.PurchaseNumber;
+        }
+
+        application.IsReversed = true;
+        application.ReversedAt = DateTime.UtcNow;
+        application.ReversedBy = user;
+        _applications.Update(application);
+
+        // Reopen if this was the application that closed the note. Appended, not cleared:
+        // how it came to be settled is part of the record.
+        if (note.Status == CreditNoteStatus.Settled && note.SettledByPaymentBatchId == null)
+        {
+            note.Status      = CreditNoteStatus.Open;
+            note.SettledDate = null;
+            var reopened = $"Reopened — application of {application.Amount:N0} to {targetNumber} reversed by {user}";
+            note.SettlementNotes = string.IsNullOrWhiteSpace(note.SettlementNotes)
+                ? reopened
+                : Trim($"{note.SettlementNotes} | {reopened}", 500);
+            _notes.Update(note);
+        }
+
+        await _audit.LogAsync(user, $"{note.Type}Note.ReverseApplication",
+            $"{note.DocumentNumber} ✗ {targetNumber} | {application.Amount:N0}");
+        _log.LogInformation(
+            "{NoteType} note application reversed — {Amount} released back against {TargetDocument} from {DocumentNumber}, by {User}",
+            note.Type, application.Amount, targetNumber, note.DocumentNumber, user);
+        await _uow.SaveChangesAsync();
+        return ServiceResult.Ok();
+    }
+
+    public async Task<List<CreditNoteApplicationDto>> GetApplicationsForSaleAsync(Guid saleId)
+        => (await _applications.GetBySaleAsync(saleId))
+            .Select(a => MapApplicationDto(a, canReverse: !a.IsReversed)).ToList();
+
+    public async Task<List<CreditNoteApplicationDto>> GetApplicationsForPurchaseAsync(Guid purchaseId)
+        => (await _applications.GetByPurchaseAsync(purchaseId))
+            .Select(a => MapApplicationDto(a, canReverse: !a.IsReversed)).ToList();
+
     public async Task<ServiceResult> CancelAsync(Guid id, string user)
     {
         var note = await _notes.GetByIdAsync(id);
@@ -185,6 +448,11 @@ public class CreditNoteService : ICreditNoteService
             return _log.Refuse(_loc["{0} is already cancelled.", note.DocumentNumber]);
         if (note.Status == CreditNoteStatus.Settled)
             return _log.Refuse(_loc["{0} has already been settled — the money has moved. Raise an opposite note instead of cancelling this one.", note.DocumentNumber]);
+
+        // Cancelling out from under a live application would leave that application still
+        // reducing a document's balance while the note behind it says cancelled.
+        if (await _applications.HasLiveApplicationsForNoteAsync(id))
+            return _log.Refuse(_loc["{0} has been applied to a document. Reverse the application first — cancelling now would leave it reducing a balance with nothing behind it.", note.DocumentNumber]);
 
         // A return's note can't be cancelled on its own: the goods movement has to be
         // reversed with it, and only the return knows how.
@@ -208,6 +476,24 @@ public class CreditNoteService : ICreditNoteService
 
     private static string? Trim(string? s, int max)
         => string.IsNullOrWhiteSpace(s) ? null : (s.Trim().Length > max ? s.Trim()[..max] : s.Trim());
+
+    private static CreditNoteApplicationDto MapApplicationDto(CreditNoteApplication a, bool canReverse) => new() {
+        Id               = a.Id,
+        CreditNoteId     = a.CreditNoteId,
+        CreditNoteNumber = a.CreditNote?.DocumentNumber ?? "",
+        IsCredit         = a.SaleId.HasValue,
+        SaleId           = a.SaleId,
+        PurchaseId       = a.PurchaseId,
+        DocumentNumber   = a.Sale?.InvoiceNumber ?? a.Purchase?.PurchaseNumber ?? "",
+        Amount           = a.Amount,
+        ApplicationDate  = a.ApplicationDate,
+        Notes            = a.Notes,
+        CreatedBy        = a.CreatedBy,
+        IsReversed       = a.IsReversed,
+        ReversedAt       = a.ReversedAt,
+        ReversedBy       = a.ReversedBy,
+        CanReverse       = canReverse
+    };
 
     private static CreditNoteDto MapDto(CreditNote n) => new() {
         Id               = n.Id,

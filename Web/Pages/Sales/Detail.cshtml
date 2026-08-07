@@ -163,6 +163,9 @@
     @if (Model.TotalCollected > 0) {
       <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#6b7280">@Localizer["Collected later"]</span><span style="color:#059669;font-weight:600">@Model.TotalCollected.ToString("N0")</span></div>
     }
+    @if (Model.Sale.AppliedNotesTotal > 0) {
+      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#6b7280">@Localizer["Credit notes applied"]</span><span style="color:#059669;font-weight:600">@Model.Sale.AppliedNotesTotal.ToString("N0")</span></div>
+    }
     @if (Model.StillOwed > 0) {
       <div style="display:flex;justify-content:space-between;padding:4px 0;font-weight:700;color:#dc2626"><span>@Localizer["Balance Due"]</span><span>@Model.StillOwed.ToString("N0")</span></div>
     }
@@ -227,6 +230,43 @@
       </table>
       <p style="font-size:11px;color:#9ca3af;margin-top:8px">
         @Localizer["The invoice total above is unchanged by design — what the customer is owed sits on the credit note each return raised."]
+      </p>
+    </div>
+  }
+
+  <!-- Credit notes applied to this invoice -->
+  @if (Model.NoteApplications.Any()) {
+    <div class="card">
+      <div class="card-title">🧮 @Localizer["Credit Notes Applied to This Invoice"]</div>
+      <table>
+        <thead><tr><th>@Localizer["Note"]</th><th style="text-align:right">@Localizer["Applied"]</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var a in Model.NoteApplications) {
+          <tr style="@(a.IsReversed ? "color:#9ca3af" : "")">
+            <td style="font-size:12px">
+              <a href="/CreditNotes" style="color:@(a.IsReversed ? "#9ca3af" : "#2563eb");font-weight:600;@(a.IsReversed ? "text-decoration:line-through" : "")">@a.CreditNoteNumber</a>
+              <div style="color:#9ca3af;font-size:11px">
+                @a.ApplicationDate.ToLocalTime().ToString("dd-MMM-yy")
+                @if (a.IsReversed) {
+                  <span> · @Localizer["reversed by {0}", a.ReversedBy ?? ""]</span>
+                }
+              </div>
+            </td>
+            <td style="text-align:right;font-weight:600;@(a.IsReversed ? "text-decoration:line-through" : "")">@a.Amount.ToString("N0")</td>
+            <td style="text-align:right">
+              @if (a.CanReverse) {
+                <form method="post" asp-page-handler="ReverseApplication" asp-route-id="@Model.Sale.Id" asp-route-applicationId="@a.Id"
+                      onsubmit="return confirm('@Localizer["Reverse this application?"]')">
+                  <button type="submit" class="btn btn-outline btn-sm">@Localizer["Reverse"]</button>
+                </form>
+              }
+            </td>
+          </tr>
+        }
+        </tbody>
+      </table>
+      <p style="font-size:11px;color:#9ca3af;margin-top:8px">
+        @Localizer["The invoice total is unchanged — an applied note reduces the balance still due, not what was originally invoiced."]
       </p>
     </div>
   }

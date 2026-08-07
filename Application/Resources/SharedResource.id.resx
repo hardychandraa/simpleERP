@@ -207,7 +207,7 @@
   <data name="plus {0} in-kind and {1} lucky-draw accrual(s) outstanding, carried without a cash value until settled" xml:space="preserve"><value>ditambah {0} akrual barang dan {1} akrual undian yang masih terbuka, dicatat tanpa nilai tunai sampai diselesaikan</value></data>
   <data name="This is not a balance sheet (Neraca)." xml:space="preserve"><value>Ini bukan Neraca.</value></data>
   <data name="It shows the five balances SimpleERP can derive and prove from its own documents. Cash at bank, fixed assets, capital, retained earnings and tax positions are not in this system, so Posisi Bersih is a working-position indicator, not net worth — and it is not expected to balance to zero." xml:space="preserve"><value>Laporan ini menampilkan lima saldo yang bisa diturunkan dan dibuktikan SimpleERP dari dokumennya sendiri. Kas di bank, aset tetap, modal, laba ditahan dan posisi pajak tidak ada di sistem ini, sehingga Posisi Bersih adalah indikator posisi kerja, bukan kekayaan bersih — dan memang tidak diharapkan menjadi nol.</value></data>
-  <data name="A point-in-time position, read live — there is no date filter, and re-opening this page will show different numbers once anything moves. Receivables and payables are tax-inclusive, because they are cash owed rather than turnover. Credit and debit notes net off in aggregate, not against a specific invoice; unclaimed rebate is shown gross of the 15% withholding, which is deducted when the claim actually settles." xml:space="preserve"><value>Posisi pada satu titik waktu, dibaca langsung — tidak ada filter tanggal, dan membuka ulang halaman ini akan menampilkan angka berbeda begitu ada transaksi. Piutang dan utang termasuk pajak, karena keduanya adalah kas yang terutang, bukan omzet. Nota kredit dan debit dikurangkan secara agregat, bukan terhadap faktur tertentu; rebat belum diklaim ditampilkan bruto sebelum potongan 15%, yang dipotong saat klaim benar-benar diselesaikan.</value></data>
+  <data name="A point-in-time position, read live — there is no date filter, and re-opening this page will show different numbers once anything moves. Receivables and payables are tax-inclusive, because they are cash owed rather than turnover. Credit and debit notes net off against the specific invoice or purchase they are applied to; a note not yet applied to anything is listed separately and does not reduce the net figures. Unclaimed rebate is shown gross of the 15% withholding, which is deducted when the claim actually settles." xml:space="preserve"><value>Posisi pada satu titik waktu, dibaca langsung — tidak ada filter tanggal, dan membuka ulang halaman ini akan menampilkan angka berbeda begitu ada transaksi. Piutang dan utang termasuk pajak, karena keduanya adalah kas yang terutang, bukan omzet. Nota kredit dan debit dikurangkan terhadap faktur atau pembelian tertentu tempat nota itu diterapkan; nota yang belum diterapkan ke mana pun dicantumkan terpisah dan tidak mengurangi angka bersih. Rebat belum diklaim ditampilkan bruto sebelum potongan 15%, yang dipotong saat klaim benar-benar diselesaikan.</value></data>
 
   <!-- ══ Reports / Profit & Loss ═════════════════════════════════════════ -->
   <data name="From" xml:space="preserve"><value>Dari</value></data>
@@ -324,7 +324,7 @@
   <data name="and use" xml:space="preserve"><value>lalu gunakan</value></data>
   <data name="Any line billed below this earns back the difference × quantity." xml:space="preserve"><value>Setiap baris yang ditagih di bawah nilai ini menghasilkan rebat sebesar selisih × kuantitas.</value></data>
   <data name="App Name" xml:space="preserve"><value>Nama Aplikasi</value></data>
-  <data name="Applied to / refunded" xml:space="preserve"><value>Diterapkan ke / dikembalikan</value></data>
+  <data name="Refunded / written off" xml:space="preserve"><value>Dikembalikan / dihapusbukukan</value></data>
   <data name="Applies to" xml:space="preserve"><value>Berlaku untuk</value></data>
   <data name="Apply Adjustment" xml:space="preserve"><value>Terapkan Penyesuaian</value></data>
   <data name="Avg Cost" xml:space="preserve"><value>Biaya Rata-rata</value></data>
@@ -572,8 +572,8 @@
   <data name="Net" xml:space="preserve"><value>Neto</value></data>
   <data name="Net received" xml:space="preserve"><value>Neto diterima</value></data>
   <data name="Net to transfer" xml:space="preserve"><value>Neto yang ditransfer</value></data>
-  <data name="Nets off accounts payable" xml:space="preserve"><value>Mengurangi utang usaha</value></data>
-  <data name="Nets off accounts receivable" xml:space="preserve"><value>Mengurangi piutang usaha</value></data>
+  <data name="Not yet applied to any purchase" xml:space="preserve"><value>Belum diterapkan ke pembelian mana pun</value></data>
+  <data name="Not yet applied to any invoice" xml:space="preserve"><value>Belum diterapkan ke faktur mana pun</value></data>
   <data name="New Commission Rule" xml:space="preserve"><value>Aturan Komisi Baru</value></data>
   <data name="New Customer" xml:space="preserve"><value>Pelanggan Baru</value></data>
   <data name="New Product" xml:space="preserve"><value>Produk Baru</value></data>
@@ -1168,4 +1168,49 @@
   <data name="Only warnings and above are kept in the database. The complete record, at every level, is in the rolling log files under logs/ — kept for 30 days, the same as backups. Those files also keep working when the database does not, which is why they are the authoritative copy." xml:space="preserve"><value>Hanya peringatan ke atas yang disimpan di basis data. Catatan lengkap, di semua tingkat, ada di berkas log bergulir dalam folder logs/ — disimpan 30 hari, sama seperti cadangan. Berkas itu juga tetap berjalan saat basis data tidak, itulah sebabnya berkas menjadi salinan utama.</value></data>
   <data name="The Reference column matches the code shown on the error page, so a reported problem can be found here directly." xml:space="preserve"><value>Kolom Referensi cocok dengan kode yang ditampilkan di halaman error, sehingga masalah yang dilaporkan bisa langsung ditemukan di sini.</value></data>
   <data name="Quote this reference when reporting the problem — the full details are recorded against it." xml:space="preserve"><value>Sebutkan referensi ini saat melaporkan masalah — detail lengkapnya tercatat dengan kode tersebut.</value></data>
+
+  <!-- Per-invoice credit/debit note application, and AR/AP ageing buckets. -->
+  <data name="Application date cannot be in the future." xml:space="preserve"><value>Tanggal penerapan tidak boleh di masa depan.</value></data>
+  <data name="Choose the invoice this credit note applies to." xml:space="preserve"><value>Pilih faktur yang dikenai nota kredit ini.</value></data>
+  <data name="Choose the purchase this debit note applies to." xml:space="preserve"><value>Pilih pembelian yang dikenai nota debit ini.</value></data>
+  <data name="A credit note applies to an invoice, not a purchase." xml:space="preserve"><value>Nota kredit diterapkan ke faktur, bukan ke pembelian.</value></data>
+  <data name="A debit note applies to a purchase, not an invoice." xml:space="preserve"><value>Nota debit diterapkan ke pembelian, bukan ke faktur.</value></data>
+  <data name="Amount ({0}) exceeds what is left on {1} ({2})." xml:space="preserve"><value>Jumlah ({0}) melebihi sisa pada {1} ({2}).</value></data>
+  <data name="Amount ({0}) exceeds what is still owed on {1} ({2})." xml:space="preserve"><value>Jumlah ({0}) melebihi sisa yang terutang pada {1} ({2}).</value></data>
+  <data name="{0} has nothing left owing to apply a note against." xml:space="preserve"><value>{0} tidak punya sisa terutang untuk dikenai nota.</value></data>
+  <!-- "Invoice not found." already exists above, reused as-is. -->
+  <data name="Application not found." xml:space="preserve"><value>Penerapan tidak ditemukan.</value></data>
+  <data name="This application has already been reversed." xml:space="preserve"><value>Penerapan ini sudah dibatalkan.</value></data>
+  <data name="Invoice {0} is cancelled, so this application cannot be reversed. Raise an opposite note instead." xml:space="preserve"><value>Faktur {0} sudah dibatalkan, sehingga penerapan ini tidak bisa dibatalkan. Terbitkan nota berlawanan sebagai gantinya.</value></data>
+  <data name="Purchase {0} is cancelled, so this application cannot be reversed. Raise an opposite note instead." xml:space="preserve"><value>Pembelian {0} sudah dibatalkan, sehingga penerapan ini tidak bisa dibatalkan. Terbitkan nota berlawanan sebagai gantinya.</value></data>
+  <data name="{0} has been applied to a document. Reverse the application first — cancelling now would leave it reducing a balance with nothing behind it." xml:space="preserve"><value>{0} sudah diterapkan ke sebuah dokumen. Batalkan penerapannya dahulu — membatalkan sekarang akan menyisakan pengurangan saldo tanpa dasar.</value></data>
+  <data name="A credit note has been applied to this invoice. Reverse the application first — cancelling now would leave it reducing a balance that no longer exists." xml:space="preserve"><value>Sebuah nota kredit sudah diterapkan ke faktur ini. Batalkan penerapannya dahulu — membatalkan sekarang akan menyisakan pengurangan saldo yang sudah tidak ada.</value></data>
+  <data name="A debit note has been applied to this purchase. Reverse the application first — cancelling now would leave it reducing a balance that no longer exists." xml:space="preserve"><value>Sebuah nota debit sudah diterapkan ke pembelian ini. Batalkan penerapannya dahulu — membatalkan sekarang akan menyisakan pengurangan saldo yang sudah tidak ada.</value></data>
+  <data name="Note applied." xml:space="preserve"><value>Nota diterapkan.</value></data>
+  <data name="Application reversed." xml:space="preserve"><value>Penerapan dibatalkan.</value></data>
+  <data name="{0} left" xml:space="preserve"><value>sisa {0}</value></data>
+  <data name="Applied to" xml:space="preserve"><value>Diterapkan ke</value></data>
+  <data name="Reverse" xml:space="preserve"><value>Batalkan</value></data>
+  <data name="Reverse this application?" xml:space="preserve"><value>Batalkan penerapan ini?</value></data>
+  <data name="Applied" xml:space="preserve"><value>Diterapkan</value></data>
+  <data name="Credit notes applied" xml:space="preserve"><value>Nota kredit diterapkan</value></data>
+  <data name="Debit notes applied" xml:space="preserve"><value>Nota debit diterapkan</value></data>
+  <data name="Credit Notes Applied to This Invoice" xml:space="preserve"><value>Nota Kredit yang Diterapkan ke Faktur Ini</value></data>
+  <data name="Debit Notes Applied to This Purchase" xml:space="preserve"><value>Nota Debit yang Diterapkan ke Pembelian Ini</value></data>
+  <data name="reversed by {0}" xml:space="preserve"><value>dibatalkan oleh {0}</value></data>
+  <data name="The invoice total is unchanged — an applied note reduces the balance still due, not what was originally invoiced." xml:space="preserve"><value>Total faktur tidak berubah — nota yang diterapkan mengurangi sisa tagihan, bukan nilai yang semula difakturkan.</value></data>
+  <data name="The purchase total is unchanged — an applied note reduces the balance still owed, not what was originally billed." xml:space="preserve"><value>Total pembelian tidak berubah — nota yang diterapkan mengurangi sisa utang, bukan nilai yang semula ditagihkan.</value></data>
+  <data name="Credit notes applied to specific invoices" xml:space="preserve"><value>Nota kredit yang diterapkan ke faktur tertentu</value></data>
+  <data name="Debit notes applied to specific purchases" xml:space="preserve"><value>Nota debit yang diterapkan ke pembelian tertentu</value></data>
+  <data name="Not yet due" xml:space="preserve"><value>Belum jatuh tempo</value></data>
+  <data name="No due date" xml:space="preserve"><value>Tanpa tanggal jatuh tempo</value></data>
+  <data name="Credit with no payment term agreed, so there is no date to be late against" xml:space="preserve"><value>Kredit tanpa termin pembayaran yang disepakati, sehingga tidak ada tanggal acuan keterlambatan</value></data>
+  <data name="incl. {0} with no due date" xml:space="preserve"><value>termasuk {0} tanpa tanggal jatuh tempo</value></data>
+  <data name="Not subtracted above — a note only reduces a balance once it is applied to a specific invoice" xml:space="preserve"><value>Tidak dikurangkan di atas — nota baru mengurangi saldo setelah diterapkan ke faktur tertentu</value></data>
+  <data name="Not subtracted above — a note only reduces a balance once it is applied to a specific purchase" xml:space="preserve"><value>Tidak dikurangkan di atas — nota baru mengurangi saldo setelah diterapkan ke pembelian tertentu</value></data>
+  <data name="Plus {0} in open credit notes not yet applied to any invoice" xml:space="preserve"><value>Ditambah {0} nota kredit terbuka yang belum diterapkan ke faktur mana pun</value></data>
+  <data name="Plus {0} in open debit notes not yet applied to any purchase" xml:space="preserve"><value>Ditambah {0} nota debit terbuka yang belum diterapkan ke pembelian mana pun</value></data>
+  <data name="of {0} — rest already applied" xml:space="preserve"><value>dari {0} — sisanya sudah diterapkan</value></data>
+  <data name="Ticking a note settles whatever is left on it as part of this collection — the goods movement behind it already happened when the return was posted. A note already applied to a specific invoice shows only the balance it can still absorb." xml:space="preserve"><value>Mencentang nota akan menyelesaikan sisa nilainya sebagai bagian dari penagihan ini — pergerakan barang di baliknya sudah terjadi saat retur diposting. Nota yang sudah diterapkan ke faktur tertentu hanya menampilkan sisa yang masih bisa diserap.</value></data>
+  <data name="Ticking a note settles whatever is left on it as part of this payment — the goods movement behind it already happened when the return was posted. A note already applied to a specific purchase shows only the balance it can still absorb." xml:space="preserve"><value>Mencentang nota akan menyelesaikan sisa nilainya sebagai bagian dari pembayaran ini — pergerakan barang di baliknya sudah terjadi saat retur diposting. Nota yang sudah diterapkan ke pembelian tertentu hanya menampilkan sisa yang masih bisa diserap.</value></data>
 </root>

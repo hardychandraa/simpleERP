@@ -98,12 +98,20 @@ else
                 </td>
                 <td style="text-align:right">@line.GrandTotal.ToString("N0")</td>
                 <td style="text-align:right;color:#059669">@line.AmountPaid.ToString("N0")</td>
-                <td style="text-align:right;font-weight:700">@line.BalanceDue.ToString("N0")</td>
+                <td style="text-align:right;font-weight:700">
+                    @line.NetBalanceDue.ToString("N0")
+                    @if (line.AppliedNotesTotal > 0)
+                    {
+                        <div style="font-size:10px;color:#9ca3af;font-weight:400">
+                            @Localizer["of {0} — rest already applied", line.BalanceDue.ToString("N0")]
+                        </div>
+                    }
+                </td>
                 <td class="no-print">
                     <input type="hidden" name="Lines[@i].DocumentId" value="@line.DocumentId" />
                     <input type="number" name="Lines[@i].Amount" class="pay-amt"
-                           min="0" max="@Inv(line.BalanceDue)" step="0.01"
-                           value="@Inv(posted?.Amount > 0 ? posted.Amount : line.BalanceDue)"
+                           min="0" max="@Inv(line.NetBalanceDue)" step="0.01"
+                           value="@Inv(posted?.Amount > 0 ? posted.Amount : line.NetBalanceDue)"
                            style="text-align:right" />
                 </td>
             </tr>
@@ -142,13 +150,21 @@ else
                     <td style="font-size:12px">@n.NoteDate.ToLocalTime().ToString("dd-MMM-yy")</td>
                     <td style="font-size:12px">@Localizer[EnumDisplay.Key("CreditNoteCategory", n.Category)]</td>
                     <td style="font-size:12px;color:#6b7280">@n.Reason</td>
-                    <td style="text-align:right;font-weight:600;color:#059669">−@n.Amount.ToString("N0")</td>
+                    <td style="text-align:right;font-weight:600;color:#059669">
+                        −@n.Amount.ToString("N0")
+                        @if (n.IsPartiallyApplied)
+                        {
+                            <div style="font-size:10px;color:#9ca3af;font-weight:400">
+                                @Localizer["of {0} — rest already applied", n.FaceAmount.ToString("N0")]
+                            </div>
+                        }
+                    </td>
                 </tr>
             }
             </tbody>
         </table>
         <p style="font-size:11px;color:#9ca3af;margin-bottom:14px">
-            @Localizer["Ticking a note settles it in full as part of this collection — the goods movement behind it already happened when the return was posted."]
+            @Localizer["Ticking a note settles whatever is left on it as part of this collection — the goods movement behind it already happened when the return was posted. A note already applied to a specific invoice shows only the balance it can still absorb."]
         </p>
     }
 

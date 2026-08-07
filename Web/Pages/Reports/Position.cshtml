@@ -68,24 +68,65 @@
           </td>
           <td style="text-align:right;font-weight:600;vertical-align:top;border-top:1px solid #f3f4f6">@Model.Report.ReceivablesGross.ToString("N0")</td>
         </tr>
-        @if (Model.Report.ReceivablesOverdue > 0)
+        @if (Model.Report.CreditNotesApplied > 0)
         {
           <tr>
-            <td style="padding:2px 0 2px 14px;color:#dc2626;font-size:11px">@Localizer["of which overdue"]</td>
-            <td style="text-align:right;color:#dc2626;font-size:11px">@Model.Report.ReceivablesOverdue.ToString("N0")</td>
+            <td style="padding:4px 0 4px 14px;color:#dc2626;font-size:13px" title="@Localizer["Credit notes applied to specific invoices"]">
+              (&minus;) Nota Kredit diterapkan
+            </td>
+            <td style="text-align:right;color:#dc2626;font-size:13px">@Model.Report.CreditNotesApplied.ToString("N0")</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0">Piutang Bersih</td>
+            <td style="text-align:right;font-weight:600">@Model.Report.ReceivablesNet.ToString("N0")</td>
+          </tr>
+        }
+        @{ var ar = Model.Report.ReceivablesAging; }
+        @if (ar.Total > 0)
+        {
+          <tr>
+            <td colspan="2" style="padding:6px 0 2px 14px">
+              <table style="width:100%;font-size:11px;color:#6b7280">
+                <tr>
+                  <td>@Localizer["Not yet due"]</td>
+                  <td style="text-align:right">@ar.NotYetDue.ToString("N0")</td>
+                  <td style="width:14px"></td>
+                  <td style="color:@(ar.Days1To30  > 0 ? "#b45309" : "#9ca3af")">1&ndash;30</td>
+                  <td style="text-align:right;color:@(ar.Days1To30  > 0 ? "#b45309" : "#9ca3af")">@ar.Days1To30.ToString("N0")</td>
+                </tr>
+                <tr>
+                  <td style="color:@(ar.Days31To60 > 0 ? "#c2410c" : "#9ca3af")">31&ndash;60</td>
+                  <td style="text-align:right;color:@(ar.Days31To60 > 0 ? "#c2410c" : "#9ca3af")">@ar.Days31To60.ToString("N0")</td>
+                  <td></td>
+                  <td style="color:@(ar.Days61To90 > 0 ? "#dc2626" : "#9ca3af")">61&ndash;90</td>
+                  <td style="text-align:right;color:@(ar.Days61To90 > 0 ? "#dc2626" : "#9ca3af")">@ar.Days61To90.ToString("N0")</td>
+                </tr>
+                <tr>
+                  <td style="color:@(ar.Days90Plus > 0 ? "#991b1b" : "#9ca3af");font-weight:@(ar.Days90Plus > 0 ? "700" : "400")">90+</td>
+                  <td style="text-align:right;color:@(ar.Days90Plus > 0 ? "#991b1b" : "#9ca3af");font-weight:@(ar.Days90Plus > 0 ? "700" : "400")">@ar.Days90Plus.ToString("N0")</td>
+                  <td></td>
+                  @if (ar.NoDueDate > 0)
+                  {
+                    <td title="@Localizer["Credit with no payment term agreed, so there is no date to be late against"]">@Localizer["No due date"]</td>
+                    <td style="text-align:right">@ar.NoDueDate.ToString("N0")</td>
+                  }
+                  else
+                  {
+                    <td></td><td></td>
+                  }
+                </tr>
+              </table>
+            </td>
           </tr>
         }
         @if (Model.Report.OpenCreditNotes > 0)
         {
           <tr>
-            <td style="padding:4px 0 4px 14px;color:#dc2626;font-size:13px" title="@Localizer["Open credit notes owed back to customers"]">
-              (&minus;) Nota Kredit terbuka
+            <td colspan="2" style="padding:4px 0 2px 14px;color:#9ca3af;font-size:11px"
+                title="@Localizer["Not subtracted above — a note only reduces a balance once it is applied to a specific invoice"]">
+              @Localizer["Plus {0} in open credit notes not yet applied to any invoice", Model.Report.OpenCreditNotes.ToString("N0")]
+              &middot; <a href="/CreditNotes" class="no-print">@Localizer["Credit & Debit Notes"] &rarr;</a>
             </td>
-            <td style="text-align:right;color:#dc2626;font-size:13px">@Model.Report.OpenCreditNotes.ToString("N0")</td>
-          </tr>
-          <tr>
-            <td style="padding:5px 0">Piutang Bersih</td>
-            <td style="text-align:right;font-weight:600">@Model.Report.ReceivablesNet.ToString("N0")</td>
           </tr>
         }
 
@@ -135,24 +176,65 @@
           </td>
           <td style="text-align:right;font-weight:600;vertical-align:top">@Model.Report.PayablesGross.ToString("N0")</td>
         </tr>
-        @if (Model.Report.PayablesOverdue > 0)
+        @if (Model.Report.DebitNotesApplied > 0)
         {
           <tr>
-            <td style="padding:2px 0 2px 14px;color:#dc2626;font-size:11px">@Localizer["of which overdue"]</td>
-            <td style="text-align:right;color:#dc2626;font-size:11px">@Model.Report.PayablesOverdue.ToString("N0")</td>
+            <td style="padding:4px 0 4px 14px;color:#059669;font-size:13px" title="@Localizer["Debit notes applied to specific purchases"]">
+              (&minus;) Nota Debit diterapkan
+            </td>
+            <td style="text-align:right;color:#059669;font-size:13px">@Model.Report.DebitNotesApplied.ToString("N0")</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0">Utang Bersih</td>
+            <td style="text-align:right;font-weight:600">@Model.Report.PayablesNet.ToString("N0")</td>
+          </tr>
+        }
+        @{ var ap = Model.Report.PayablesAging; }
+        @if (ap.Total > 0)
+        {
+          <tr>
+            <td colspan="2" style="padding:6px 0 2px 14px">
+              <table style="width:100%;font-size:11px;color:#6b7280">
+                <tr>
+                  <td>@Localizer["Not yet due"]</td>
+                  <td style="text-align:right">@ap.NotYetDue.ToString("N0")</td>
+                  <td style="width:14px"></td>
+                  <td style="color:@(ap.Days1To30  > 0 ? "#b45309" : "#9ca3af")">1&ndash;30</td>
+                  <td style="text-align:right;color:@(ap.Days1To30  > 0 ? "#b45309" : "#9ca3af")">@ap.Days1To30.ToString("N0")</td>
+                </tr>
+                <tr>
+                  <td style="color:@(ap.Days31To60 > 0 ? "#c2410c" : "#9ca3af")">31&ndash;60</td>
+                  <td style="text-align:right;color:@(ap.Days31To60 > 0 ? "#c2410c" : "#9ca3af")">@ap.Days31To60.ToString("N0")</td>
+                  <td></td>
+                  <td style="color:@(ap.Days61To90 > 0 ? "#dc2626" : "#9ca3af")">61&ndash;90</td>
+                  <td style="text-align:right;color:@(ap.Days61To90 > 0 ? "#dc2626" : "#9ca3af")">@ap.Days61To90.ToString("N0")</td>
+                </tr>
+                <tr>
+                  <td style="color:@(ap.Days90Plus > 0 ? "#991b1b" : "#9ca3af");font-weight:@(ap.Days90Plus > 0 ? "700" : "400")">90+</td>
+                  <td style="text-align:right;color:@(ap.Days90Plus > 0 ? "#991b1b" : "#9ca3af");font-weight:@(ap.Days90Plus > 0 ? "700" : "400")">@ap.Days90Plus.ToString("N0")</td>
+                  <td></td>
+                  @if (ap.NoDueDate > 0)
+                  {
+                    <td title="@Localizer["Credit with no payment term agreed, so there is no date to be late against"]">@Localizer["No due date"]</td>
+                    <td style="text-align:right">@ap.NoDueDate.ToString("N0")</td>
+                  }
+                  else
+                  {
+                    <td></td><td></td>
+                  }
+                </tr>
+              </table>
+            </td>
           </tr>
         }
         @if (Model.Report.OpenDebitNotes > 0)
         {
           <tr>
-            <td style="padding:4px 0 4px 14px;color:#059669;font-size:13px" title="@Localizer["Open debit notes suppliers owe back to us"]">
-              (&minus;) Nota Debit terbuka
+            <td colspan="2" style="padding:4px 0 2px 14px;color:#9ca3af;font-size:11px"
+                title="@Localizer["Not subtracted above — a note only reduces a balance once it is applied to a specific purchase"]">
+              @Localizer["Plus {0} in open debit notes not yet applied to any purchase", Model.Report.OpenDebitNotes.ToString("N0")]
+              &middot; <a href="/CreditNotes" class="no-print">@Localizer["Credit & Debit Notes"] &rarr;</a>
             </td>
-            <td style="text-align:right;color:#059669;font-size:13px">@Model.Report.OpenDebitNotes.ToString("N0")</td>
-          </tr>
-          <tr>
-            <td style="padding:5px 0">Utang Bersih</td>
-            <td style="text-align:right;font-weight:600">@Model.Report.PayablesNet.ToString("N0")</td>
           </tr>
         }
 
@@ -191,5 +273,5 @@
 </div>
 
 <p style="font-size:11px;color:#9ca3af;margin-top:14px;line-height:1.6">
-  @Localizer["A point-in-time position, read live — there is no date filter, and re-opening this page will show different numbers once anything moves. Receivables and payables are tax-inclusive, because they are cash owed rather than turnover. Credit and debit notes net off in aggregate, not against a specific invoice; unclaimed rebate is shown gross of the 15% withholding, which is deducted when the claim actually settles."]
+  @Localizer["A point-in-time position, read live — there is no date filter, and re-opening this page will show different numbers once anything moves. Receivables and payables are tax-inclusive, because they are cash owed rather than turnover. Credit and debit notes net off against the specific invoice or purchase they are applied to; a note not yet applied to anything is listed separately and does not reduce the net figures. Unclaimed rebate is shown gross of the 15% withholding, which is deducted when the claim actually settles."]
 </p>

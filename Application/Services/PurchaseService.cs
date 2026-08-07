@@ -36,6 +36,7 @@ public class PurchaseService : IPurchaseService
     private readonly InventoryService           _inventory;
     private readonly RebateService              _rebates;
     private readonly IUnitOfWork                _uow;
+    private readonly ICreditNoteApplicationRepository _noteApplications;
 
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<PurchaseService> _log;
@@ -44,12 +45,14 @@ public class PurchaseService : IPurchaseService
         ISupplierPaymentRepository payments, IPaymentTermRepository terms,
         IAppSettingsRepository settings, IAuditLogRepository audit,
         ISupplierReturnRepository returns, ICreditNoteRepository notes,
+        ICreditNoteApplicationRepository noteApplications,
         IPaymentBatchRepository batches, IRebateAccrualRepository rebateAccruals,
         InventoryService inventory, RebateService rebates, IUnitOfWork uow,
         IStringLocalizer<SharedResource> loc, ILogger<PurchaseService> log)
     { _purchases=purchases; _suppliers=suppliers; _products=products; _branches=branches;
       _payments=payments; _terms=terms; _settings=settings; _audit=audit;
-      _returns=returns; _notes=notes; _batches=batches; _rebateAccruals=rebateAccruals;
+      _returns=returns; _notes=notes; _noteApplications=noteApplications;
+      _batches=batches; _rebateAccruals=rebateAccruals;
       _inventory=inventory; _rebates=rebates; _uow=uow;  _loc = loc; _log = log; }
 
     public async Task<ServiceResult<PurchaseDto>> CreateAsync(CreatePurchaseDto dto, string user)
@@ -261,6 +264,11 @@ public class PurchaseService : IPurchaseService
         if (purchase.AmountPaid > 0)
             return _log.Refuse(_loc["{0} has already been paid against this purchase. Cancelling would leave that payment pointing at nothing — reverse the payment first, or record a supplier return instead.", purchase.AmountPaid.ToString("N0")]);
 
+        // Same reasoning as the paid guard above, for the other thing that reduces this
+        // purchase's balance.
+        if (await _noteApplications.HasLiveApplicationsForPurchaseAsync(purchaseId))
+            return _log.Refuse(_loc["A debit note has been applied to this purchase. Reverse the application first — cancelling now would leave it reducing a balance that no longer exists."]);
+
         // A supplier return has already sent some of these units back, so the stock guard
         // below would refuse anyway — but with a message about goods being sold. Say the
         // real reason, and point at the action that actually unblocks it.
@@ -309,7 +317,11 @@ public class PurchaseService : IPurchaseService
         if (purchase.PaymentType == PaymentType.Cash)
             return _log.Refuse<SupplierPaymentDto>(_loc["This is a cash purchase — already paid."]);
 
-        var balance = purchase.GrandTotal - purchase.AmountPaid;
+        // Net of applied debit notes — the supplier mirror of the AR-side guard. A debit
+        // note already reduced what we owe here, so the gross figure would let us pay
+        // more than the remaining debt.
+        var balance = purchase.GrandTotal - purchase.AmountPaid
+                    - await _noteApplications.GetAppliedTotalForPurchaseAsync(purchase.Id);
         if (dto.Amount > balance)
             return _log.Refuse<SupplierPaymentDto>(_loc["Amount ({0}) exceeds balance owed ({1}).", dto.Amount.ToString("N0"), balance.ToString("N0")]);
 
@@ -377,6 +389,8 @@ public class PurchaseService : IPurchaseService
         // ── Validate every purchase line before anything is written ───────────────
         var purchases = await _purchases.GetByIdsWithItemsAsync(lines.Select(l => l.PurchaseId));
         var byId      = purchases.ToDictionary(p => p.Id);
+        // Fetched once for the whole batch rather than per line inside the loop.
+        var appliedByPurchase = await _noteApplications.GetAppliedTotalsForPurchasesAsync(lines.Select(l => l.PurchaseId));
 
         foreach (var line in lines)
         {
@@ -389,7 +403,9 @@ public class PurchaseService : IPurchaseService
             if (purchase.PaymentType == PaymentType.Cash)
                 return _log.Refuse<PaymentBatchDto>(_loc["Purchase {0} is a cash purchase — already paid.", purchase.PurchaseNumber]);
 
-            var balance = purchase.GrandTotal - purchase.AmountPaid;
+            // Net of notes already applied to this specific purchase — separate from, and
+            // additional to, whatever notes get ticked into this settlement below.
+            var balance = purchase.GrandTotal - purchase.AmountPaid - appliedByPurchase.GetValueOrDefault(purchase.Id);
             if (line.Amount > balance)
                 return _log.Refuse<PaymentBatchDto>(_loc["Purchase {0}: {1} exceeds its balance of {2}.", purchase.PurchaseNumber, line.Amount.ToString("N0"), balance.ToString("N0")]);
         }
@@ -410,8 +426,12 @@ public class PurchaseService : IPurchaseService
         }
 
         // ── Post ─────────────────────────────────────────────────────────────────
-        var gross        = lines.Sum(l => l.Amount);
-        var notesApplied = notes.Sum(n => n.Amount);
+        var gross = lines.Sum(l => l.Amount);
+        // Each note nets its *remaining* value, not its face value: part of it may already
+        // be applied to a specific purchase, and that slice has already reduced that
+        // purchase's balance. Counting the face value here would net it a second time.
+        var appliedByNote = await _noteApplications.GetAppliedTotalsForNotesAsync(noteIds);
+        var notesApplied  = notes.Sum(n => n.Amount - appliedByNote.GetValueOrDefault(n.Id));
 
         // A note is applied whole or not at all, so netting more credit than is being paid
         // would settle notes whose value this settlement can't absorb — quietly writing off
@@ -490,6 +510,12 @@ public class PurchaseService : IPurchaseService
         var openNotes = await _notes.GetAllAsync(
             type: CreditDebitType.Debit, status: CreditNoteStatus.Open, supplierId: supplierId);
 
+        // Both sides net of what's already been applied per document: the purchases so
+        // each line shows what's genuinely left, and the notes so ticking one nets what it
+        // can actually still absorb rather than its face value.
+        var appliedByPurchase = await _noteApplications.GetAppliedTotalsForPurchasesAsync(due.Select(p => p.Id));
+        var appliedByNote     = await _noteApplications.GetAppliedTotalsForNotesAsync(openNotes.Select(n => n.Id));
+
         // Informational only. Rebate settles on its own cadence against the supplier's own
         // reconciliation sheet — it is deliberately not netted into a PO payment run.
         var outstandingRebate = (await _rebateAccruals.GetOutstandingBySupplierAsync(supplierId))
@@ -502,22 +528,29 @@ public class PurchaseService : IPurchaseService
             CounterpartyName = supplier.Name,
             Phone            = supplier.Phone,
             Lines = due.Select(p => new StatementLineDto {
-                DocumentId     = p.Id,
-                DocumentNumber = p.PurchaseNumber,
-                TheirReference = p.SupplierDocumentNumber,
-                DocumentDate   = p.PurchaseDate,
-                DueDate        = p.DueDate,
-                GrandTotal     = p.GrandTotal,
-                AmountPaid     = p.AmountPaid
+                DocumentId        = p.Id,
+                DocumentNumber    = p.PurchaseNumber,
+                TheirReference    = p.SupplierDocumentNumber,
+                DocumentDate      = p.PurchaseDate,
+                DueDate           = p.DueDate,
+                GrandTotal        = p.GrandTotal,
+                AmountPaid        = p.AmountPaid,
+                AppliedNotesTotal = appliedByPurchase.GetValueOrDefault(p.Id)
             }).ToList(),
-            OpenNotes = openNotes.Select(n => new StatementNoteDto {
-                CreditNoteId   = n.Id,
-                DocumentNumber = n.DocumentNumber,
-                NoteDate       = n.NoteDate,
-                Category       = n.Category.ToString(),
-                Amount         = n.Amount,
-                Reason         = n.Reason
-            }).ToList(),
+            OpenNotes = openNotes
+                .Select(n => new StatementNoteDto {
+                    CreditNoteId   = n.Id,
+                    DocumentNumber = n.DocumentNumber,
+                    NoteDate       = n.NoteDate,
+                    Category       = n.Category.ToString(),
+                    Amount         = n.Amount - appliedByNote.GetValueOrDefault(n.Id),
+                    FaceAmount     = n.Amount,
+                    Reason         = n.Reason
+                })
+                // A note fully consumed by per-purchase applications has nothing left to
+                // tick, even though it is still technically Open until its last slice lands.
+                .Where(n => n.Amount > 0)
+                .ToList(),
             OutstandingRebateAmount = outstandingRebate > 0 ? outstandingRebate : null
         };
     }
@@ -525,7 +558,10 @@ public class PurchaseService : IPurchaseService
     public async Task<PurchaseDto?> GetByIdAsync(Guid id)
     {
         var p = await _purchases.GetByIdWithItemsAsync(id);
-        return p == null ? null : MapDto(p);
+        if (p == null) return null;
+        var dto = MapDto(p);
+        dto.AppliedNotesTotal = await _noteApplications.GetAppliedTotalForPurchaseAsync(id);
+        return dto;
     }
 
     public async Task<List<PurchaseListDto>> GetAllAsync(
@@ -538,23 +574,49 @@ public class PurchaseService : IPurchaseService
                 (p.SupplierDocumentNumber ?? "").Contains(search, StringComparison.OrdinalIgnoreCase) ||
                 (p.Supplier?.Name ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
 
-        return list.Select(MapListDto).ToList();
+        // One query for the page, so the balance and overdue columns are net of notes.
+        var applied = await _noteApplications.GetAppliedTotalsForPurchasesAsync(list.Select(p => p.Id));
+
+        return list.Select(p => {
+            var dto = MapListDto(p);
+            dto.AppliedNotesTotal = applied.GetValueOrDefault(p.Id);
+            return dto;
+        }).ToList();
     }
 
     public async Task<List<DueSupplierDto>> GetDueSummaryAsync()
     {
-        var due = await _purchases.GetDuePurchasesAsync();
-        var now = DateTime.UtcNow.Date;
+        var due     = await _purchases.GetDuePurchasesAsync();
+        // One query for the whole list, not one per purchase.
+        var applied = await _noteApplications.GetAppliedTotalsForPurchasesAsync(due.Select(p => p.Id));
+
+        // Same six buckets and boundary dates as PurchaseRepository.GetPayablesAgingAsync,
+        // so these per-supplier rows sum back to that whole-ledger figure.
+        var today = DateTime.UtcNow.Date;
+        var d30 = today.AddDays(-30);
+        var d60 = today.AddDays(-60);
+        var d90 = today.AddDays(-90);
+
         return due
-            .GroupBy(p => p.SupplierId)
+            .Select(p => new {
+                Purchase = p,
+                Net      = p.GrandTotal - p.AmountPaid - applied.GetValueOrDefault(p.Id)
+            })
+            .GroupBy(x => x.Purchase.SupplierId)
             .Select(g => new DueSupplierDto {
                 SupplierId    = g.Key,
-                SupplierName  = g.First().Supplier?.Name ?? "",
-                Phone         = g.First().Supplier?.Phone,
+                SupplierName  = g.First().Purchase.Supplier?.Name ?? "",
+                Phone         = g.First().Purchase.Supplier?.Phone,
                 OpenPurchases = g.Count(),
-                TotalDue      = g.Sum(p => p.GrandTotal - p.AmountPaid),
-                HasOverdue    = g.Any(p => p.DueDate.HasValue && p.DueDate.Value.Date < now
-                                        && p.GrandTotal - p.AmountPaid > 0)
+                TotalDue      = g.Sum(x => x.Net),
+                Aging         = new AgingBucketsDto {
+                    NoDueDate  = g.Where(x => x.Purchase.DueDate == null).Sum(x => x.Net),
+                    NotYetDue  = g.Where(x => x.Purchase.DueDate != null && x.Purchase.DueDate!.Value.Date >= today).Sum(x => x.Net),
+                    Days1To30  = g.Where(x => x.Purchase.DueDate != null && x.Purchase.DueDate!.Value.Date <  today && x.Purchase.DueDate!.Value.Date >= d30).Sum(x => x.Net),
+                    Days31To60 = g.Where(x => x.Purchase.DueDate != null && x.Purchase.DueDate!.Value.Date <  d30   && x.Purchase.DueDate!.Value.Date >= d60).Sum(x => x.Net),
+                    Days61To90 = g.Where(x => x.Purchase.DueDate != null && x.Purchase.DueDate!.Value.Date <  d60   && x.Purchase.DueDate!.Value.Date >= d90).Sum(x => x.Net),
+                    Days90Plus = g.Where(x => x.Purchase.DueDate != null && x.Purchase.DueDate!.Value.Date <  d90).Sum(x => x.Net)
+                }
             })
             .OrderByDescending(d => d.HasOverdue)
             .ThenByDescending(d => d.TotalDue)

@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<ICustomerReturnRepository,    CustomerReturnRepository>();
         services.AddScoped<ISupplierReturnRepository,    SupplierReturnRepository>();
         services.AddScoped<ICreditNoteRepository,        CreditNoteRepository>();
+        services.AddScoped<ICreditNoteApplicationRepository, CreditNoteApplicationRepository>();
         services.AddScoped<IPaymentBatchRepository,      PaymentBatchRepository>();
         services.AddScoped<IExpenseCategoryRepository,  ExpenseCategoryRepository>();
         services.AddScoped<IExpenseRepository,          ExpenseRepository>();

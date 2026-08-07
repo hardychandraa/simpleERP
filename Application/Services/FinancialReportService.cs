@@ -140,6 +140,12 @@ public class FinancialReportService : IFinancialReportService
     {
         var receivables = await _sales.GetReceivablesTotalAsync();
         var payables    = await _purchases.GetPayablesTotalAsync();
+        var arAging     = await _sales.GetReceivablesAgingAsync();
+        var apAging     = await _purchases.GetPayablesAgingAsync();
+        // Remaining value of notes not yet tied to any document. Reported, never
+        // subtracted: the applied slices are already off the per-document balances that
+        // make up NetTotal, so netting these as well would double-count them — which is
+        // exactly what used to drive Piutang Bersih negative.
         var openCredits = await _notes.GetOpenTotalAsync(CreditDebitType.Credit);
         var openDebits  = await _notes.GetOpenTotalAsync(CreditDebitType.Debit);
         var rebate      = await _rebateAccruals.GetOutstandingTotalAsync();
@@ -159,23 +165,46 @@ public class FinancialReportService : IFinancialReportService
             InventoryValue  = valuation.TotalValue,
             ProductsInStock = valuation.ProductsInStock,
 
-            ReceivablesGross   = receivables.Total,
+            ReceivablesGross   = receivables.GrossTotal,
+            ReceivablesNet     = receivables.NetTotal,
             OpenInvoices       = receivables.OpenInvoices,
             ReceivablesOverdue = receivables.Overdue,
+            CreditNotesApplied = receivables.AppliedNotesTotal,
             OpenCreditNotes    = openCredits,
+            ReceivablesAging   = ToBuckets(arAging.NoDueDate, arAging.NotYetDue, arAging.Days1To30,
+                                           arAging.Days31To60, arAging.Days61To90, arAging.Days90Plus),
 
             UnclaimedRebate            = rebate.CashAccrued,
             UnclaimedRebateCount       = rebate.AccrualCount,
             RebateInKindOutstanding    = rebate.InKindCount,
             RebateLuckyDrawOutstanding = rebate.LuckyDrawCount,
 
-            PayablesGross   = payables.Total,
-            OpenPurchases   = payables.OpenPurchases,
-            PayablesOverdue = payables.Overdue,
-            OpenDebitNotes  = openDebits,
+            PayablesGross     = payables.GrossTotal,
+            PayablesNet       = payables.NetTotal,
+            OpenPurchases     = payables.OpenPurchases,
+            PayablesOverdue   = payables.Overdue,
+            DebitNotesApplied = payables.AppliedNotesTotal,
+            OpenDebitNotes    = openDebits,
+            PayablesAging     = ToBuckets(apAging.NoDueDate, apAging.NotYetDue, apAging.Days1To30,
+                                          apAging.Days31To60, apAging.Days61To90, apAging.Days90Plus),
 
             CommissionPayable      = commission.Amount,
             CommissionPayableCount = commission.AccrualCount
         };
     }
+
+    /// <summary>
+    /// The AR and AP ageing records are separate types by the same twinning convention the
+    /// rest of this app uses, but the UI renders them identically — one DTO for both.
+    /// </summary>
+    private static AgingBucketsDto ToBuckets(decimal noDueDate, decimal notYetDue, decimal d1To30,
+                                             decimal d31To60, decimal d61To90, decimal d90Plus)
+        => new() {
+            NoDueDate  = noDueDate,
+            NotYetDue  = notYetDue,
+            Days1To30  = d1To30,
+            Days31To60 = d31To60,
+            Days61To90 = d61To90,
+            Days90Plus = d90Plus
+        };
 }

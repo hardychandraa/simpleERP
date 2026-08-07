@@ -59,8 +59,13 @@ public interface ISaleRepository {
     Task<List<Sale>> GetByIdsWithItemsAsync(IEnumerable<Guid> ids);
     Task<List<Sale>> GetAllAsync(DateTime? from = null, DateTime? to = null);
     /// <summary>
-    /// Active credit sales still owing money, oldest due first — the AR ageing list.
-    /// Optionally scoped to one customer, which is what a statement of account needs.
+    /// Active credit sales still owing money <em>after</em> any credit notes applied to
+    /// them, oldest due first — the AR ageing list. Optionally scoped to one customer,
+    /// which is what a statement of account needs.
+    ///
+    /// An invoice fully covered by an applied credit note drops out here even though its
+    /// own AmountPaid never moved: a note is not a payment, so it never touches
+    /// AmountPaid, but it does settle the balance.
     /// </summary>
     Task<List<Sale>> GetDueSalesAsync(Guid? customerId = null);
     Task<string> GenerateInvoiceNumberAsync();
@@ -78,14 +83,45 @@ public interface ISaleRepository {
     /// Tax-inclusive, because a receivable is cash owed, not turnover.
     /// </summary>
     Task<ReceivablesTotals> GetReceivablesTotalAsync();
+    /// <summary>
+    /// The same net-of-notes population as <see cref="GetReceivablesTotalAsync"/>, split
+    /// by age instead of summed flat. Bucketed on boundary dates rather than a computed
+    /// day count, so it stays a single set-based query.
+    /// </summary>
+    Task<ReceivablesAging> GetReceivablesAgingAsync();
 }
 
 /// <summary>
-/// AR position. <paramref name="Overdue"/> is the slice already past its due date —
-/// the only ageing this app does today; real 30/60/90 buckets are a known gap.
-/// Both figures are tax-inclusive.
+/// AR position, all figures tax-inclusive.
+///
+/// <paramref name="GrossTotal"/> is what the invoices themselves still say is owed
+/// (GrandTotal − AmountPaid). <paramref name="NetTotal"/> takes off credit notes
+/// applied to those specific invoices, and is the figure that actually represents cash
+/// collectable — it is what the Position Summary and the Due screens report.
+/// Per-document netting is capped so no single invoice can go below zero, which is why
+/// <paramref name="NetTotal"/> can never be negative.
+///
+/// <paramref name="Overdue"/> is the net slice already past its due date — a coarse
+/// flag kept for continuity; <see cref="ReceivablesAging"/> is the real bucketing.
 /// </summary>
-public record ReceivablesTotals(int OpenInvoices, decimal Total, decimal Overdue);
+public record ReceivablesTotals(int OpenInvoices, decimal GrossTotal, decimal NetTotal,
+                                decimal Overdue, decimal AppliedNotesTotal);
+
+/// <summary>
+/// AR ageing by how long each net-positive invoice has been past due.
+///
+/// <paramref name="NoDueDate"/> is a real population, not a rounding edge: a credit sale
+/// with no payment term chosen is open credit with no agreed date, which the app allows
+/// deliberately rather than inventing a deadline for. It is reported on its own rather
+/// than folded into any aged bucket.
+/// </summary>
+public record ReceivablesAging(decimal NoDueDate, decimal NotYetDue, decimal Days1To30,
+                               decimal Days31To60, decimal Days61To90, decimal Days90Plus)
+{
+    public decimal Total => NoDueDate + NotYetDue + Days1To30 + Days31To60 + Days61To90 + Days90Plus;
+    /// <summary>Everything actually past due — reconciles with <see cref="ReceivablesTotals.Overdue"/>.</summary>
+    public decimal Overdue => Days1To30 + Days31To60 + Days61To90 + Days90Plus;
+}
 
 /// <summary>
 /// Period totals backing the P&amp;L report.
@@ -161,8 +197,9 @@ public interface IPurchaseRepository {
     Task<List<Purchase>> GetByIdsWithItemsAsync(IEnumerable<Guid> ids);
     Task<List<Purchase>> GetAllAsync(DateTime? from = null, DateTime? to = null);
     /// <summary>
-    /// Active purchases still owing money, oldest due first — the AP ageing list.
-    /// Optionally scoped to one supplier, which is what a statement of account needs.
+    /// Active purchases still owing money <em>after</em> any debit notes applied to them,
+    /// oldest due first — the AP ageing list. Optionally scoped to one supplier, which is
+    /// what a statement of account needs. AP mirror of <see cref="ISaleRepository.GetDueSalesAsync"/>.
     /// </summary>
     Task<List<Purchase>> GetDuePurchasesAsync(Guid? supplierId = null);
     Task<string> GeneratePurchaseNumberAsync();
@@ -191,10 +228,25 @@ public interface IPurchaseRepository {
     /// <see cref="ISaleRepository.GetReceivablesTotalAsync"/>, aggregated in SQL.
     /// </summary>
     Task<PayablesTotals> GetPayablesTotalAsync();
+    /// <summary>AP mirror of <see cref="ISaleRepository.GetReceivablesAgingAsync"/>.</summary>
+    Task<PayablesAging> GetPayablesAgingAsync();
 }
 
-/// <summary>AP position, tax-inclusive. Mirrors <see cref="ReceivablesTotals"/>.</summary>
-public record PayablesTotals(int OpenPurchases, decimal Total, decimal Overdue);
+/// <summary>
+/// AP position, tax-inclusive. Mirrors <see cref="ReceivablesTotals"/> exactly:
+/// <paramref name="NetTotal"/> is gross less debit notes applied to those specific
+/// purchases, and is what we actually still have to pay.
+/// </summary>
+public record PayablesTotals(int OpenPurchases, decimal GrossTotal, decimal NetTotal,
+                             decimal Overdue, decimal AppliedNotesTotal);
+
+/// <summary>AP ageing. Mirrors <see cref="ReceivablesAging"/>.</summary>
+public record PayablesAging(decimal NoDueDate, decimal NotYetDue, decimal Days1To30,
+                            decimal Days31To60, decimal Days61To90, decimal Days90Plus)
+{
+    public decimal Total => NoDueDate + NotYetDue + Days1To30 + Days31To60 + Days61To90 + Days90Plus;
+    public decimal Overdue => Days1To30 + Days31To60 + Days61To90 + Days90Plus;
+}
 
 /// <summary>
 /// Period totals for the purchase side. <paramref name="NetPurchases"/> is ex-PPN
@@ -434,12 +486,50 @@ public interface ICreditNoteRepository {
     /// <summary>Numbered per direction — CN- for credit, DN- for debit — so the two run independently.</summary>
     Task<string> GenerateDocumentNumberAsync(CreditDebitType type);
     /// <summary>
-    /// Face value of notes still Open, by direction. What AR (credit) and AP (debit)
-    /// reporting has to net off, since posted invoices are never edited.
+    /// Remaining value of notes still Open, by direction — face value less whatever has
+    /// already been applied to a specific document.
+    ///
+    /// This used to be the figure AR/AP netted off in aggregate. It no longer is: an
+    /// applied note reduces the balance of the document it was applied to, so netting it
+    /// off the ledger total as well would double-count it. What's left here is the slice
+    /// not yet tied to any document, which the Position Summary shows as information
+    /// rather than subtracting.
     /// </summary>
     Task<decimal> GetOpenTotalAsync(CreditDebitType type);
     Task AddAsync(CreditNote note);
     void Update(CreditNote note);
+}
+
+/// <summary>
+/// Credit/debit notes applied against one named invoice or purchase.
+///
+/// Every aggregate here excludes reversed rows. The bulk (plural) overloads exist
+/// because the Due lists, the statements and the Position Summary all need applied
+/// totals for many documents at once — one round trip, not one per document.
+/// </summary>
+public interface ICreditNoteApplicationRepository {
+    Task<CreditNoteApplication?> GetByIdAsync(Guid id);
+    /// <summary>A note's own application history, reversed rows included — this is the audit trail.</summary>
+    Task<List<CreditNoteApplication>> GetByCreditNoteAsync(Guid creditNoteId);
+    /// <summary>Notes applied against one invoice, reversed rows included, for its detail page.</summary>
+    Task<List<CreditNoteApplication>> GetBySaleAsync(Guid saleId);
+    Task<List<CreditNoteApplication>> GetByPurchaseAsync(Guid purchaseId);
+    Task AddAsync(CreditNoteApplication application);
+    void Update(CreditNoteApplication application);
+
+    /// <summary>Live (non-reversed) note value applied against one invoice.</summary>
+    Task<decimal> GetAppliedTotalForSaleAsync(Guid saleId);
+    Task<decimal> GetAppliedTotalForPurchaseAsync(Guid purchaseId);
+    /// <summary>Applied totals for many invoices in one query. Documents with none are absent from the map.</summary>
+    Task<Dictionary<Guid, decimal>> GetAppliedTotalsForSalesAsync(IEnumerable<Guid> saleIds);
+    Task<Dictionary<Guid, decimal>> GetAppliedTotalsForPurchasesAsync(IEnumerable<Guid> purchaseIds);
+    /// <summary>How much of one note has been applied — face value less this is what's left.</summary>
+    Task<decimal> GetAppliedTotalForNoteAsync(Guid creditNoteId);
+    Task<Dictionary<Guid, decimal>> GetAppliedTotalsForNotesAsync(IEnumerable<Guid> creditNoteIds);
+    /// <summary>Cheap existence check — blocks cancelling a note or a document out from under a live application.</summary>
+    Task<bool> HasLiveApplicationsForNoteAsync(Guid creditNoteId);
+    Task<bool> HasLiveApplicationsForSaleAsync(Guid saleId);
+    Task<bool> HasLiveApplicationsForPurchaseAsync(Guid purchaseId);
 }
 
 public interface IPaymentBatchRepository {

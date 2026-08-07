@@ -36,6 +36,7 @@ public class IndexModel : PageModel
 
     [BindProperty] public CreateCreditNoteDto NewNote { get; set; } = new();
     [BindProperty] public SettleCreditNoteDto Settle  { get; set; } = new();
+    [BindProperty] public ApplyCreditNoteDto  Apply   { get; set; } = new();
 
     public string? Msg   { get; set; }
     public bool    IsErr { get; set; }
@@ -82,6 +83,22 @@ public class IndexModel : PageModel
         var result = await _notes.CancelAsync(id, User_);
         return Redirect(result.Success
             ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Note cancelled."].Value)}"
+            : $"/CreditNotes?err=true&msg={Uri.EscapeDataString(result.Error!)}");
+    }
+
+    public async Task<IActionResult> OnPostApplyAsync()
+    {
+        var result = await _notes.ApplyAsync(Apply, User_);
+        return Redirect(result.Success
+            ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Note applied."].Value)}"
+            : $"/CreditNotes?err=true&msg={Uri.EscapeDataString(result.Error!)}");
+    }
+
+    public async Task<IActionResult> OnPostReverseApplicationAsync(Guid applicationId)
+    {
+        var result = await _notes.ReverseApplicationAsync(applicationId, User_);
+        return Redirect(result.Success
+            ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Application reversed."].Value)}"
             : $"/CreditNotes?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 }

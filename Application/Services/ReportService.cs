@@ -33,9 +33,11 @@ public class ReportService : IReportService
         var todaySales = allToday.Where(s => s.Status == Domain.Enums.SaleStatus.Active).ToList();
         var cancelled  = allToday.Count(s => s.Status == Domain.Enums.SaleStatus.Cancelled);
 
-        // All-time outstanding balance
-        var allDue = await _sales.GetDueSalesAsync();
-        var totalOutstanding = allDue.Sum(s => s.GrandTotal - s.AmountPaid);
+        // All-time outstanding balance, net of credit notes applied to specific invoices.
+        // This used to re-sum GetDueSalesAsync by hand, which was a second copy of the same
+        // formula the AR aggregate already owns — and one that would now silently overstate
+        // the figure, since it knew nothing about note application.
+        var totalOutstanding = (await _sales.GetReceivablesTotalAsync()).NetTotal;
 
         var cashSales   = todaySales.Where(s => s.PaymentType == Domain.Enums.PaymentType.Cash).ToList();
         var creditSales = todaySales.Where(s => s.PaymentType != Domain.Enums.PaymentType.Cash).ToList();

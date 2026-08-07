@@ -12,12 +12,12 @@
     <div class="stat orange">
         <div class="stat-lbl">@Localizer["Open credit — owed to customers"]</div>
         <div class="stat-val">@Model.OpenCredit.ToString("N0")</div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">@Localizer["Nets off accounts receivable"]</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">@Localizer["Not yet applied to any invoice"]</div>
     </div>
     <div class="stat teal">
         <div class="stat-lbl">@Localizer["Open debit — owed by suppliers"]</div>
         <div class="stat-val">@Model.OpenDebit.ToString("N0")</div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">@Localizer["Nets off accounts payable"]</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">@Localizer["Not yet applied to any purchase"]</div>
     </div>
 </div>
 
@@ -184,6 +184,10 @@
                         {
                             <br /><small style="color:#9ca3af;font-weight:400">@Localizer["incl. PPN"] @n.TaxAmount.ToString("N0")</small>
                         }
+                        @if (n.IsPartiallyApplied)
+                        {
+                            <br /><small style="color:#b45309;font-weight:600">@Localizer["{0} left", n.RemainingAmount.ToString("N0")]</small>
+                        }
                     </td>
                     <td style="text-align:center">
                         <span class="badge @(n.Status == "Open" ? "warn" : n.Status == "Settled" ? "ok" : "gray")">@Localizer[EnumDisplay.Key("CreditNoteStatus", n.Status)]</span>
@@ -195,10 +199,30 @@
                     <td>
                         @if (n.IsOpen)
                         {
-                            <form method="post" asp-page-handler="Settle" style="display:flex;gap:5px;align-items:center">
+                            @* Apply against a named document — the reason this page can now
+                               answer "which invoice did this note cover?". Only offered when
+                               the counterparty actually has something open to apply against. *@
+                            @if (n.OpenDocuments.Count > 0)
+                            {
+                                <form method="post" asp-page-handler="Apply" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+                                    <input type="hidden" name="Apply.CreditNoteId" value="@n.Id" />
+                                    <select name="@(n.IsCredit ? "Apply.SaleId" : "Apply.PurchaseId")" style="width:150px;font-size:11px">
+                                        @foreach (var d in n.OpenDocuments)
+                                        {
+                                            <option value="@d.DocumentId">@d.DocumentNumber (@d.NetBalanceDue.ToString("N0"))</option>
+                                        }
+                                    </select>
+                                    <input type="number" name="Apply.Amount" step="0.01" min="0.01"
+                                           max="@n.RemainingAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                           value="@n.RemainingAmount.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                                           style="width:90px;font-size:11px" />
+                                    <button type="submit" class="btn btn-primary btn-sm">@Localizer["Apply"]</button>
+                                </form>
+                            }
+                            <form method="post" asp-page-handler="Settle" style="display:flex;gap:5px;align-items:center;margin-top:4px">
                                 <input type="hidden" name="Settle.Id" value="@n.Id" />
                                 <input type="text" name="Settle.SettlementNotes" maxlength="500"
-                                       placeholder="@Localizer["Applied to / refunded"]" style="width:130px" />
+                                       placeholder="@Localizer["Refunded / written off"]" style="width:130px" />
                                 <button type="submit" class="btn btn-success btn-sm">@Localizer["Settle"]</button>
                             </form>
                             @if (!n.SourceCustomerReturnId.HasValue && !n.SourceSupplierReturnId.HasValue)
@@ -213,6 +237,32 @@
                         else if (!string.IsNullOrEmpty(n.SettlementNotes))
                         {
                             <span style="font-size:11px;color:#6b7280">@n.SettlementNotes</span>
+                        }
+
+                        @* Where the note actually went. Reversed rows stay visible, struck
+                           through — the correction is part of the record. *@
+                        @if (n.Applications.Count > 0)
+                        {
+                            <div style="margin-top:6px;font-size:11px;line-height:1.7">
+                                @foreach (var a in n.Applications)
+                                {
+                                    <div style="@(a.IsReversed ? "color:#9ca3af;text-decoration:line-through" : "color:#6b7280")">
+                                        @Localizer["Applied to"]
+                                        <a href="@(a.SaleId.HasValue ? $"/Sales/{a.SaleId}" : $"/Purchases/{a.PurchaseId}")"
+                                           style="color:@(a.IsReversed ? "#9ca3af" : "#2563eb")">@a.DocumentNumber</a>
+                                        <strong>@a.Amount.ToString("N0")</strong>
+                                        <span style="color:#9ca3af">@a.ApplicationDate.ToLocalTime().ToString("dd-MMM-yy")</span>
+                                        @if (a.CanReverse)
+                                        {
+                                            <form method="post" asp-page-handler="ReverseApplication" asp-route-applicationId="@a.Id"
+                                                  style="display:inline"
+                                                  onsubmit="return confirm('@Localizer["Reverse this application?"]')">
+                                                <button type="submit" class="btn btn-outline btn-sm" style="padding:1px 6px;font-size:10px">@Localizer["Reverse"]</button>
+                                            </form>
+                                        }
+                                    </div>
+                                }
+                            </div>
                         }
                     </td>
                 </tr>

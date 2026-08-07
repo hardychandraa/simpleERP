@@ -216,29 +216,78 @@ public class PurchaseRepository : IPurchaseRepository
            .Include(p => p.Supplier)
            .Where(p => p.Status == PurchaseStatus.Active
                     && p.PaymentType != PaymentType.Cash
-                    && p.AmountPaid < p.GrandTotal);
+                    // Net of applied debit notes — AP mirror of GetDueSalesAsync.
+                    && p.GrandTotal - p.AmountPaid -
+                       (_db.CreditNoteApplications
+                            .Where(a => a.PurchaseId == p.Id && !a.IsReversed)
+                            .Sum(a => (decimal?)a.Amount) ?? 0m) > 0);
         if (supplierId.HasValue) q = q.Where(p => p.SupplierId == supplierId.Value);
         return q.OrderBy(p => p.DueDate).ThenBy(p => p.PurchaseDate).ToListAsync();
     }
 
     public async Task<PayablesTotals> GetPayablesTotalAsync()
     {
-        // AP mirror of SaleRepository.GetReceivablesTotalAsync — same shape, same cutoff.
+        // AP mirror of SaleRepository.GetReceivablesTotalAsync — same shape, same cutoff,
+        // same project-then-group structure.
         var today = DateTime.UtcNow.Date;
         var head = await _db.Purchases
-            .Where(p => p.Status == PurchaseStatus.Active
-                     && p.PaymentType != PaymentType.Cash
-                     && p.AmountPaid < p.GrandTotal)
+            .Where(p => p.Status == PurchaseStatus.Active && p.PaymentType != PaymentType.Cash)
+            .Select(p => new {
+                p.DueDate,
+                Gross   = p.GrandTotal - p.AmountPaid,
+                Applied = _db.CreditNoteApplications
+                             .Where(a => a.PurchaseId == p.Id && !a.IsReversed)
+                             .Sum(a => (decimal?)a.Amount) ?? 0m
+            })
+            .Select(x => new { x.DueDate, x.Gross, x.Applied, Net = x.Gross - x.Applied })
+            .Where(x => x.Net > 0)
             .GroupBy(_ => 1)
             .Select(g => new {
                 Count   = g.Count(),
-                Total   = g.Sum(p => (decimal?)(p.GrandTotal - p.AmountPaid)) ?? 0m,
-                Overdue = g.Where(p => p.DueDate != null && p.DueDate < today)
-                           .Sum(p => (decimal?)(p.GrandTotal - p.AmountPaid)) ?? 0m
+                Gross   = g.Sum(x => (decimal?)x.Gross)   ?? 0m,
+                Net     = g.Sum(x => (decimal?)x.Net)     ?? 0m,
+                Applied = g.Sum(x => (decimal?)x.Applied) ?? 0m,
+                Overdue = g.Where(x => x.DueDate != null && x.DueDate < today)
+                           .Sum(x => (decimal?)x.Net) ?? 0m
             })
             .FirstOrDefaultAsync();
 
-        return new PayablesTotals(head?.Count ?? 0, head?.Total ?? 0m, head?.Overdue ?? 0m);
+        return new PayablesTotals(head?.Count ?? 0, head?.Gross ?? 0m, head?.Net ?? 0m,
+                                  head?.Overdue ?? 0m, head?.Applied ?? 0m);
+    }
+
+    public async Task<PayablesAging> GetPayablesAgingAsync()
+    {
+        // AP mirror of SaleRepository.GetReceivablesAgingAsync — deliberately identical in
+        // shape and thresholds, so the two sides can be reconciled against each other.
+        var today = DateTime.UtcNow.Date;
+        var d30 = today.AddDays(-30);
+        var d60 = today.AddDays(-60);
+        var d90 = today.AddDays(-90);
+
+        var head = await _db.Purchases
+            .Where(p => p.Status == PurchaseStatus.Active && p.PaymentType != PaymentType.Cash)
+            .Select(p => new {
+                p.DueDate,
+                Net = p.GrandTotal - p.AmountPaid -
+                      (_db.CreditNoteApplications
+                           .Where(a => a.PurchaseId == p.Id && !a.IsReversed)
+                           .Sum(a => (decimal?)a.Amount) ?? 0m)
+            })
+            .Where(x => x.Net > 0)
+            .GroupBy(_ => 1)
+            .Select(g => new {
+                NoDueDate = g.Where(x => x.DueDate == null).Sum(x => (decimal?)x.Net) ?? 0m,
+                NotYetDue = g.Where(x => x.DueDate != null && x.DueDate >= today).Sum(x => (decimal?)x.Net) ?? 0m,
+                D1To30    = g.Where(x => x.DueDate != null && x.DueDate <  today && x.DueDate >= d30).Sum(x => (decimal?)x.Net) ?? 0m,
+                D31To60   = g.Where(x => x.DueDate != null && x.DueDate <  d30   && x.DueDate >= d60).Sum(x => (decimal?)x.Net) ?? 0m,
+                D61To90   = g.Where(x => x.DueDate != null && x.DueDate <  d60   && x.DueDate >= d90).Sum(x => (decimal?)x.Net) ?? 0m,
+                D90Plus   = g.Where(x => x.DueDate != null && x.DueDate <  d90).Sum(x => (decimal?)x.Net) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        return new PayablesAging(head?.NoDueDate ?? 0m, head?.NotYetDue ?? 0m, head?.D1To30 ?? 0m,
+                                 head?.D31To60 ?? 0m, head?.D61To90 ?? 0m, head?.D90Plus ?? 0m);
     }
 
     public async Task<string> GeneratePurchaseNumberAsync()
@@ -879,12 +928,109 @@ public class CreditNoteRepository : ICreditNoteRepository
     }
 
     public async Task<decimal> GetOpenTotalAsync(CreditDebitType type) =>
+        // Remaining, not face value: an applied slice already reduces the balance of the
+        // document it was applied to, so counting it here as well would double it.
         await _db.CreditNotes
             .Where(n => n.Type == type && n.Status == CreditNoteStatus.Open)
-            .SumAsync(n => (decimal?)n.Amount) ?? 0m;
+            .Select(n => n.Amount -
+                (_db.CreditNoteApplications
+                     .Where(a => a.CreditNoteId == n.Id && !a.IsReversed)
+                     .Sum(a => (decimal?)a.Amount) ?? 0m))
+            .SumAsync(remaining => (decimal?)remaining) ?? 0m;
 
     public async Task AddAsync(CreditNote note) => await _db.CreditNotes.AddAsync(note);
     public void Update(CreditNote note) => _db.CreditNotes.Update(note);
+}
+
+/// <summary>
+/// Per-document note application. Every aggregate here filters out reversed rows —
+/// a reversal releases the amount back to both the note and the document at once.
+/// </summary>
+public class CreditNoteApplicationRepository : ICreditNoteApplicationRepository
+{
+    private readonly AppDbContext _db;
+    public CreditNoteApplicationRepository(AppDbContext db) => _db = db;
+
+    private IQueryable<CreditNoteApplication> WithNav => _db.CreditNoteApplications
+        .Include(a => a.CreditNote).Include(a => a.Sale).Include(a => a.Purchase);
+
+    public Task<CreditNoteApplication?> GetByIdAsync(Guid id) =>
+        WithNav.FirstOrDefaultAsync(a => a.Id == id);
+
+    // History reads keep reversed rows: they are the audit trail of what was corrected.
+    public Task<List<CreditNoteApplication>> GetByCreditNoteAsync(Guid creditNoteId) =>
+        WithNav.Where(a => a.CreditNoteId == creditNoteId)
+               .OrderByDescending(a => a.ApplicationDate).ThenByDescending(a => a.CreatedAt).ToListAsync();
+
+    public Task<List<CreditNoteApplication>> GetBySaleAsync(Guid saleId) =>
+        WithNav.Where(a => a.SaleId == saleId)
+               .OrderByDescending(a => a.ApplicationDate).ThenByDescending(a => a.CreatedAt).ToListAsync();
+
+    public Task<List<CreditNoteApplication>> GetByPurchaseAsync(Guid purchaseId) =>
+        WithNav.Where(a => a.PurchaseId == purchaseId)
+               .OrderByDescending(a => a.ApplicationDate).ThenByDescending(a => a.CreatedAt).ToListAsync();
+
+    public async Task AddAsync(CreditNoteApplication application) =>
+        await _db.CreditNoteApplications.AddAsync(application);
+    public void Update(CreditNoteApplication application) =>
+        _db.CreditNoteApplications.Update(application);
+
+    public async Task<decimal> GetAppliedTotalForSaleAsync(Guid saleId) =>
+        await _db.CreditNoteApplications
+            .Where(a => a.SaleId == saleId && !a.IsReversed)
+            .SumAsync(a => (decimal?)a.Amount) ?? 0m;
+
+    public async Task<decimal> GetAppliedTotalForPurchaseAsync(Guid purchaseId) =>
+        await _db.CreditNoteApplications
+            .Where(a => a.PurchaseId == purchaseId && !a.IsReversed)
+            .SumAsync(a => (decimal?)a.Amount) ?? 0m;
+
+    public async Task<Dictionary<Guid, decimal>> GetAppliedTotalsForSalesAsync(IEnumerable<Guid> saleIds)
+    {
+        var list = saleIds.Distinct().ToList();
+        if (list.Count == 0) return new();
+        return await _db.CreditNoteApplications
+            .Where(a => a.SaleId != null && list.Contains(a.SaleId.Value) && !a.IsReversed)
+            .GroupBy(a => a.SaleId!.Value)
+            .Select(g => new { SaleId = g.Key, Applied = g.Sum(a => a.Amount) })
+            .ToDictionaryAsync(x => x.SaleId, x => x.Applied);
+    }
+
+    public async Task<Dictionary<Guid, decimal>> GetAppliedTotalsForPurchasesAsync(IEnumerable<Guid> purchaseIds)
+    {
+        var list = purchaseIds.Distinct().ToList();
+        if (list.Count == 0) return new();
+        return await _db.CreditNoteApplications
+            .Where(a => a.PurchaseId != null && list.Contains(a.PurchaseId.Value) && !a.IsReversed)
+            .GroupBy(a => a.PurchaseId!.Value)
+            .Select(g => new { PurchaseId = g.Key, Applied = g.Sum(a => a.Amount) })
+            .ToDictionaryAsync(x => x.PurchaseId, x => x.Applied);
+    }
+
+    public async Task<decimal> GetAppliedTotalForNoteAsync(Guid creditNoteId) =>
+        await _db.CreditNoteApplications
+            .Where(a => a.CreditNoteId == creditNoteId && !a.IsReversed)
+            .SumAsync(a => (decimal?)a.Amount) ?? 0m;
+
+    public async Task<Dictionary<Guid, decimal>> GetAppliedTotalsForNotesAsync(IEnumerable<Guid> creditNoteIds)
+    {
+        var list = creditNoteIds.Distinct().ToList();
+        if (list.Count == 0) return new();
+        return await _db.CreditNoteApplications
+            .Where(a => list.Contains(a.CreditNoteId) && !a.IsReversed)
+            .GroupBy(a => a.CreditNoteId)
+            .Select(g => new { NoteId = g.Key, Applied = g.Sum(a => a.Amount) })
+            .ToDictionaryAsync(x => x.NoteId, x => x.Applied);
+    }
+
+    public Task<bool> HasLiveApplicationsForNoteAsync(Guid creditNoteId) =>
+        _db.CreditNoteApplications.AnyAsync(a => a.CreditNoteId == creditNoteId && !a.IsReversed);
+
+    public Task<bool> HasLiveApplicationsForSaleAsync(Guid saleId) =>
+        _db.CreditNoteApplications.AnyAsync(a => a.SaleId == saleId && !a.IsReversed);
+
+    public Task<bool> HasLiveApplicationsForPurchaseAsync(Guid purchaseId) =>
+        _db.CreditNoteApplications.AnyAsync(a => a.PurchaseId == purchaseId && !a.IsReversed);
 }
 
 public class PaymentBatchRepository : IPaymentBatchRepository
@@ -1125,7 +1271,13 @@ public class SaleRepository : ISaleRepository
            .Include(s => s.PaymentTerm)
            .Where(s => s.Status == SaleStatus.Active
                     && s.PaymentType != PaymentType.Cash
-                    && s.AmountPaid < s.GrandTotal);
+                    // Net of applied credit notes, not just of cash. A note never touches
+                    // AmountPaid, so an invoice fully covered by one would otherwise sit
+                    // in the due list forever with nothing left to collect.
+                    && s.GrandTotal - s.AmountPaid -
+                       (_db.CreditNoteApplications
+                            .Where(a => a.SaleId == s.Id && !a.IsReversed)
+                            .Sum(a => (decimal?)a.Amount) ?? 0m) > 0);
         if (customerId.HasValue) q = q.Where(s => s.CustomerId == customerId.Value);
         return q.OrderBy(s => s.DueDate)   // overdue first, then by due date
                 .ThenBy(s => s.SaleDate)
@@ -1136,21 +1288,76 @@ public class SaleRepository : ISaleRepository
     {
         // Same population as GetDueSalesAsync, summed in SQL. Cutoff is UTC "today" to
         // match how DueDate is stored and how the Due screens already compare it.
+        //
+        // Projected per invoice first, then grouped: nesting the correlated notes subquery
+        // directly inside a GroupBy's Sum is a translation risk, and this shape also keeps
+        // the gross and net figures derivable from the same pass.
         var today = DateTime.UtcNow.Date;
         var head = await _db.Sales
-            .Where(s => s.Status == SaleStatus.Active
-                     && s.PaymentType != PaymentType.Cash
-                     && s.AmountPaid < s.GrandTotal)
+            .Where(s => s.Status == SaleStatus.Active && s.PaymentType != PaymentType.Cash)
+            .Select(s => new {
+                s.DueDate,
+                Gross   = s.GrandTotal - s.AmountPaid,
+                Applied = _db.CreditNoteApplications
+                             .Where(a => a.SaleId == s.Id && !a.IsReversed)
+                             .Sum(a => (decimal?)a.Amount) ?? 0m
+            })
+            .Select(x => new { x.DueDate, x.Gross, x.Applied, Net = x.Gross - x.Applied })
+            // Only invoices with something genuinely left to collect. Because each Net is
+            // capped at write time so it can never go below zero, a sum of these can never
+            // be negative — which is what makes a negative Piutang Bersih impossible.
+            .Where(x => x.Net > 0)
             .GroupBy(_ => 1)
             .Select(g => new {
-                Count   = g.Count(),
-                Total   = g.Sum(s => (decimal?)(s.GrandTotal - s.AmountPaid)) ?? 0m,
-                Overdue = g.Where(s => s.DueDate != null && s.DueDate < today)
-                           .Sum(s => (decimal?)(s.GrandTotal - s.AmountPaid)) ?? 0m
+                Count    = g.Count(),
+                Gross    = g.Sum(x => (decimal?)x.Gross)   ?? 0m,
+                Net      = g.Sum(x => (decimal?)x.Net)     ?? 0m,
+                Applied  = g.Sum(x => (decimal?)x.Applied) ?? 0m,
+                Overdue  = g.Where(x => x.DueDate != null && x.DueDate < today)
+                            .Sum(x => (decimal?)x.Net) ?? 0m
             })
             .FirstOrDefaultAsync();
 
-        return new ReceivablesTotals(head?.Count ?? 0, head?.Total ?? 0m, head?.Overdue ?? 0m);
+        return new ReceivablesTotals(head?.Count ?? 0, head?.Gross ?? 0m, head?.Net ?? 0m,
+                                     head?.Overdue ?? 0m, head?.Applied ?? 0m);
+    }
+
+    public async Task<ReceivablesAging> GetReceivablesAgingAsync()
+    {
+        // Boundary dates, not a computed day count: comparing DueDate against fixed
+        // thresholds stays one set-based query and matches how every other overdue check
+        // in this app already works. Buckets are closed at the older end and open at the
+        // newer, so each invoice lands in exactly one and the six sum to NetTotal.
+        var today = DateTime.UtcNow.Date;
+        var d30 = today.AddDays(-30);
+        var d60 = today.AddDays(-60);
+        var d90 = today.AddDays(-90);
+
+        var head = await _db.Sales
+            .Where(s => s.Status == SaleStatus.Active && s.PaymentType != PaymentType.Cash)
+            .Select(s => new {
+                s.DueDate,
+                Net = s.GrandTotal - s.AmountPaid -
+                      (_db.CreditNoteApplications
+                           .Where(a => a.SaleId == s.Id && !a.IsReversed)
+                           .Sum(a => (decimal?)a.Amount) ?? 0m)
+            })
+            .Where(x => x.Net > 0)
+            .GroupBy(_ => 1)
+            .Select(g => new {
+                // Open credit with no agreed date — deliberately not aged, since there is
+                // no deadline to be late against.
+                NoDueDate  = g.Where(x => x.DueDate == null).Sum(x => (decimal?)x.Net) ?? 0m,
+                NotYetDue  = g.Where(x => x.DueDate != null && x.DueDate >= today).Sum(x => (decimal?)x.Net) ?? 0m,
+                D1To30     = g.Where(x => x.DueDate != null && x.DueDate <  today && x.DueDate >= d30).Sum(x => (decimal?)x.Net) ?? 0m,
+                D31To60    = g.Where(x => x.DueDate != null && x.DueDate <  d30   && x.DueDate >= d60).Sum(x => (decimal?)x.Net) ?? 0m,
+                D61To90    = g.Where(x => x.DueDate != null && x.DueDate <  d60   && x.DueDate >= d90).Sum(x => (decimal?)x.Net) ?? 0m,
+                D90Plus    = g.Where(x => x.DueDate != null && x.DueDate <  d90).Sum(x => (decimal?)x.Net) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        return new ReceivablesAging(head?.NoDueDate ?? 0m, head?.NotYetDue ?? 0m, head?.D1To30 ?? 0m,
+                                    head?.D31To60 ?? 0m, head?.D61To90 ?? 0m, head?.D90Plus ?? 0m);
     }
 
     public async Task<string> GenerateInvoiceNumberAsync()

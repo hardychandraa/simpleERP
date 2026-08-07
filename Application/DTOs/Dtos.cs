@@ -205,6 +205,10 @@ public class PurchaseDto {
     public decimal   GrandTotal     { get; set; }
     public decimal   AmountPaid     { get; set; }
     public decimal   BalanceDue     => GrandTotal - AmountPaid;
+    /// <summary>Debit notes applied to this purchase. Set by the service, not derivable from the entity.</summary>
+    public decimal   AppliedNotesTotal { get; set; }
+    /// <summary>What is genuinely still owed — the figure a payment is capped against.</summary>
+    public decimal   NetBalanceDue  => BalanceDue - AppliedNotesTotal;
     public string    Status         { get; set; } = "";
     public string?   Notes          { get; set; }
     public string    CreatedBy      { get; set; } = "";
@@ -240,8 +244,12 @@ public class PurchaseListDto {
     public decimal  GrandTotal     { get; set; }
     public decimal  AmountPaid     { get; set; }
     public decimal  BalanceDue     => GrandTotal - AmountPaid;
+    /// <summary>Debit notes applied to this purchase. Set by the service, not derivable from the entity.</summary>
+    public decimal  AppliedNotesTotal { get; set; }
+    public decimal  NetBalanceDue  => BalanceDue - AppliedNotesTotal;
     public string   Status         { get; set; } = "";
-    public bool     IsOverdue      => DueDate.HasValue && DueDate.Value.Date < DateTime.UtcNow.Date && BalanceDue > 0;
+    /// <summary>Overdue only counts if something is still owed after notes — a note-covered purchase isn't late.</summary>
+    public bool     IsOverdue      => DueDate.HasValue && DueDate.Value.Date < DateTime.UtcNow.Date && NetBalanceDue > 0;
 }
 public class RecordSupplierPaymentDto {
     public Guid    PurchaseId { get; set; }
@@ -261,8 +269,11 @@ public class DueSupplierDto {
     public string  SupplierName  { get; set; } = "";
     public string? Phone         { get; set; }
     public int     OpenPurchases { get; set; }
+    /// <summary>Net of debit notes applied to those purchases. Equals <c>Aging.Total</c>.</summary>
     public decimal TotalDue      { get; set; }
-    public bool    HasOverdue    { get; set; }
+    /// <summary>This supplier's payables split by age. Sums to <see cref="TotalDue"/>.</summary>
+    public AgingBucketsDto Aging { get; set; } = new();
+    public bool    HasOverdue    => Aging.HasOverdue;
 }
 
 // ── Returns ───────────────────────────────────────────────────────────────────
@@ -448,7 +459,82 @@ public class CreditNoteDto {
     public string    Reason         { get; set; } = "";
     public string?   Notes          { get; set; }
     public string    CreatedBy      { get; set; } = "";
+
+    /// <summary>Face value less everything applied to a specific document. What's left to use.</summary>
+    public decimal   RemainingAmount { get; set; }
+    /// <summary>How much of the note has been tied to a named invoice or purchase.</summary>
+    public decimal   AppliedTotal    => Amount - RemainingAmount;
+    /// <summary>True once some but not all of the note has been applied.</summary>
+    public bool      IsPartiallyApplied => AppliedTotal > 0 && RemainingAmount > 0;
+    /// <summary>Application history, reversed rows included — this is the audit trail.</summary>
+    public List<CreditNoteApplicationDto> Applications { get; set; } = new();
+    /// <summary>
+    /// Open documents this note could still be applied to. Populated only for Open notes
+    /// with something left, since it costs a query per counterparty.
+    /// </summary>
+    public List<ApplicableDocumentDto> OpenDocuments { get; set; } = new();
 }
+
+/// <summary>One credit/debit note applied against one named invoice or purchase.</summary>
+public class CreditNoteApplicationDto {
+    public Guid      Id           { get; set; }
+    public Guid      CreditNoteId { get; set; }
+    public string    CreditNoteNumber { get; set; } = "";
+    public bool      IsCredit     { get; set; }
+    public Guid?     SaleId       { get; set; }
+    public Guid?     PurchaseId   { get; set; }
+    /// <summary>Invoice number on a credit note, purchase number on a debit note.</summary>
+    public string    DocumentNumber  { get; set; } = "";
+    public decimal   Amount          { get; set; }
+    public DateTime  ApplicationDate { get; set; }
+    public string?   Notes           { get; set; }
+    public string    CreatedBy       { get; set; } = "";
+    public bool      IsReversed      { get; set; }
+    public DateTime? ReversedAt      { get; set; }
+    public string?   ReversedBy      { get; set; }
+    /// <summary>Server-computed: both sides are still open/active, so this can be undone.</summary>
+    public bool      CanReverse      { get; set; }
+}
+
+public class ApplyCreditNoteDto {
+    public Guid      CreditNoteId { get; set; }
+    /// <summary>The invoice, for a credit note. Exactly one of Sale/Purchase is set.</summary>
+    public Guid?     SaleId       { get; set; }
+    /// <summary>The purchase, for a debit note. Exactly one of Sale/Purchase is set.</summary>
+    public Guid?     PurchaseId   { get; set; }
+    public decimal   Amount       { get; set; }
+    public DateTime? ApplicationDate { get; set; }
+    public string?   Notes        { get; set; }
+}
+
+/// <summary>An open document a note could be applied to — one option in the picker.</summary>
+public class ApplicableDocumentDto {
+    public Guid    DocumentId     { get; set; }
+    public string  DocumentNumber { get; set; } = "";
+    /// <summary>Already net of notes applied to it, so it is the true cap for a new application.</summary>
+    public decimal NetBalanceDue  { get; set; }
+    public DateTime? DueDate      { get; set; }
+}
+
+/// <summary>
+/// AR or AP split by how long each net-positive document has been past due.
+///
+/// <see cref="NoDueDate"/> is a real population, not an edge case: a credit sale with no
+/// payment term chosen has no agreed date, which the app allows on purpose rather than
+/// inventing a deadline. It is reported separately rather than folded into an aged bucket.
+/// </summary>
+public class AgingBucketsDto {
+    public decimal NoDueDate  { get; set; }
+    public decimal NotYetDue  { get; set; }
+    public decimal Days1To30  { get; set; }
+    public decimal Days31To60 { get; set; }
+    public decimal Days61To90 { get; set; }
+    public decimal Days90Plus { get; set; }
+    public decimal Total   => NoDueDate + NotYetDue + Days1To30 + Days31To60 + Days61To90 + Days90Plus;
+    public decimal Overdue => Days1To30 + Days31To60 + Days61To90 + Days90Plus;
+    public bool    HasOverdue => Overdue > 0;
+}
+
 public class CreateCreditNoteDto {
     public CreditDebitType    Type     { get; set; } = CreditDebitType.Credit;
     public CreditNoteCategory Category { get; set; } = CreditNoteCategory.Other;
@@ -682,6 +768,10 @@ public class SaleDto {
     public decimal   GrandTotal    { get; set; }
     public decimal   AmountPaid    { get; set; }
     public decimal   BalanceDue    => GrandTotal - AmountPaid;
+    /// <summary>Credit notes applied to this invoice. Set by the service, not derivable from the entity.</summary>
+    public decimal   AppliedNotesTotal { get; set; }
+    /// <summary>What is genuinely still collectable — the figure a payment is capped against.</summary>
+    public decimal   NetBalanceDue => BalanceDue - AppliedNotesTotal;
     public string    Status        { get; set; } = "";
     public string?   Notes         { get; set; }
     public string    CreatedBy     { get; set; } = "";
@@ -722,9 +812,12 @@ public class SaleListDto {
     public decimal  GrandTotal    { get; set; }
     public decimal  AmountPaid    { get; set; }
     public decimal  BalanceDue    => GrandTotal - AmountPaid;
+    /// <summary>Credit notes applied to this invoice. Set by the service, not derivable from the entity.</summary>
+    public decimal  AppliedNotesTotal { get; set; }
+    public decimal  NetBalanceDue => BalanceDue - AppliedNotesTotal;
     public string   Status        { get; set; } = "";
-    /// <summary>True if DueDate is set and today is past it and balance still owed.</summary>
-    public bool     IsOverdue     => DueDate.HasValue && DueDate.Value.Date < DateTime.UtcNow.Date && BalanceDue > 0;
+    /// <summary>True if DueDate is set, today is past it, and something is still owed after notes.</summary>
+    public bool     IsOverdue     => DueDate.HasValue && DueDate.Value.Date < DateTime.UtcNow.Date && NetBalanceDue > 0;
 }
 
 // ── Payments ──────────────────────────────────────────────────────────────────
@@ -761,7 +854,10 @@ public class StatementLineDto {
     public decimal   GrandTotal     { get; set; }
     public decimal   AmountPaid     { get; set; }
     public decimal   BalanceDue     => GrandTotal - AmountPaid;
-    public bool      IsOverdue      => DueDate.HasValue && DueDate.Value.Date < DateTime.UtcNow.Date && BalanceDue > 0;
+    /// <summary>Notes already applied to this specific document, separate from anything ticked on this statement.</summary>
+    public decimal   AppliedNotesTotal { get; set; }
+    public decimal   NetBalanceDue  => BalanceDue - AppliedNotesTotal;
+    public bool      IsOverdue      => DueDate.HasValue && DueDate.Value.Date < DateTime.UtcNow.Date && NetBalanceDue > 0;
 }
 /// <summary>An open credit/debit note that can be netted off this settlement.</summary>
 public class StatementNoteDto {
@@ -769,7 +865,15 @@ public class StatementNoteDto {
     public string   DocumentNumber { get; set; } = "";
     public DateTime NoteDate       { get; set; }
     public string   Category       { get; set; } = "";
+    /// <summary>
+    /// What this note can still absorb — face value less anything already applied to a
+    /// specific document. Ticking it into a settlement nets this, not the face value, so
+    /// a partially-applied note can still be used for the rest.
+    /// </summary>
     public decimal  Amount         { get; set; }
+    /// <summary>Face value, shown alongside Amount when the two differ.</summary>
+    public decimal  FaceAmount     { get; set; }
+    public bool     IsPartiallyApplied => FaceAmount > Amount;
     public string   Reason         { get; set; } = "";
 }
 /// <summary>
@@ -784,8 +888,13 @@ public class PaymentStatementDto {
     public List<StatementLineDto> Lines     { get; set; } = new();
     /// <summary>Open credit notes (AR) or debit notes (AP) held against this counterparty.</summary>
     public List<StatementNoteDto> OpenNotes { get; set; } = new();
-    /// <summary>Total still owed across every listed document, before any notes.</summary>
-    public decimal  TotalDue         => Lines.Sum(l => l.BalanceDue);
+    /// <summary>
+    /// Total still owed across every listed document, net of notes already applied to
+    /// those specific documents. Deliberately NOT net of <see cref="OpenNotesTotal"/> —
+    /// those are the notes a user may still choose to tick into this settlement, and
+    /// netting them here as well would double-count them.
+    /// </summary>
+    public decimal  TotalDue         => Lines.Sum(l => l.NetBalanceDue);
     public decimal  OpenNotesTotal   => OpenNotes.Sum(n => n.Amount);
     /// <summary>
     /// Supplier statements only. Outstanding cash rebate for this supplier — shown so the
@@ -876,8 +985,11 @@ public class DueCustomerDto {
     public string   CustomerName  { get; set; } = "";
     public string?  Phone         { get; set; }
     public int      OpenInvoices  { get; set; }
+    /// <summary>Net of credit notes applied to those invoices. Equals <c>Aging.Total</c>.</summary>
     public decimal  TotalDue      { get; set; }
-    public bool     HasOverdue    { get; set; }
+    /// <summary>This customer's receivables split by age. Sums to <see cref="TotalDue"/>.</summary>
+    public AgingBucketsDto Aging { get; set; } = new();
+    public bool     HasOverdue    => Aging.HasOverdue;
 }
 
 // ── Financial reports ─────────────────────────────────────────────────────────
@@ -1020,15 +1132,28 @@ public class PositionSummaryDto {
     /// <summary>Customer invoices still owing, tax-inclusive, before netting credit notes.</summary>
     public decimal ReceivablesGross   { get; set; }
     public int     OpenInvoices       { get; set; }
+    /// <summary>The net slice already past its due date. <see cref="ReceivablesAging"/> breaks it down.</summary>
     public decimal ReceivablesOverdue { get; set; }
+    /// <summary>Credit notes applied to specific invoices — already taken off <see cref="ReceivablesNet"/>.</summary>
+    public decimal CreditNotesApplied { get; set; }
     /// <summary>
-    /// Open credit notes owed back to customers. Posted invoices are never edited, so
-    /// AR is "invoice balances minus still-Open credit notes" in aggregate. Note this
-    /// nets across the whole ledger, not invoice by invoice — per-invoice application
-    /// is a known gap.
+    /// Open credit notes not yet applied to any invoice — shown for information and
+    /// deliberately <em>not</em> subtracted from anything.
+    ///
+    /// This used to be netted off AR in aggregate, which is what let the net figure go
+    /// negative: a credit note raised against a cash sale has no receivable behind it,
+    /// so subtracting it from unrelated invoices was never meaningful. Netting now
+    /// happens per invoice, at the point a note is applied to one.
     /// </summary>
     public decimal OpenCreditNotes    { get; set; }
-    public decimal ReceivablesNet     => ReceivablesGross - OpenCreditNotes;
+    /// <summary>
+    /// What is actually still collectable: the sum of each open invoice's balance after
+    /// the credit notes applied to it. Set from the repository rather than derived here,
+    /// and floored per invoice, so it can never go negative.
+    /// </summary>
+    public decimal ReceivablesNet     { get; set; }
+    /// <summary>AR split by how overdue it is. Sums to <see cref="ReceivablesNet"/>.</summary>
+    public AgingBucketsDto ReceivablesAging { get; set; } = new();
 
     /// <summary>
     /// Rebate earned but not yet claimed from suppliers — a real asset that sat
@@ -1047,9 +1172,14 @@ public class PositionSummaryDto {
     public decimal PayablesGross      { get; set; }
     public int     OpenPurchases      { get; set; }
     public decimal PayablesOverdue    { get; set; }
-    /// <summary>Open debit notes owed back by suppliers, netting off AP the same way.</summary>
+    /// <summary>Debit notes applied to specific purchases — already taken off <see cref="PayablesNet"/>.</summary>
+    public decimal DebitNotesApplied  { get; set; }
+    /// <summary>Open debit notes not yet applied to any purchase. Informational, not subtracted — mirrors <see cref="OpenCreditNotes"/>.</summary>
     public decimal OpenDebitNotes     { get; set; }
-    public decimal PayablesNet        => PayablesGross - OpenDebitNotes;
+    /// <summary>What we actually still have to pay, netted per purchase. Mirrors <see cref="ReceivablesNet"/>.</summary>
+    public decimal PayablesNet        { get; set; }
+    /// <summary>AP split by how overdue it is. Sums to <see cref="PayablesNet"/>.</summary>
+    public AgingBucketsDto PayablesAging { get; set; } = new();
 
     /// <summary>Commission earned by salespeople but not yet paid out.</summary>
     public decimal CommissionPayable  { get; set; }

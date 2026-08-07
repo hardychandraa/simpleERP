@@ -35,6 +35,7 @@ public class AppDbContext : DbContext
     public DbSet<SupplierReturn>     SupplierReturns     => Set<SupplierReturn>();
     public DbSet<SupplierReturnItem> SupplierReturnItems => Set<SupplierReturnItem>();
     public DbSet<CreditNote>         CreditNotes         => Set<CreditNote>();
+    public DbSet<CreditNoteApplication> CreditNoteApplications => Set<CreditNoteApplication>();
     public DbSet<PaymentBatch>       PaymentBatches      => Set<PaymentBatch>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense>         Expenses          => Set<Expense>();
@@ -471,6 +472,28 @@ public class AppDbContext : DbContext
             e.HasIndex(n => n.NoteDate);
             e.HasIndex(n => n.CustomerId);
             e.HasIndex(n => n.SupplierId);
+        });
+
+        m.Entity<CreditNoteApplication>(e => {
+            e.HasKey(a => a.Id);
+            e.Property(a => a.Amount).HasColumnType("decimal(18,4)");
+            e.Property(a => a.Notes).HasMaxLength(500);
+            e.Property(a => a.CreatedBy).HasMaxLength(100);
+            e.Property(a => a.ReversedBy).HasMaxLength(100);
+            // Restrict throughout, like every other FK off CreditNote: a document with
+            // application history stays resolvable. Reversal is the way out, not deletion.
+            e.HasOne(a => a.CreditNote).WithMany()
+                .HasForeignKey(a => a.CreditNoteId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.Sale).WithMany()
+                .HasForeignKey(a => a.SaleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.Purchase).WithMany()
+                .HasForeignKey(a => a.PurchaseId).OnDelete(DeleteBehavior.Restrict);
+            // The three netting queries: what's applied to this invoice, to this
+            // purchase, and how much of this note is left. All filter out reversed rows,
+            // so IsReversed belongs in the index rather than being a post-filter.
+            e.HasIndex(a => new { a.SaleId,       a.IsReversed });
+            e.HasIndex(a => new { a.PurchaseId,   a.IsReversed });
+            e.HasIndex(a => new { a.CreditNoteId, a.IsReversed });
         });
 
         m.Entity<PaymentBatch>(e => {

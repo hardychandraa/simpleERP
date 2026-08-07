@@ -26,6 +26,7 @@ public class SaleService : ISaleService
     private readonly IPaymentBatchRepository    _batches;
     private readonly CommissionService          _commissions;
     private readonly IUnitOfWork                _uow;
+    private readonly ICreditNoteApplicationRepository _noteApplications;
 
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<SaleService> _log;
@@ -35,13 +36,15 @@ public class SaleService : ISaleService
         IAuditLogRepository audit, InventoryService inventory,
         IAppSettingsRepository settings, IPaymentTermRepository terms,
         ISalesPersonRepository people, ICustomerReturnRepository returns,
-        ICreditNoteRepository notes, IPaymentBatchRepository batches,
+        ICreditNoteRepository notes, ICreditNoteApplicationRepository noteApplications,
+        IPaymentBatchRepository batches,
         CommissionService commissions, IUnitOfWork uow,
         IStringLocalizer<SharedResource> loc, ILogger<SaleService> log)
     { _sales=sales; _products=products; _customers=customers; _branches=branches;
       _payments=payments;
       _audit=audit; _inventory=inventory; _settings=settings; _terms=terms;
-      _people=people; _returns=returns; _notes=notes; _batches=batches;
+      _people=people; _returns=returns; _notes=notes; _noteApplications=noteApplications;
+      _batches=batches;
       _commissions=commissions; _uow=uow;  _loc = loc; _log = log; }
 
     public async Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user)
@@ -301,6 +304,12 @@ public class SaleService : ISaleService
         if (await _returns.HasActiveReturnAsync(saleId))
             return _log.Refuse(_loc["This invoice has a sales return against it. Cancel the return first — cancelling the invoice now would put the returned goods back into stock twice."]);
 
+        // Same shape of problem as a recorded payment: a credit note applied here is
+        // reducing this invoice's balance, and cancelling would leave that application
+        // pointing at a document that no longer exists.
+        if (await _noteApplications.HasLiveApplicationsForSaleAsync(saleId))
+            return _log.Refuse(_loc["A credit note has been applied to this invoice. Reverse the application first — cancelling now would leave it reducing a balance that no longer exists."]);
+
         var branch = await _branches.GetDefaultAsync();
         if (branch == null) return _log.Refuse(_loc["Default branch not found."]);
 
@@ -338,7 +347,11 @@ public class SaleService : ISaleService
         if (sale.PaymentType == PaymentType.Cash)
             return _log.Refuse<PaymentRecordDto>(_loc["This is a Cash sale — payment already collected."]);
 
-        var currentBalance = sale.GrandTotal - sale.AmountPaid;
+        // Net of applied credit notes, not just of cash already received: a note has
+        // already reduced what this customer actually still owes, so the gross balance
+        // would invite a payment bigger than the debt.
+        var currentBalance = sale.GrandTotal - sale.AmountPaid
+                           - await _noteApplications.GetAppliedTotalForSaleAsync(sale.Id);
         if (dto.Amount > currentBalance)
             return _log.Refuse<PaymentRecordDto>(_loc["Amount ({0}) exceeds balance due ({1}).", dto.Amount.ToString("N0"), currentBalance.ToString("N0")]);
 
@@ -403,6 +416,8 @@ public class SaleService : ISaleService
         // ── Validate every invoice line before anything is written ────────────────
         var sales = await _sales.GetByIdsWithItemsAsync(lines.Select(l => l.SaleId));
         var byId  = sales.ToDictionary(s => s.Id);
+        // Fetched once for the whole batch rather than per line inside the loop.
+        var appliedBySale = await _noteApplications.GetAppliedTotalsForSalesAsync(lines.Select(l => l.SaleId));
 
         foreach (var line in lines)
         {
@@ -415,7 +430,9 @@ public class SaleService : ISaleService
             if (sale.PaymentType == PaymentType.Cash)
                 return _log.Refuse<PaymentBatchDto>(_loc["Invoice {0} is a cash sale — already collected.", sale.InvoiceNumber]);
 
-            var balance = sale.GrandTotal - sale.AmountPaid;
+            // Net of notes already applied to this specific invoice — separate from, and
+            // additional to, whatever notes get ticked into this settlement below.
+            var balance = sale.GrandTotal - sale.AmountPaid - appliedBySale.GetValueOrDefault(sale.Id);
             if (line.Amount > balance)
                 return _log.Refuse<PaymentBatchDto>(_loc["Invoice {0}: {1} exceeds its balance of {2}.", sale.InvoiceNumber, line.Amount.ToString("N0"), balance.ToString("N0")]);
         }
@@ -436,8 +453,12 @@ public class SaleService : ISaleService
         }
 
         // ── Post ─────────────────────────────────────────────────────────────────
-        var gross        = lines.Sum(l => l.Amount);
-        var notesApplied = notes.Sum(n => n.Amount);
+        var gross = lines.Sum(l => l.Amount);
+        // Each note nets its *remaining* value, not its face value: part of it may already
+        // be applied to a specific invoice, and that slice has already reduced that
+        // invoice's balance. Counting the face value here would net it a second time.
+        var appliedByNote = await _noteApplications.GetAppliedTotalsForNotesAsync(noteIds);
+        var notesApplied  = notes.Sum(n => n.Amount - appliedByNote.GetValueOrDefault(n.Id));
 
         // A note is applied whole or not at all, so netting more credit than is being
         // collected would settle notes whose value this settlement can't absorb — quietly
@@ -503,26 +524,39 @@ public class SaleService : ISaleService
         var openNotes = await _notes.GetAllAsync(
             type: CreditDebitType.Credit, status: CreditNoteStatus.Open, customerId: customerId);
 
+        // Both sides net of what's already been applied per document: the invoices so each
+        // line shows what's genuinely left, and the notes so ticking one nets what it can
+        // actually still absorb rather than its face value.
+        var appliedBySale = await _noteApplications.GetAppliedTotalsForSalesAsync(due.Select(s => s.Id));
+        var appliedByNote = await _noteApplications.GetAppliedTotalsForNotesAsync(openNotes.Select(n => n.Id));
+
         return new PaymentStatementDto {
             CounterpartyId   = customer.Id,
             CounterpartyName = customer.Name,
             Phone            = customer.Phone,
             Lines = due.Select(s => new StatementLineDto {
-                DocumentId     = s.Id,
-                DocumentNumber = s.InvoiceNumber,
-                DocumentDate   = s.SaleDate,
-                DueDate        = s.DueDate,
-                GrandTotal     = s.GrandTotal,
-                AmountPaid     = s.AmountPaid
+                DocumentId        = s.Id,
+                DocumentNumber    = s.InvoiceNumber,
+                DocumentDate      = s.SaleDate,
+                DueDate           = s.DueDate,
+                GrandTotal        = s.GrandTotal,
+                AmountPaid        = s.AmountPaid,
+                AppliedNotesTotal = appliedBySale.GetValueOrDefault(s.Id)
             }).ToList(),
-            OpenNotes = openNotes.Select(n => new StatementNoteDto {
-                CreditNoteId   = n.Id,
-                DocumentNumber = n.DocumentNumber,
-                NoteDate       = n.NoteDate,
-                Category       = n.Category.ToString(),
-                Amount         = n.Amount,
-                Reason         = n.Reason
-            }).ToList()
+            OpenNotes = openNotes
+                .Select(n => new StatementNoteDto {
+                    CreditNoteId   = n.Id,
+                    DocumentNumber = n.DocumentNumber,
+                    NoteDate       = n.NoteDate,
+                    Category       = n.Category.ToString(),
+                    Amount         = n.Amount - appliedByNote.GetValueOrDefault(n.Id),
+                    FaceAmount     = n.Amount,
+                    Reason         = n.Reason
+                })
+                // A note fully consumed by per-invoice applications has nothing left to
+                // tick, even though it is still technically Open until its last slice lands.
+                .Where(n => n.Amount > 0)
+                .ToList()
         };
     }
 
@@ -545,7 +579,10 @@ public class SaleService : ISaleService
     public async Task<SaleDto?> GetByIdAsync(Guid id)
     {
         var s = await _sales.GetByIdWithItemsAsync(id);
-        return s == null ? null : MapDto(s);
+        if (s == null) return null;
+        var dto = MapDto(s);
+        dto.AppliedNotesTotal = await _noteApplications.GetAppliedTotalForSaleAsync(id);
+        return dto;
     }
 
     public async Task<List<SaleListDto>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null)
@@ -557,7 +594,11 @@ public class SaleService : ISaleService
                 (s.Customer?.Name  ?? "").Contains(search, StringComparison.OrdinalIgnoreCase) ||
                 (s.Customer?.Phone ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
 
+        // One query for the page, so the balance and overdue columns are net of notes.
+        var applied = await _noteApplications.GetAppliedTotalsForSalesAsync(list.Select(s => s.Id));
+
         return list.Select(s => new SaleListDto {
+            AppliedNotesTotal = applied.GetValueOrDefault(s.Id),
             Id            = s.Id,
             InvoiceNumber = s.InvoiceNumber,
             SaleDate      = s.SaleDate,
@@ -575,17 +616,37 @@ public class SaleService : ISaleService
     public async Task<List<DueCustomerDto>> GetDueSummaryAsync()
     {
         var dueSales = await _sales.GetDueSalesAsync();
-        var now      = DateTime.UtcNow.Date;
+        // One query for the whole list, not one per invoice.
+        var applied  = await _noteApplications.GetAppliedTotalsForSalesAsync(dueSales.Select(s => s.Id));
+
+        // Same six buckets and the same boundary dates as
+        // SaleRepository.GetReceivablesAgingAsync — deliberately, so the per-customer
+        // rows here sum back to the whole-ledger figure that report produces.
+        var today = DateTime.UtcNow.Date;
+        var d30 = today.AddDays(-30);
+        var d60 = today.AddDays(-60);
+        var d90 = today.AddDays(-90);
+
         return dueSales
-            .GroupBy(s => s.CustomerId)
+            .Select(s => new {
+                Sale = s,
+                Net  = s.GrandTotal - s.AmountPaid - applied.GetValueOrDefault(s.Id)
+            })
+            .GroupBy(x => x.Sale.CustomerId)
             .Select(g => new DueCustomerDto {
                 CustomerId   = g.Key,
-                CustomerName = g.First().Customer?.Name ?? "",
-                Phone        = g.First().Customer?.Phone,
+                CustomerName = g.First().Sale.Customer?.Name ?? "",
+                Phone        = g.First().Sale.Customer?.Phone,
                 OpenInvoices = g.Count(),
-                TotalDue     = g.Sum(s => s.GrandTotal - s.AmountPaid),
-                HasOverdue   = g.Any(s => s.DueDate.HasValue && s.DueDate.Value.Date < now
-                                       && s.GrandTotal - s.AmountPaid > 0)
+                TotalDue     = g.Sum(x => x.Net),
+                Aging        = new AgingBucketsDto {
+                    NoDueDate  = g.Where(x => x.Sale.DueDate == null).Sum(x => x.Net),
+                    NotYetDue  = g.Where(x => x.Sale.DueDate != null && x.Sale.DueDate!.Value.Date >= today).Sum(x => x.Net),
+                    Days1To30  = g.Where(x => x.Sale.DueDate != null && x.Sale.DueDate!.Value.Date <  today && x.Sale.DueDate!.Value.Date >= d30).Sum(x => x.Net),
+                    Days31To60 = g.Where(x => x.Sale.DueDate != null && x.Sale.DueDate!.Value.Date <  d30   && x.Sale.DueDate!.Value.Date >= d60).Sum(x => x.Net),
+                    Days61To90 = g.Where(x => x.Sale.DueDate != null && x.Sale.DueDate!.Value.Date <  d60   && x.Sale.DueDate!.Value.Date >= d90).Sum(x => x.Net),
+                    Days90Plus = g.Where(x => x.Sale.DueDate != null && x.Sale.DueDate!.Value.Date <  d90).Sum(x => x.Net)
+                }
             })
             .OrderByDescending(d => d.HasOverdue)
             .ThenByDescending(d => d.TotalDue)

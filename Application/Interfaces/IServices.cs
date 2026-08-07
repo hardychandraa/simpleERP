@@ -199,9 +199,25 @@ public interface ICreditNoteService {
                                           DateTime? from = null, DateTime? to = null);
     Task<CreditNoteDto?> GetByIdAsync(Guid id);
     Task<ServiceResult> CreateAsync(CreateCreditNoteDto dto, string user);
+    /// <summary>
+    /// Settle a note outright with free text, no document behind it — a price dispute
+    /// refunded in cash, say. Still the right path when there is nothing to apply
+    /// against; <see cref="ApplyAsync"/> is for when there is.
+    /// </summary>
     Task<ServiceResult> SettleAsync(SettleCreditNoteDto dto, string user);
     Task<ServiceResult> CancelAsync(Guid id, string user);
-    /// <summary>Face value of still-Open notes, by direction — what AR/AP must net off.</summary>
+    /// <summary>
+    /// Apply part or all of a note against one specific invoice or purchase, reducing
+    /// that document's balance. Capped at both the note's remaining amount and the
+    /// document's own remaining balance. Settles the note once nothing is left.
+    /// </summary>
+    Task<ServiceResult> ApplyAsync(ApplyCreditNoteDto dto, string user);
+    /// <summary>Undo an application while both the note and the document are still open.</summary>
+    Task<ServiceResult> ReverseApplicationAsync(Guid applicationId, string user);
+    /// <summary>Notes applied against one invoice — its detail page's "credit notes applied" card.</summary>
+    Task<List<CreditNoteApplicationDto>> GetApplicationsForSaleAsync(Guid saleId);
+    Task<List<CreditNoteApplicationDto>> GetApplicationsForPurchaseAsync(Guid purchaseId);
+    /// <summary>Remaining value of still-Open notes, by direction — the slice not yet tied to any document.</summary>
     Task<decimal> GetOpenTotalAsync(CreditDebitType type);
 }
 public interface IFinancialReportService {
