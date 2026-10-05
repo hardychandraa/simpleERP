@@ -38,3 +38,7 @@ secrets.json
 # Rolling diagnostic logs from Serilog (30 days retained). Local runtime output,
 # and they can contain business data — invoice numbers, amounts, counterparty names.
 logs/
+
+# ── Data Protection keys ──────────────────────────────────────────────────────
+# The secret that seals login cookies. Machine-specific (DPAPI) and never shared.
+keys/

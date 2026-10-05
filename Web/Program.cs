@@ -10,6 +10,7 @@ using SimpleERP.Domain.Interfaces;
 using System.Globalization;
 using Serilog;
 using Serilog.Events;
+using Microsoft.AspNetCore.DataProtection;
 
 // Npgsql maps DateTime to `timestamp with time zone` by default and throws at runtime on
 // any DateTime whose Kind isn't Utc. This codebase mixes DateTime.UtcNow, DateTime.Now and
@@ -19,7 +20,16 @@ using Serilog.Events;
 // Must be set before any Npgsql type is used.
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
-var builder = WebApplication.CreateBuilder(args);
+// Production runs as a Windows Service (started at boot, nobody logged in, restarted if it
+// crashes). Windows starts services in C:\Windows\System32, so the content root has to be
+// pinned to the app's own folder, or wwwroot isn't found and logs/, backups/ and keys/ land
+// in System32. Run from a console or `dotnet run`, nothing changes.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
+    Args            = args,
+    ContentRootPath = Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService()
+                        ? AppContext.BaseDirectory : null
+});
+builder.Host.UseWindowsService(o => o.ServiceName = "SimpleERP");
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 // Configured immediately after the builder so that everything below — a missing
@@ -72,6 +82,20 @@ if (!string.IsNullOrWhiteSpace(logConnectionString))
 
 Log.Logger = logConfig.CreateLogger();
 builder.Host.UseSerilog();
+
+// ── Data Protection keys ──────────────────────────────────────────────────────
+// The key that seals the login cookie and the anti-forgery tokens. Left to the default it
+// lives hidden in the Windows profile of whatever account runs the app, so changing the
+// service account or moving the app would silently log everyone out and fail open forms
+// with "session expired". Kept in a known folder instead: keys/ beside the app unless
+// DataProtection:KeysPath says otherwise. Encrypted with this machine's DPAPI key, so a
+// copied keys/ folder is useless on another PC (moving machines costs one re-login).
+var keysDirectory = builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } kp
+    ? kp : Path.Combine(builder.Environment.ContentRootPath, "keys");
+var dataProtection = builder.Services.AddDataProtection()
+    .SetApplicationName("SimpleERP")
+    .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
+if (OperatingSystem.IsWindows()) dataProtection.ProtectKeysWithDpapi(protectToLocalMachine: true);
 
 // ── Security headers ─────────────────────────────────────────────────────────
 builder.Services.AddAntiforgery(options => {
@@ -236,9 +260,12 @@ var startupDb = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
 var startupLog = Log.ForContext("SourceContext", "SimpleERP.Startup");
 startupLog.Information(
     "SimpleERP starting — environment {Environment}, database {Database} on {Host}:{Port}, " +
-    "default culture {Culture}, logs kept {RetainedDays} days in {LogDirectory}",
+    "default culture {Culture}, logs kept {RetainedDays} days in {LogDirectory}, " +
+    "running as {HostMode}, keys in {KeysDirectory}",
     app.Environment.EnvironmentName, startupDb.Database, startupDb.Host, startupDb.Port,
-    "id", LogRetainedFileCount, logDirectory);
+    "id", LogRetainedFileCount, logDirectory,
+    Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService() ? "Windows Service" : "console",
+    keysDirectory);
 
 // ── DB init ──────────────────────────────────────────────────────────────────
 // Applies pending EF Core migrations.
