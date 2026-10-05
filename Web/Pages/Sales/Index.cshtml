@@ -60,7 +60,7 @@
                     @if (!string.IsNullOrEmpty(s.PaymentTermName)) {
                         <div style="font-size:11px;color:#6b7280">@s.PaymentTermName</div>
                     }
-                    @if (s.DueDate.HasValue && s.BalanceDue > 0) {
+                    @if (s.DueDate.HasValue && s.NetBalanceDue > 0) {
                         var od = s.IsOverdue;
                         <div style="font-size:11px;color:@(od?"#dc2626":"#d97706");font-weight:600">
                             @(od ? $"⚠ {Localizer["OVERDUE"].Value}" : "") @s.DueDate.Value.ToString("dd-MMM-yy")
@@ -68,11 +68,13 @@
                     }
                     </td>
                     <td>@s.GrandTotal.ToString("N0")</td>
-                    <td>@s.AmountPaid.ToString("N0")</td>
+                    @* Paid includes applied credit notes and Balance is net of them, so an
+                       invoice settled by a note no longer shows as owing (2026-10-05). *@
+                    <td>@((s.AmountPaid + s.AppliedNotesTotal).ToString("N0"))</td>
                     <td>
-                        @if (s.BalanceDue > 0)
+                        @if (s.NetBalanceDue > 0)
                         {
-                            <span style="color:#dc2626;font-weight:700">@s.BalanceDue.ToString("N0")</span>
+                            <span style="color:#dc2626;font-weight:700">@s.NetBalanceDue.ToString("N0")</span>
                         }
                         else
                         {

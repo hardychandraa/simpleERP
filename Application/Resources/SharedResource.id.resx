@@ -1290,4 +1290,10 @@
   <data name="Commission on {0} has already been paid out, so it cannot be revised." xml:space="preserve"><value>Komisi atas {0} sudah dibayarkan, sehingga tidak dapat direvisi.</value></data>
   <data name="No matches" xml:space="preserve"><value>Tidak ditemukan</value></data>
   <data name="Type to search…" xml:space="preserve"><value>Ketik untuk mencari…</value></data>
+  <data name="Tanda Terima" xml:space="preserve"><value>Tanda Terima</value></data>
+  <data name="Show" xml:space="preserve"><value>Tampilkan</value></data>
+  <data name="Every invoice issued to the customer in the period, cancelled ones excluded, with what is still owed on each — for the customer to sign when the invoices are handed over for payment." xml:space="preserve"><value>Semua faktur pelanggan pada periode ini (faktur batal tidak termasuk) beserta sisa tagihannya — untuk ditandatangani pelanggan saat faktur diserahkan untuk ditagih.</value></data>
+  <data name="The start date is after the end date." xml:space="preserve"><value>Tanggal awal lebih besar dari tanggal akhir.</value></data>
+  <data name="Settled by credit notes (no cash)" xml:space="preserve"><value>Dilunasi dengan nota kredit (bukan tunai)</value></data>
+  <data name="Payments have been recorded against {0}, so it cannot be cancelled. Correct it with a return or a credit note instead." xml:space="preserve"><value>Sudah ada pembayaran untuk {0}, sehingga tidak dapat dibatalkan. Koreksi dengan retur atau nota kredit.</value></data>
 </root>

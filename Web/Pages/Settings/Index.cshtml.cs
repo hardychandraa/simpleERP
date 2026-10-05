@@ -16,7 +16,14 @@ public class IndexModel : PageModel {
     }
     public async Task<IActionResult> OnPostAsync() {
         ViewData["Title"] = "Settings";
-        if (!ModelState.IsValid) return Page();
+        if (!ModelState.IsValid) {
+            // Used to return the page with no message at all, so a refused save looked
+            // like a save that did nothing.
+            Msg = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
+                            .FirstOrDefault(m => !string.IsNullOrEmpty(m)) ?? "Settings could not be saved.";
+            IsErr = true;
+            return Page();
+        }
         var r = await _svc.SaveAsync(Input);
         return RedirectToPage(new { msg=r.Success?"Settings saved.":r.Error, err=!r.Success });
     }

@@ -70,6 +70,44 @@ public class PrintController : ControllerBase
         return Ok(new { message = $"Sent to printer: {cfg.PrinterName}" });
     }
 
+    /// POST /api/print/invoice-receipt?customerId=…&amp;from=yyyy-MM-dd&amp;to=yyyy-MM-dd
+    /// Tanda terima faktur for one customer and period, on A4-length forms.
+    [HttpPost("invoice-receipt")]
+    public async Task<IActionResult> PrintInvoiceReceipt(Guid customerId, DateTime from, DateTime to)
+    {
+        try { await _antiforgery.ValidateRequestAsync(HttpContext); }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Antiforgery validation failed for tanda terima print, customer {CustomerId}.", customerId);
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { error = "Your session has expired. Reload the page and try again." });
+        }
+
+        var cfg = await _settings.GetAsync();
+        if (!cfg.PrinterEnabled)
+            return BadRequest(new { error = "Printer not enabled. Go to Settings to enable it." });
+        if (string.IsNullOrWhiteSpace(cfg.PrinterName))
+            return BadRequest(new { error = "No printer selected. Go to Settings → Printer." });
+        if (from > to)
+            return BadRequest(new { error = "The start date is after the end date." });
+
+        var doc = await _sales.GetInvoiceReceiptAsync(customerId, from, to);
+        if (doc == null) return NotFound(new { error = "Customer not found." });
+
+        var bytes  = EscpBuilder.BuildInvoiceReceipt(doc, cfg, User.Identity!.Name!, DateTime.Now);
+        var result = RawPrinter.Send(cfg.PrinterName, bytes);
+        if (!result.Success)
+        {
+            _logger.LogWarning("Printing tanda terima for {Customer} ({From:yyyy-MM-dd}–{To:yyyy-MM-dd}) to {Printer} failed: {Reason}",
+                doc.CustomerName, from, to, cfg.PrinterName, result.Error);
+            return BadRequest(new { error = result.Error });
+        }
+
+        _logger.LogInformation("Tanda terima for {Customer} ({From:yyyy-MM-dd}–{To:yyyy-MM-dd}, {Count} invoices) sent to printer {Printer}.",
+            doc.CustomerName, from, to, doc.Invoices.Count, cfg.PrinterName);
+        return Ok(new { message = $"Sent to printer: {cfg.PrinterName}" });
+    }
+
     /// GET /api/print/printers — read-only, no CSRF needed
     [HttpGet("printers")]
     public IActionResult GetPrinters() => Ok(RawPrinter.GetInstalledPrinters(_logger));

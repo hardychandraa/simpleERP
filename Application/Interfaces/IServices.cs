@@ -88,6 +88,12 @@ public interface ISaleService {
     Task<PaymentStatementDto?> GetCustomerStatementAsync(Guid customerId, DateTime? from = null, DateTime? to = null);
     Task<SaleDto?> GetByIdAsync(Guid id);
     Task<List<SaleListDto>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null);
+    /// <summary>
+    /// Tanda terima: one customer's non-cancelled invoices dated <paramref name="from"/> to
+    /// <paramref name="to"/> (local calendar dates, both inclusive), with what is still owed
+    /// on each after payments and applied credit notes. Null if the customer doesn't exist.
+    /// </summary>
+    Task<InvoiceReceiptDto?> GetInvoiceReceiptAsync(Guid customerId, DateTime from, DateTime to);
     Task<List<DueCustomerDto>> GetDueSummaryAsync();
 }
 public interface IReportService {

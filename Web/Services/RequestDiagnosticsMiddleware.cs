@@ -33,7 +33,13 @@ public class RequestDiagnosticsMiddleware
         // Short enough to read down a phone line, wide enough not to collide in practice.
         // Deliberately generated here rather than taken from a client header: an
         // attacker-supplied value would land verbatim in the log and in the table.
-        var correlationId = Guid.NewGuid().ToString("N")[..12];
+        //
+        // Reused when already set: UseExceptionHandler sits outside this middleware and
+        // re-runs the pipeline for /Error on the same HttpContext. Minting a fresh ID on that
+        // pass put a reference on the error page that matched nothing in the log — the one
+        // logged was the failed request's (found 2026-10-05).
+        var correlationId = context.Items[CorrelationIdItemKey] as string
+                         ?? Guid.NewGuid().ToString("N")[..12];
 
         context.Items[CorrelationIdItemKey] = correlationId;
         context.Response.Headers[HeaderName] = correlationId;

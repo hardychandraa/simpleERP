@@ -32,16 +32,27 @@ public static class EscpBuilder
     public readonly record struct PrintLine(string Text, bool Bold = false);
 
     public static byte[] BuildInvoice(SaleDto sale, AppSettings cfg, string printedBy, DateTime printedAtLocal)
-    {
-        var cols  = cfg.PaperColumns;
-        var pages = RenderPages(sale, cfg, printedBy, printedAtLocal);
+        => Encode(RenderPages(sale, cfg, printedBy, printedAtLocal), cfg.PaperColumns, cfg.PaperLines);
 
+    /// <summary>
+    /// Sheet length of the tanda terima, in lines: A4 is 11.69 inches, which at 6 lines per
+    /// inch is 70 (HC, 2026-10-05: "paper height can be as long as an A4 paper"). Fixed
+    /// rather than a setting — the invoice form length is the one that varies by stock.
+    /// </summary>
+    public const int ReceiptPaperLines = 70;
+
+    public static byte[] BuildInvoiceReceipt(InvoiceReceiptDto doc, AppSettings cfg, string printedBy, DateTime printedAtLocal)
+        => Encode(RenderReceiptPages(doc, cfg, printedBy, printedAtLocal), cfg.PaperColumns, ReceiptPaperLines);
+
+    /// <summary>Wraps rendered sheets in the ESC/P set-up codes, with a form feed after each.</summary>
+    private static byte[] Encode(List<List<PrintLine>> pages, int cols, int lines)
+    {
         var buf = new List<byte>();
         void Esc(params byte[] b) { buf.Add(ESC); buf.AddRange(b); }
 
         Esc((byte)'@');                          // reset — also clears any earlier page length
         Esc((byte)'2');                          // 1/6-inch line spacing: 6 lines per inch
-        Esc((byte)'C', (byte)cfg.PaperLines);    // page length in lines, from this position
+        Esc((byte)'C', (byte)lines);             // page length in lines, from this position
         buf.Add(0x12);                           // cancel condensed
         if (cols == 96) Esc((byte)'M');          // 12 cpi: 96 columns across 8 printable inches
         else            Esc((byte)'P');          // 10 cpi: 80 (narrow) or 132 (wide carriage)
@@ -201,6 +212,120 @@ public static class EscpBuilder
             var footer = last ? LastFooter() : ContFooter();
             // Push the footer to the bottom so totals sit in the same place on every invoice.
             while (page.Count + footer.Count + 1 < usable + 1) page.Add(new(""));
+            page.AddRange(footer);
+            page.Add(Bottom(p + 1, sheets.Count));
+            pages.Add(page);
+        }
+        return pages;
+    }
+
+    /// <summary>
+    /// The tanda terima faktur as sheets of at most <see cref="ReceiptPaperLines"/> lines,
+    /// paginated the same way as the invoice: the header repeats on every sheet, and only
+    /// the last carries the totals and the two signatures.
+    /// </summary>
+    public static List<List<PrintLine>> RenderReceiptPages(InvoiceReceiptDto doc, AppSettings cfg,
+        string printedBy, DateTime printedAtLocal)
+    {
+        int W = cfg.PaperColumns;
+        int L = ReceiptPaperLines;
+
+        // No | No. Faktur | Tanggal | Jth Tempo | TOP | Total | Bayar/Potongan | Sisa
+        // The term column only fits from 96 columns up; the invoice number takes the rest.
+        bool showTerm = W >= 96;
+        int  mW = W >= 96 ? 14 : 12;
+        const int noW = 3, dateW = 10, termW = 8;
+        int numW = W - (noW + dateW * 2 + (showTerm ? termW + 1 : 0) + mW * 3) - 6;
+
+        string Row(string no, string num, string date, string due, string term,
+                   string total, string settled, string left) =>
+            $"{R(no, noW)} {Lft(num, numW)} {Lft(date, dateW)} {Lft(due, dateW)} " +
+            (showTerm ? $"{Lft(term, termW)} " : "") +
+            $"{R(total, mW)} {R(settled, mW)} {R(left, mW)}";
+
+        var rows = new List<PrintLine>();
+        int n = 0;
+        foreach (var inv in doc.Invoices)
+        {
+            n++;
+            var term = inv.PaymentType == "Cash" ? "Tunai"
+                     : string.IsNullOrEmpty(inv.PaymentTermName) ? "Kredit" : inv.PaymentTermName;
+            var settled = inv.AmountPaid + inv.AppliedNotesTotal;
+            rows.Add(new(Row(n.ToString(), inv.InvoiceNumber, $"{inv.SaleDate.ToLocalTime():dd-MM-yyyy}",
+                inv.DueDate.HasValue ? $"{inv.DueDate.Value:dd-MM-yyyy}" : "-", term,
+                Money(inv.GrandTotal), settled > 0 ? Money(settled) : "-",
+                Money(Math.Max(0, inv.NetBalanceDue)))));
+        }
+
+        const int rightW = 36;   // fits "Periode : dd-MM-yyyy s/d dd-MM-yyyy"
+        List<PrintLine> Header() => new() {
+            new(Lft(cfg.StoreName, W - rightW - 1) + " " + R("TANDA TERIMA FAKTUR", rightW), Bold: true),
+            new(Lft(cfg.StoreAddress ?? "", W - rightW - 1) + " " + Lft($"Tgl     : {printedAtLocal:dd-MM-yyyy}", rightW)),
+            new(Lft(string.IsNullOrWhiteSpace(cfg.StorePhone) ? "" : $"Telp {cfg.StorePhone}", W - rightW - 1)
+                + " " + Lft($"Periode : {doc.From:dd-MM-yyyy} s/d {doc.To:dd-MM-yyyy}", rightW)),
+            new(Lft($"Kepada : {doc.CustomerName}", W)),
+            new(Lft($"         {doc.CustomerAddress ?? ""}" +
+                    (string.IsNullOrWhiteSpace(doc.CustomerPhone) ? "" : $"  Telp {doc.CustomerPhone}"), W)),
+            new(new string('-', W)),
+            new(Row("No", "No. Faktur", "Tanggal", "Jth Tempo", "TOP", "Total", "Bayar/Pot.", "Sisa"), Bold: true),
+            new(new string('-', W)),
+        };
+
+        // Totals line up under their own columns; the signatures sit below them.
+        int totalsLeft = W - mW * 3 - 2;
+        string sigCol(string s) => Lft("  " + s, W / 2);
+        List<PrintLine> LastFooter() => new() {
+            new(new string('-', W)),
+            new(Lft($"{doc.Invoices.Count} faktur", totalsLeft - 7) + "TOTAL  "
+                + $"{R(Money(doc.TotalInvoiced), mW)} {R(Money(doc.TotalSettled), mW)} {R(Money(doc.TotalOutstanding), mW)}",
+                Bold: true),
+            new(""),
+            new(sigCol("Yang Menerima,") + "  Yang Menyerahkan,"),
+            new(""), new(""), new(""),
+            new(sigCol("(______________________)") + "  (______________________)"),
+            new(sigCol("Tgl:") + "  Tgl:"),
+        };
+        List<PrintLine> ContFooter() => new() {
+            new(new string('-', W)),
+            new(R("Bersambung ke halaman berikutnya ...", W)),
+        };
+        PrintLine Bottom(int page, int pages) =>
+            new(Lft($"Dicetak: {printedBy} {printedAtLocal:dd-MM-yy HH:mm}", W - 12) + R($"Hal {page}/{pages}", 12));
+
+        // Same margins as the invoice: one blank line at the top, one spare at the bottom.
+        int usable  = L - 2;
+        int headerH = Header().Count;
+        int contCap = Math.Max(1, usable - headerH - ContFooter().Count - 1);
+        int lastCap = Math.Max(1, usable - headerH - LastFooter().Count - 2);   // -1 more: the blank line above the totals
+
+        // Fill sheets at the continuation capacity; if the last one then can't also hold the
+        // totals and signatures, its overflow moves to one more sheet. An empty period still
+        // prints one sheet, which says "0 faktur".
+        var sheets = new List<List<PrintLine>> { new() };
+        foreach (var r in rows)
+        {
+            if (sheets[^1].Count >= contCap) sheets.Add(new());
+            sheets[^1].Add(r);
+        }
+        if (sheets[^1].Count > lastCap)
+        {
+            var spill = sheets[^1].Skip(lastCap).ToList();
+            sheets[^1].RemoveRange(lastCap, spill.Count);
+            sheets.Add(spill);
+        }
+
+        var pages = new List<List<PrintLine>>();
+        for (int p = 0; p < sheets.Count; p++)
+        {
+            bool last = p == sheets.Count - 1;
+            var page = new List<PrintLine> { new("") };
+            page.AddRange(Header());
+            page.AddRange(sheets[p]);
+            var footer = last ? LastFooter() : ContFooter();
+            // Unlike the invoice, the footer follows the list directly: an A4-length sheet
+            // with three invoices on it shouldn't put the signatures at the very bottom.
+            if (!last) while (page.Count + footer.Count + 1 < usable + 1) page.Add(new(""));
+            else page.Add(new(""));
             page.AddRange(footer);
             page.Add(Bottom(p + 1, sheets.Count));
             pages.Add(page);

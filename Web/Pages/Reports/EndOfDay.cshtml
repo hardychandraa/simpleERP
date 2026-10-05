@@ -40,6 +40,9 @@
         <tr><td>@Localizer["Cash sales revenue"]</td><td style="text-align:right;font-weight:600;color:#059669">@Model.Report.CashRevenue.ToString("N0")</td></tr>
         <tr><td>@Localizer["Due sales revenue (invoiced)"]</td><td style="text-align:right;font-weight:600;color:#d97706">@Model.Report.DueRevenue.ToString("N0")</td></tr>
         <tr><td>@Localizer["Payments Collected Today"]</td><td style="text-align:right;font-weight:600;color:#2563eb">@Model.Report.PaymentsCollected.ToString("N0")</td></tr>
+        @if (Model.Report.NotesNetted > 0) {
+          <tr><td>(−) @Localizer["Settled by credit notes (no cash)"]</td><td style="text-align:right;font-weight:600;color:#dc2626">@Model.Report.NotesNetted.ToString("N0")</td></tr>
+        }
         <tr style="border-top:2px solid #e5e7eb;background:#f9fafb">
           <td style="font-weight:700">@Localizer["Total Cash In Hand"]</td>
           <td style="text-align:right;font-weight:700;font-size:15px;color:#059669">@Model.Report.TotalCashIn.ToString("N0")</td>
@@ -85,9 +88,9 @@
           <td>@s.CustomerName</td>
           <td><span class="badge @(s.PaymentType=="Cash"?"ok":"warn")">@Localizer[EnumDisplay.Key("PaymentType", s.PaymentType)]</span></td>
           <td style="text-align:right">@s.GrandTotal.ToString("N0")</td>
-          <td style="text-align:right">@s.AmountPaid.ToString("N0")</td>
+          <td style="text-align:right">@((s.AmountPaid + s.AppliedNotesTotal).ToString("N0"))</td>
           <td style="text-align:right">
-            @if (s.BalanceDue > 0) { <span style="color:#dc2626;font-weight:700">@s.BalanceDue.ToString("N0")</span> }
+            @if (s.NetBalanceDue > 0) { <span style="color:#dc2626;font-weight:700">@s.NetBalanceDue.ToString("N0")</span> }
             else { <span style="color:#9ca3af">—</span> }
           </td>
         </tr>
@@ -95,8 +98,8 @@
       <tr style="background:#f9fafb;font-weight:700;border-top:2px solid #e5e7eb">
         <td colspan="3">@Localizer["Total"]</td>
         <td style="text-align:right">@Model.Report.TotalRevenue.ToString("N0")</td>
-        <td style="text-align:right">@Model.Report.SalesList.Sum(s=>s.AmountPaid).ToString("N0")</td>
-        <td style="text-align:right;color:#dc2626">@Model.Report.SalesList.Sum(s=>s.BalanceDue).ToString("N0")</td>
+        <td style="text-align:right">@Model.Report.SalesList.Sum(s=>s.AmountPaid + s.AppliedNotesTotal).ToString("N0")</td>
+        <td style="text-align:right;color:#dc2626">@Model.Report.SalesList.Sum(s=>s.NetBalanceDue).ToString("N0")</td>
       </tr>
       </tbody>
     </table>

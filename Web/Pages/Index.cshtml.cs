@@ -9,9 +9,11 @@ public class IndexModel : PageModel
     private readonly ICustomerService  _c;
     private readonly ISaleService      _s;
     private readonly IInventoryService _inv;
+    private readonly IReportService    _reports;
 
-    public IndexModel(IProductService p, ICustomerService c, ISaleService s, IInventoryService inv)
-    { _p = p; _c = c; _s = s; _inv = inv; }
+    public IndexModel(IProductService p, ICustomerService c, ISaleService s, IInventoryService inv,
+                      IReportService reports)
+    { _p = p; _c = c; _s = s; _inv = inv; _reports = reports; }
 
     public int     TotalProducts     { get; set; }
     public int     TotalCustomers    { get; set; }
@@ -31,22 +33,26 @@ public class IndexModel : PageModel
         TotalProducts  = (await _p.GetAllActiveAsync()).Count;
         TotalCustomers = (await _c.GetAllActiveAsync()).Count;
 
-        var today      = DateTime.UtcNow.Date;
-        var todaySales = (await _s.GetAllAsync(today, today.AddDays(1)))
-                         .Where(s => s.Status == "Active").ToList();
-        TodaySales   = todaySales.Count;
-        TodayRevenue = todaySales.Sum(s => s.GrandTotal);
-        TodayCashIn  = todaySales.Where(s => s.PaymentType == "Cash").Sum(s => s.GrandTotal);
+        // Today's figures come from the End of Day report so the two screens can never
+        // disagree. This used to compute its own: "today" was the UTC day (07:00-to-07:00
+        // local, the bug already fixed in End of Day), and "Cash In" left out the day's
+        // collections that End of Day's identically-named figure includes (2026-10-05).
+        var eod = await _reports.GetEndOfDayAsync(DateTime.Today);
+        TodaySales   = eod.TotalSales;
+        TodayRevenue = eod.TotalRevenue;
+        TodayCashIn  = eod.TotalCashIn;
 
-        // Outstanding dues: all active non-cash sales with balance
+        // Outstanding dues, net of credit notes applied to each invoice — the same basis
+        // as ageing and the Position report. Gross BalanceDue here counted an invoice
+        // fully covered by a note as still owed.
         var allSales = await _s.GetAllAsync();
         var outstanding = allSales
             .Where(s => s.Status == "Active"
-                     && s.BalanceDue > 0
+                     && s.NetBalanceDue > 0
                      && s.PaymentType != "Cash")
             .ToList();
         OutstandingCount = outstanding.Count;
-        TotalOutstanding = outstanding.Sum(s => s.BalanceDue);
+        TotalOutstanding = outstanding.Sum(s => s.NetBalanceDue);
         OverdueCount     = outstanding.Count(s => s.IsOverdue);
 
         RecentSales = (await _s.GetAllAsync()).Take(8).ToList();

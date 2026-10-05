@@ -57,7 +57,7 @@
                         <span class="badge @(p.PaymentType == "Cash" ? "ok" : "warn")">
                             @Localizer[EnumDisplay.Key("PaymentType", p.PaymentType)]
                         </span>
-                        @if (p.DueDate.HasValue && p.BalanceDue > 0)
+                        @if (p.DueDate.HasValue && p.NetBalanceDue > 0)
                         {
                             <div style="font-size:11px;color:@(p.IsOverdue?"#dc2626":"#d97706");font-weight:600">
                                 @(p.IsOverdue ? $"⚠ {Localizer["OVERDUE"].Value}" : "") @p.DueDate.Value.ToString("dd-MMM-yy")
@@ -65,11 +65,12 @@
                         }
                     </td>
                     <td style="text-align:right">@p.GrandTotal.ToString("N0")</td>
-                    <td style="text-align:right">@p.AmountPaid.ToString("N0")</td>
+                    @* Paid includes applied debit notes and Balance is net of them (2026-10-05). *@
+                    <td style="text-align:right">@((p.AmountPaid + p.AppliedNotesTotal).ToString("N0"))</td>
                     <td style="text-align:right">
-                        @if (p.BalanceDue > 0 && p.Status == "Active")
+                        @if (p.NetBalanceDue > 0 && p.Status == "Active")
                         {
-                            <span style="color:#dc2626;font-weight:700">@p.BalanceDue.ToString("N0")</span>
+                            <span style="color:#dc2626;font-weight:700">@p.NetBalanceDue.ToString("N0")</span>
                         }
                         else
                         {

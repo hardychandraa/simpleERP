@@ -12,7 +12,7 @@
   <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 @Localizer["Browser Print"]</button>
   @if (Model.AppSettings.PrinterEnabled && !string.IsNullOrEmpty(Model.AppSettings.PrinterName)) {
     <button id="btnDot" class="btn btn-success btn-sm" onclick="dotPrint('@Model.Sale.Id')">
-      🖨 @Localizer["Print to {0}", Model.AppSettings.PrinterName]
+      🖨 @Localizer["Print to {0}", Model.AppSettings.PrinterName ?? ""]
     </button>
   } else {
     <a href="/Settings" class="btn btn-outline btn-sm" style="color:#9ca3af">🖨 @Localizer["Set up printer"] &rarr;</a>
@@ -25,10 +25,13 @@
     <a href="/Sales/Create?revise=@Model.Sale.Id" class="btn btn-outline btn-sm"
        title="@Localizer["Opens a pre-filled copy. Saving it cancels this invoice and issues a corrected one."]">✎ @Localizer["Revise"]</a>
     }
+    @* Same condition: CancelAsync refuses a credit invoice with payments (2026-10-05). *@
+    @if (Model.Sale.PaymentType == "Cash" || Model.Sale.AmountPaid == 0) {
     <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Sale.Id" style="margin-left:auto"
           onsubmit="return confirm('@Localizer["Cancel this sale? Stock will be reversed."]')">
       <button type="submit" class="btn btn-danger btn-sm">✕ @Localizer["Cancel Sale"]</button>
     </form>
+    }
   }
 </div>
 <div id="printStatus" class="alert" style="display:none;margin-bottom:10px"></div>
@@ -80,7 +83,7 @@
         var ptClass = isCash ? "ok" : "warn";
         var isOverdue = Model.Sale.DueDate.HasValue
                      && Model.Sale.DueDate.Value.Date < DateTime.UtcNow.Date
-                     && Model.Sale.BalanceDue > 0;
+                     && Model.Sale.NetBalanceDue > 0;
       }
       <span class="badge @ptClass">@ptLabel</span>
       @if (!string.IsNullOrEmpty(Model.Sale.PaymentTermName)) {
@@ -349,7 +352,7 @@ const T = {
     sending:    @Html.Raw(Json.Serialize(Localizer["Sending..."].Value)),
     noPrinter:  @Html.Raw(Json.Serialize(Localizer["Could not reach printer service."].Value)),
     loggedOut:  @Html.Raw(Json.Serialize(Localizer["You have been logged out. Reload the page and sign in again."].Value)),
-    printTo:    @Html.Raw(Json.Serialize(Localizer["Print to {0}", Model.AppSettings.PrinterName].Value))
+    printTo:    @Html.Raw(Json.Serialize(Localizer["Print to {0}", Model.AppSettings.PrinterName ?? ""].Value))
 };
 
 async function dotPrint(saleId) {

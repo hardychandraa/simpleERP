@@ -341,6 +341,12 @@ public class SaleService : ISaleService
         if (sale == null) return _log.Refuse(_loc["Sale not found."]);
         if (sale.Status == SaleStatus.Cancelled) return _log.Refuse(_loc["Sale is already cancelled."]);
 
+        // Money already received belongs to this invoice. Cancelling used to go through and
+        // leave the payment attached to a cancelled invoice, still counted as collected, with
+        // nothing recording that it was owed back (HC, 2026-10-05). Same rule as Revise.
+        if (sale.PaymentType == PaymentType.Due && sale.AmountPaid > 0)
+            return _log.Refuse(_loc["Payments have been recorded against {0}, so it cannot be cancelled. Correct it with a return or a credit note instead.", sale.InvoiceNumber]);
+
         // Cancelling restocks every unit sold. If a return has already put some of them
         // back, doing that would receive the same goods twice and leave a credit note
         // hanging against an invoice that no longer exists.
@@ -632,6 +638,48 @@ public class SaleService : ISaleService
         return dto;
     }
 
+    public async Task<InvoiceReceiptDto?> GetInvoiceReceiptAsync(Guid customerId, DateTime from, DateTime to)
+    {
+        var customer = await _customers.GetByIdAsync(customerId);
+        if (customer == null) return null;
+
+        // The dates are the operator's calendar days; SaleDate is stored in UTC. The upper
+        // bound is the start of the day after, excluded, so a sale at 23:59 on the last day
+        // is in and one at 00:00 the next day is not.
+        var fromUtc = DateTime.SpecifyKind(from.Date, DateTimeKind.Local).ToUniversalTime();
+        var toUtc   = DateTime.SpecifyKind(to.Date.AddDays(1), DateTimeKind.Local).ToUniversalTime();
+
+        var sales = (await _sales.GetAllAsync(fromUtc, toUtc, customerId))
+            .Where(s => s.SaleDate < toUtc && s.Status != SaleStatus.Cancelled)
+            .OrderBy(s => s.SaleDate).ThenBy(s => s.InvoiceNumber)
+            .ToList();
+        var applied = await _noteApplications.GetAppliedTotalsForSalesAsync(sales.Select(s => s.Id));
+
+        return new InvoiceReceiptDto {
+            CustomerId      = customer.Id,
+            CustomerName    = customer.Name,
+            CustomerAddress = customer.Address,
+            CustomerPhone   = customer.Phone,
+            From            = from.Date,
+            To              = to.Date,
+            Invoices = sales.Select(s => new SaleListDto {
+                Id                = s.Id,
+                InvoiceNumber     = s.InvoiceNumber,
+                SaleDate          = s.SaleDate,
+                CustomerId        = s.CustomerId,
+                CustomerName      = customer.Name,
+                SalesPersonName   = s.SalesPerson?.Name ?? "",
+                PaymentType       = s.PaymentType.ToString(),
+                PaymentTermName   = s.PaymentTerm?.Name ?? "",
+                DueDate           = s.DueDate,
+                GrandTotal        = s.GrandTotal,
+                AmountPaid        = s.AmountPaid,
+                AppliedNotesTotal = applied.GetValueOrDefault(s.Id),
+                Status            = s.Status.ToString()
+            }).ToList()
+        };
+    }
+
     public async Task<List<SaleListDto>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null)
     {
         var list = await _sales.GetAllAsync(from, to);
@@ -649,6 +697,7 @@ public class SaleService : ISaleService
             Id            = s.Id,
             InvoiceNumber = s.InvoiceNumber,
             SaleDate      = s.SaleDate,
+            CustomerId    = s.CustomerId,
             CustomerName  = s.Customer?.Name ?? "",
             SalesPersonName = s.SalesPerson?.Name ?? "",
             PaymentType   = s.PaymentType.ToString(),

@@ -125,7 +125,20 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Events.OnValidatePrincipal = async ctx => {
             var username = ctx.Principal?.Identity?.Name;
             var users    = ctx.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
-            var account  = username == null ? null : await users.GetByUsernameAsync(username);
+            SimpleERP.Domain.Entities.User? account;
+            try { account = username == null ? null : await users.GetByUsernameAsync(username); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Database unreachable. Throwing here used to break the error page too: the
+                // authentication result is cached for the request, failure included, so the
+                // exception handler's re-run of /Error hit the same exception and the user got
+                // a blank 500 with no reference code (found 2026-10-05). Leaving the session
+                // unverified for this one request is safe — every page needs the database, so
+                // the request fails on its own query and lands on the error page properly.
+                ctx.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>()
+                   .LogWarning(ex, "Could not re-check account {User}: database unavailable.", username);
+                return;
+            }
 
             if (account == null || !account.IsActive
                 || !ctx.Principal!.IsInRole(account.Role.ToString()))

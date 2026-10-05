@@ -9,10 +9,13 @@ public class ReportService : IReportService
     private readonly ISaleRepository          _sales;
     private readonly IAuditLogRepository      _audit;
     private readonly IPaymentRecordRepository _payments;
+    private readonly IPaymentBatchRepository  _batches;
+    private readonly ICreditNoteApplicationRepository _noteApplications;
 
     public ReportService(ISaleRepository sales, IAuditLogRepository audit,
-                         IPaymentRecordRepository payments)
-    { _sales=sales; _audit=audit; _payments=payments; }
+                         IPaymentRecordRepository payments, IPaymentBatchRepository batches,
+                         ICreditNoteApplicationRepository noteApplications)
+    { _sales=sales; _audit=audit; _payments=payments; _batches=batches; _noteApplications=noteApplications; }
 
     public async Task<EndOfDayDto> GetEndOfDayAsync(DateTime date)
     {
@@ -46,6 +49,17 @@ public class ReportService : IReportService
         // so this is queried by payment date, not by sale date.
         var todayPayments = await _payments.GetByDateRangeAsync(from, to);
 
+        // A settlement that nets a credit note records each invoice's payment at its full
+        // amount, but the customer handed over that much less money. Without this the
+        // drawer figure overstated cash by every note netted today (found 2026-10-05: a
+        // 111,000 return note made Total Cash In Hand 111,000 too high).
+        var notesNetted = (await _batches.GetAllAsync(Domain.Enums.PaymentBatchDirection.Received, from: from, to: to))
+            .Where(b => b.BatchDate < to)
+            .Sum(b => b.NotesAppliedAmount);
+
+        // So each listed sale's balance is net of applied credit notes, like every other list.
+        var applied = await _noteApplications.GetAppliedTotalsForSalesAsync(todaySales.Select(s => s.Id));
+
         return new EndOfDayDto {
             Date              = date,
             TotalSales        = todaySales.Count,
@@ -55,6 +69,7 @@ public class ReportService : IReportService
             CashRevenue       = cashSales.Sum(s => s.GrandTotal),
             DueRevenue        = creditSales.Sum(s => s.GrandTotal),
             PaymentsCollected = todayPayments.Sum(p => p.Amount),
+            NotesNetted       = notesNetted,
             OutstandingDueTotal = totalOutstanding,
             SalesList = todaySales.Select(s => new SaleListDto {
                 Id = s.Id, InvoiceNumber = s.InvoiceNumber, SaleDate = s.SaleDate,
@@ -62,6 +77,7 @@ public class ReportService : IReportService
                 PaymentType = s.PaymentType.ToString(),
                 DueDate = s.DueDate,
                 GrandTotal = s.GrandTotal, AmountPaid = s.AmountPaid,
+                AppliedNotesTotal = applied.GetValueOrDefault(s.Id),
                 Status = s.Status.ToString()
             }).ToList(),
             PaymentsList = todayPayments.Select(p => new EndOfDayPaymentDto {

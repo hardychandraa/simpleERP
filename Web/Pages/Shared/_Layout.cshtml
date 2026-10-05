@@ -91,8 +91,9 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
 
     <div class="sb-sec">@Localizer["Transactions"]</div>
     <a href="/Sales/Create" class="@(page=="/Sales/Create"?"active":"")">🧾 @Localizer["New Sale"]</a>
-    <a href="/Sales"        class="@(page.StartsWith("/Sales/")&&page!="/Sales/Create"?"active":"")">📋 @Localizer["Sales History"]</a>
+    <a href="/Sales"        class="@(page.StartsWith("/Sales/")&&page!="/Sales/Create"&&page!="/Sales/TandaTerima"?"active":"")">📋 @Localizer["Sales History"]</a>
     <a href="/Payments"     class="@(page.StartsWith("/Payments")?"active":"")">💳 @Localizer["Due Payments"]</a>
+    <a href="/Sales/TandaTerima" class="@(page=="/Sales/TandaTerima"?"active":"")">🗂 @Localizer["Tanda Terima"]</a>
     @if (isAdmin)
     {
         <a href="/Commissions"  class="@(page.StartsWith("/Commissions")?"active":"")">🧾 @Localizer["Commissions"]</a>

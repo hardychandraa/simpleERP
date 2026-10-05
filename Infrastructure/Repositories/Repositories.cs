@@ -1320,7 +1320,7 @@ public class SaleRepository : ISaleRepository
            .Include(s => s.PaymentRecords)
            .FirstOrDefaultAsync(s => s.Id == id);
 
-    public Task<List<Sale>> GetAllAsync(DateTime? from = null, DateTime? to = null)
+    public Task<List<Sale>> GetAllAsync(DateTime? from = null, DateTime? to = null, Guid? customerId = null)
     {
         // PaymentTerm is included because the list and ageing screens show the term name —
         // since the TOP* enum members were retired, the term table is the only place that
@@ -1329,6 +1329,7 @@ public class SaleRepository : ISaleRepository
                          .Include(s => s.PaymentTerm).AsQueryable();
         if (from.HasValue) q = q.Where(s => s.SaleDate >= from.Value);
         if (to.HasValue)   q = q.Where(s => s.SaleDate <= to.Value);
+        if (customerId.HasValue) q = q.Where(s => s.CustomerId == customerId.Value);
         return q.OrderByDescending(s => s.SaleDate).ToListAsync();
     }
 

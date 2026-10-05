@@ -57,7 +57,7 @@
                 var isCash = Model.Purchase.PaymentType == "Cash";
                 var isOverdue = Model.Purchase.DueDate.HasValue
                              && Model.Purchase.DueDate.Value.Date < DateTime.UtcNow.Date
-                             && Model.Purchase.BalanceDue > 0;
+                             && Model.Purchase.NetBalanceDue > 0;
             }
             <span class="badge @(isCash ? "ok" : "warn")">@((isCash ? "💵 " : "📋 ") + Localizer[EnumDisplay.Key("PaymentType", Model.Purchase.PaymentType)].Value)</span>
             @if (!string.IsNullOrEmpty(Model.Purchase.PaymentTermName))

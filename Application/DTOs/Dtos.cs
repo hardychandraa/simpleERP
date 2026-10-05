@@ -844,10 +844,32 @@ public class SaleItemDto {
     /// <summary>Price override reason (when price differs from product master).</summary>
     public string?  PriceReason    { get; set; }
 }
+/// <summary>
+/// Tanda terima faktur: every invoice issued to one customer in a period, handed over
+/// with the invoices so the customer signs for them and knows what to pay. Cancelled
+/// invoices are left out — a revised invoice appears once, under its new number.
+/// </summary>
+public class InvoiceReceiptDto {
+    public Guid     CustomerId      { get; set; }
+    public string   CustomerName    { get; set; } = "";
+    public string?  CustomerAddress { get; set; }
+    public string?  CustomerPhone   { get; set; }
+    /// <summary>Calendar dates of the period, both inclusive, in local time.</summary>
+    public DateTime From            { get; set; }
+    public DateTime To              { get; set; }
+    /// <summary>Oldest first, the order the customer will tick them off in.</summary>
+    public List<SaleListDto> Invoices { get; set; } = new();
+    public decimal  TotalInvoiced    => Invoices.Sum(i => i.GrandTotal);
+    /// <summary>Payments plus applied credit notes — everything that reduced the balance.</summary>
+    public decimal  TotalSettled     => Invoices.Sum(i => i.AmountPaid + i.AppliedNotesTotal);
+    public decimal  TotalOutstanding => Invoices.Sum(i => Math.Max(0, i.NetBalanceDue));
+}
+
 public class SaleListDto {
     public Guid     Id            { get; set; }
     public string   InvoiceNumber { get; set; } = "";
     public DateTime SaleDate      { get; set; }
+    public Guid     CustomerId    { get; set; }
     public string   CustomerName  { get; set; } = "";
     public string   SalesPersonName { get; set; } = "";
     public string   PaymentType   { get; set; } = "";
@@ -1000,8 +1022,13 @@ public class EndOfDayDto {
     public decimal  TotalRevenue       => CashRevenue + DueRevenue;
     /// <summary>Payments collected today against credit sales (any sale date).</summary>
     public decimal  PaymentsCollected  { get; set; }
-    /// <summary>Actual cash in hand today: cash-sale revenue + credit collections.</summary>
-    public decimal  TotalCashIn        => CashRevenue + PaymentsCollected;
+    /// <summary>
+    /// Credit notes netted inside today's settlements: part of PaymentsCollected (each
+    /// invoice is marked paid in full) but never handed over as money.
+    /// </summary>
+    public decimal  NotesNetted        { get; set; }
+    /// <summary>Actual cash in hand today: cash-sale revenue + credit collections − notes netted.</summary>
+    public decimal  TotalCashIn        => CashRevenue + PaymentsCollected - NotesNetted;
     /// <summary>All unpaid Due balance across all time.</summary>
     public decimal  OutstandingDueTotal{ get; set; }
     public List<SaleListDto>        SalesList    { get; set; } = new();
@@ -1276,12 +1303,17 @@ public class AppLogSummaryDto {
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 public class AppSettingsDto {
-    public string AppName        { get; set; } = "SimpleERP";
+    // AppName, StoreFooter and PrinterName are nullable because they are optional on the
+    // form: as non-nullable strings, MVC treated them as implicitly [Required], so leaving
+    // any one blank made the whole Settings save fail silently. A brand-new database has no
+    // printer name, so the first save after a fresh start could never succeed (2026-10-05).
+    // The service already falls back to defaults for all three.
+    public string? AppName       { get; set; } = "SimpleERP";
     public string StoreName      { get; set; } = "My Store";
     public string? StoreAddress  { get; set; }
     public string? StorePhone    { get; set; }
-    public string  StoreFooter   { get; set; } = "Thank you for your purchase!";
-    public string  PrinterName   { get; set; } = "";
+    public string? StoreFooter   { get; set; } = "Thank you for your purchase!";
+    public string? PrinterName   { get; set; } = "";
     public int     PaperColumns  { get; set; } = 96;
     public int     PaperLines    { get; set; } = 33;
     /// <summary>The default branch's warehouse code, edited here until branches get their own page.</summary>

@@ -60,7 +60,8 @@ public interface ISaleRepository {
     /// against a list the user already has in front of them.
     /// </summary>
     Task<List<Sale>> GetByIdsWithItemsAsync(IEnumerable<Guid> ids);
-    Task<List<Sale>> GetAllAsync(DateTime? from = null, DateTime? to = null);
+    /// <summary>Sales dated from..to (both inclusive), newest first; optionally one customer's only.</summary>
+    Task<List<Sale>> GetAllAsync(DateTime? from = null, DateTime? to = null, Guid? customerId = null);
     /// <summary>
     /// Active credit sales still owing money <em>after</em> any credit notes applied to
     /// them, oldest due first — the AR ageing list. Optionally scoped to one customer,

@@ -1,0 +1,180 @@
+@page
+@model SimpleERP.Web.Pages.Sales.TandaTerimaModel
+@{
+    ViewData["Title"] = Localizer["Tanda Terima"].Value;
+    var idc = System.Globalization.CultureInfo.GetCultureInfo("id-ID");
+}
+@* The printed document is Indonesian whatever the UI language — it is the customer's
+   document, the same rule as the invoice. Only the controls around it are localized. *@
+
+<style>
+@@media print {
+  @@page { size: A4 portrait; margin: 12mm; }
+  #ttDoc { font-family: Arial, sans-serif; font-size: 10pt; }
+  #ttDoc table { font-size: 9.5pt; }
+  #ttDoc a { color: inherit; text-decoration: none; }
+}
+#ttDoc table th, #ttDoc table td { padding: 5px 6px; }
+#ttDoc .num { text-align: right; white-space: nowrap; }
+.tt-sig { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 28px; }
+.tt-sig div { padding-left: 8px; }
+.tt-sig .line { margin-top: 56px; }
+</style>
+
+<div class="card no-print" style="margin-bottom:14px">
+  <form method="get" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+    <div class="fg" style="margin:0;flex:2;min-width:220px">
+      <label>@Localizer["Customer"]</label>
+      <select name="customerId" required data-searchable>
+        <option value="">— @Localizer["Select customer"] —</option>
+        @foreach (var c in Model.Customers) {
+          <option value="@c.Id" selected="@(c.Id == Model.CustomerId)">@c.Name@(c.IsActive ? "" : $" ({Localizer["Inactive"].Value})")</option>
+        }
+      </select>
+    </div>
+    <div class="fg" style="margin:0;flex:1;min-width:140px">
+      <label>@Localizer["From"]</label>
+      <input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" required />
+    </div>
+    <div class="fg" style="margin:0;flex:1;min-width:140px">
+      <label>@Localizer["To"]</label>
+      <input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" required />
+    </div>
+    <button type="submit" class="btn btn-primary">@Localizer["Show"]</button>
+  </form>
+  <div style="font-size:12px;color:#6b7280;margin-top:8px">
+    @Localizer["Every invoice issued to the customer in the period, cancelled ones excluded, with what is still owed on each — for the customer to sign when the invoices are handed over for payment."]
+  </div>
+</div>
+
+@if (Model.Error != null) {
+  <div class="alert alert-danger no-print">@Localizer[Model.Error]</div>
+}
+
+@if (Model.Receipt is { } r) {
+  <div class="no-print" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 @Localizer["Browser Print"]</button>
+    @if (Model.AppSettings.PrinterEnabled && !string.IsNullOrEmpty(Model.AppSettings.PrinterName)) {
+      <button id="btnDot" class="btn btn-success btn-sm" onclick="dotPrint()">
+        🖨 @Localizer["Print to {0}", Model.AppSettings.PrinterName ?? ""]
+      </button>
+    } else {
+      <a href="/Settings" class="btn btn-outline btn-sm" style="color:#9ca3af">🖨 @Localizer["Set up printer"] &rarr;</a>
+    }
+    <a href="?handler=Txt&@Model.Query" class="btn btn-outline btn-sm">📄 TXT</a>
+  </div>
+  <div id="printStatus" class="alert no-print" style="display:none;margin-bottom:10px"></div>
+  @Html.AntiForgeryToken()
+
+  <div class="card" id="ttDoc">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+      <div>
+        <div style="font-size:18px;font-weight:800">@Model.AppSettings.StoreName</div>
+        @if (!string.IsNullOrEmpty(Model.AppSettings.StoreAddress)) {
+          <div style="color:#6b7280;font-size:12px">@Model.AppSettings.StoreAddress</div>
+        }
+        @if (!string.IsNullOrEmpty(Model.AppSettings.StorePhone)) {
+          <div style="color:#6b7280;font-size:12px">Telp @Model.AppSettings.StorePhone</div>
+        }
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:17px;font-weight:800;letter-spacing:.03em">TANDA TERIMA FAKTUR</div>
+        <div style="font-size:12px">Tgl: @DateTime.Now.ToString("dd-MM-yyyy")</div>
+        <div style="font-size:12px">Periode: @r.From.ToString("dd-MM-yyyy") s/d @r.To.ToString("dd-MM-yyyy")</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px;padding:10px 12px;background:#f9fafb;border-radius:6px">
+      <div style="font-size:11px;color:#6b7280">Kepada</div>
+      <div style="font-weight:700">@r.CustomerName</div>
+      @if (!string.IsNullOrEmpty(r.CustomerAddress)) { <div style="font-size:12px">@r.CustomerAddress</div> }
+      @if (!string.IsNullOrEmpty(r.CustomerPhone))   { <div style="font-size:12px">Telp @r.CustomerPhone</div> }
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px">No</th>
+          <th>No. Faktur</th>
+          <th>Tanggal</th>
+          <th>Jatuh Tempo</th>
+          <th>TOP</th>
+          <th class="num">Total</th>
+          <th class="num">Bayar / Potongan</th>
+          <th class="num">Sisa</th>
+        </tr>
+      </thead>
+      <tbody>
+        @{ int n = 0; }
+        @foreach (var inv in r.Invoices) {
+          n++;
+          var settled = inv.AmountPaid + inv.AppliedNotesTotal;
+          var left    = Math.Max(0, inv.NetBalanceDue);
+          <tr>
+            <td>@n</td>
+            <td><a href="/Sales/@inv.Id">@inv.InvoiceNumber</a></td>
+            <td>@inv.SaleDate.ToLocalTime().ToString("dd-MM-yyyy")</td>
+            <td>@(inv.DueDate?.ToString("dd-MM-yyyy") ?? "-")</td>
+            <td>@(inv.PaymentType == "Cash" ? "Tunai" : string.IsNullOrEmpty(inv.PaymentTermName) ? "Kredit" : inv.PaymentTermName)</td>
+            <td class="num">@inv.GrandTotal.ToString("N0", idc)</td>
+            <td class="num">@(settled > 0 ? settled.ToString("N0", idc) : "-")</td>
+            <td class="num" style="font-weight:600">@left.ToString("N0", idc)</td>
+          </tr>
+        }
+        @if (r.Invoices.Count == 0) {
+          <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:20px">Tidak ada faktur pada periode ini.</td></tr>
+        }
+      </tbody>
+      <tfoot>
+        <tr style="font-weight:800;border-top:2px solid #111">
+          <td colspan="5">@r.Invoices.Count faktur &nbsp; TOTAL</td>
+          <td class="num">@r.TotalInvoiced.ToString("N0", idc)</td>
+          <td class="num">@r.TotalSettled.ToString("N0", idc)</td>
+          <td class="num">@r.TotalOutstanding.ToString("N0", idc)</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="tt-sig">
+      <div>Yang Menerima,<div class="line">(______________________)</div><div>Tgl:</div></div>
+      <div>Yang Menyerahkan,<div class="line">(______________________)</div><div>Tgl:</div></div>
+    </div>
+    <div style="font-size:10px;color:#9ca3af;margin-top:16px">Dicetak: @User.Identity?.Name @DateTime.Now.ToString("dd-MM-yy HH:mm")</div>
+  </div>
+
+}
+
+@section Scripts {
+@if (Model.Receipt != null) {
+<script>
+const T = {
+    sending:   @Html.Raw(Json.Serialize(Localizer["Sending..."].Value)),
+    noPrinter: @Html.Raw(Json.Serialize(Localizer["Could not reach printer service."].Value)),
+    loggedOut: @Html.Raw(Json.Serialize(Localizer["You have been logged out. Reload the page and sign in again."].Value)),
+    printTo:   @Html.Raw(Json.Serialize(Localizer["Print to {0}", Model.AppSettings.PrinterName ?? ""].Value))
+};
+async function dotPrint() {
+    const btn = document.getElementById('btnDot');
+    const status = document.getElementById('printStatus');
+    btn.disabled = true;
+    btn.textContent = '⏳ ' + T.sending;
+    status.style.display = 'none';
+    try {
+        const tok = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+        const r = await fetch('/api/print/invoice-receipt?@Html.Raw(Model.Query)', {
+            method: 'POST', headers: { 'X-CSRF-TOKEN': tok }
+        });
+        const d = r.status === 401 ? { error: T.loggedOut } : await r.json();
+        status.className = r.ok ? 'alert alert-success no-print' : 'alert alert-danger no-print';
+        status.textContent = r.ok ? '✓ ' + d.message : '✗ ' + d.error;
+    } catch (e) {
+        status.className = 'alert alert-danger no-print';
+        status.textContent = '✗ ' + T.noPrinter;
+    }
+    status.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = '🖨 ' + T.printTo;
+}
+</script>
+}
+}

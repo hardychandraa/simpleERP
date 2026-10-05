@@ -57,8 +57,9 @@
           }
         </td>
         <td>@s.GrandTotal.ToString("N0")</td>
-        <td>@s.AmountPaid.ToString("N0")</td>
-        <td><span style="color:#dc2626;font-weight:700;font-size:14px">@s.BalanceDue.ToString("N0")</span></td>
+        @* Paid includes applied credit notes, so Total − Paid = Balance on every row. *@
+        <td>@((s.AmountPaid + s.AppliedNotesTotal).ToString("N0"))</td>
+        <td><span style="color:#dc2626;font-weight:700;font-size:14px">@s.NetBalanceDue.ToString("N0")</span></td>
         <td><a href="/Sales/@s.Id" class="btn btn-primary btn-sm">@Localizer["View & Pay"]</a></td>
       </tr>
     }
