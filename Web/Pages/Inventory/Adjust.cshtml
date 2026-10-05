@@ -15,7 +15,7 @@
   <form method="post" id="adjForm">
     <div class="fg">
       <label>@Localizer["Product"] *</label>
-      <select asp-for="Input.ProductId" asp-items="Model.Products" required id="selProd"
+      <select asp-for="Input.ProductId" asp-items="Model.Products" required id="selProd" data-searchable
               onchange="this.form.submit()">
         <option value="">— @Localizer["Select product"] —</option>
       </select>

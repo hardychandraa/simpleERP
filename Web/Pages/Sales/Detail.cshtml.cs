@@ -1,5 +1,6 @@
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
+using SimpleERP.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SimpleERP.Web.Services;
@@ -14,9 +15,13 @@ public class DetailModel : PageModel
     private readonly ICreditNoteService  _notes;
     private readonly IAppSettingsService _settings;
 
+    private readonly IAppSettingsRepository _settingsRepo;
+
     public DetailModel(ISaleService s, ICommissionService commissions,
-                       IReturnService returns, ICreditNoteService notes, IAppSettingsService cfg)
-    { _sales = s; _commissions = commissions; _returns = returns; _notes = notes; _settings = cfg; }
+                       IReturnService returns, ICreditNoteService notes, IAppSettingsService cfg,
+                       IAppSettingsRepository settingsRepo)
+    { _sales = s; _commissions = commissions; _returns = returns; _notes = notes; _settings = cfg;
+      _settingsRepo = settingsRepo; }
 
     public SaleDto        Sale           { get; set; } = null!;
     public AppSettingsDto AppSettings    { get; set; } = null!;
@@ -91,8 +96,14 @@ public class DetailModel : PageModel
 
     public async Task<IActionResult> OnGetTxtAsync(Guid id)
     {
-        var txt   = await _sales.GenerateTxtInvoiceAsync(id);
-        var bytes = System.Text.Encoding.UTF8.GetBytes(txt);
-        return File(bytes, "text/plain", $"invoice-{id}.txt");
+        // The same pages the dot-matrix printer gets, as plain text: what you see in this
+        // file is what lands on the form. Sheets are separated by a form feed, so printing
+        // the file to the LX through a text driver still breaks at each perforation.
+        var sale = await _sales.GetByIdAsync(id);
+        if (sale == null) return NotFound();
+        var cfg   = await _settingsRepo.GetAsync();
+        var pages = EscpBuilder.RenderPages(sale, cfg, this.CurrentUserName(), DateTime.Now);
+        var txt   = string.Join("\f\r\n", pages.Select(p => string.Join("\r\n", p.Select(l => l.Text.TrimEnd())) + "\r\n"));
+        return File(System.Text.Encoding.ASCII.GetBytes(txt), "text/plain", $"{sale.InvoiceNumber}.txt");
     }
 }

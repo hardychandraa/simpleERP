@@ -102,6 +102,16 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
         options.Cookie.IsEssential  = true;
 
+        // fetch() calls to /api get a plain 401 when the session has lapsed, instead of a
+        // redirect to the login page that the caller would try to parse as JSON.
+        options.Events.OnRedirectToLogin = ctx => {
+            if (ctx.Request.Path.StartsWithSegments("/api"))
+                ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            else
+                ctx.Response.Redirect(ctx.RedirectUri);
+            return Task.CompletedTask;
+        };
+
         // Re-check the account on every request.
         //
         // An auth cookie is self-contained and signed: without this, deactivating someone
@@ -128,6 +138,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization(options => {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole(nameof(UserRole.Admin)));
+    // Deny by default for EVERY endpoint, not just Razor Pages. AuthorizeFolder("/") below
+    // only reaches pages, so /api/print/* — a controller — was open to anyone on the
+    // network: verified 2026-10-05, an anonymous request listed the installed printers and
+    // got as far as looking up an invoice to print. Anything without an explicit
+    // [AllowAnonymous] / AllowAnonymousToPage now requires a login.
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser().Build();
 });
 
 builder.Services.AddRazorPages(options => {
@@ -326,7 +343,9 @@ app.MapGet("/set-language", (string culture, string? returnUrl, HttpContext ctx)
         });
 
     return Results.LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
-});
+})
+// Anonymous on purpose: the login page has the language toggle too.
+.AllowAnonymous();
 
 try
 {

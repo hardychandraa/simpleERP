@@ -131,6 +131,49 @@ public class CreditNoteService : ICreditNoteService
 
     public Task<decimal> GetOpenTotalAsync(CreditDebitType type) => _notes.GetOpenTotalAsync(type);
 
+    /// <summary>
+    /// See the interface doc — called from inside RebateService's own transaction, so
+    /// this stages the note and stops short of SaveChangesAsync. IsTaxInclusive is fixed
+    /// true so the note's Amount equals netAmount exactly (SplitTax's inclusive branch
+    /// derives TaxBase by division and returns the input unchanged as GrandTotal); the
+    /// exclusive branch would inflate the note by the VAT rate and overstate how much it
+    /// reduces the payable by.
+    /// </summary>
+    public async Task<string?> CreateRebateSettlementNoteAsync(Guid supplierId, decimal netAmount,
+        string reference, string user)
+    {
+        if (netAmount <= 0) return null;
+
+        var taxRate = (await _settings.GetAsync()).VatRate;
+        var (taxBase, taxAmount, total) = MoneyMath.SplitTax(netAmount, taxRate, taxInclusive: true);
+
+        var note = new CreditNote {
+            Id             = Guid.NewGuid(),
+            DocumentNumber = await _notes.GenerateDocumentNumberAsync(CreditDebitType.Debit),
+            Type           = CreditDebitType.Debit,
+            Category       = CreditNoteCategory.RebateSettlement,
+            NoteDate       = DateTime.Now.Date,
+            SupplierId     = supplierId,
+            TaxBase        = taxBase,
+            TaxRate        = taxRate,
+            TaxAmount      = taxAmount,
+            Amount         = total,
+            Status         = CreditNoteStatus.Open,
+            Reason         = "Rebate settlement",
+            Notes          = reference,
+            CreatedBy      = user,
+            CreatedAt      = DateTime.UtcNow
+        };
+
+        await _notes.AddAsync(note);
+        await _audit.LogAsync(user, "DebitNote.Create",
+            $"{note.DocumentNumber} | RebateSettlement | {total:N0} (auto-raised on rebate settlement)");
+        _log.LogInformation(
+            "Debit note {DocumentNumber} auto-raised from a rebate settlement — {Amount}, by {User}",
+            note.DocumentNumber, total, user);
+        return note.DocumentNumber;
+    }
+
     public async Task<ServiceResult> CreateAsync(CreateCreditNoteDto dto, string user)
     {
         var reason = Trim(dto.Reason, 500);

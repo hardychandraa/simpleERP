@@ -9,8 +9,9 @@
     <div class="fg"><label>@Localizer["Product Name"] *</label><input type="text" asp-for="Input.Name" required placeholder="@Localizer["e.g. Samsung Galaxy A55"]"/></div>
     <div class="fg"><label>@Localizer["SKU"] *</label><input type="text" asp-for="Input.SKU" required placeholder="@Localizer["e.g. SAM-A55"]"/></div>
   </div>
-  <div class="frow frow2">
+  <div class="frow frow3">
     <div class="fg"><label>@Localizer["Selling Price"] *</label><input type="number" asp-for="Input.UnitPrice" required min="0" step="0.01"/></div>
+    <div class="fg"><label>@Localizer["Unit"] *</label><input type="text" asp-for="Input.Unit" required maxlength="10" placeholder="@Localizer["e.g. PCS, UNIT, SET"]" style="text-transform:uppercase"/></div>
     <div class="fg"><label>@Localizer["Category"]</label><input type="text" asp-for="Input.Category" placeholder="@Localizer["e.g. Smartphone"]"/></div>
   </div>
   <div class="frow frow2">

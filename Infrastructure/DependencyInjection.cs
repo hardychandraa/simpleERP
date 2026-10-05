@@ -67,8 +67,14 @@ public static class DependencyInjection
         services.AddScoped<IAuthService,         AuthService>();
         services.AddScoped<IUserService,         UserService>();
         services.AddScoped<ISupplierService,     SupplierService>();
-        // RebateService chains writes into InventoryService (in-kind stock) within one
-        // transaction, and PurchaseService chains into RebateService, so both are
+        // CreditNoteService is dual-registered because RebateService now chains a debit
+        // note out of it (realizing a cash rebate) within one transaction — same pattern
+        // as InventoryService below.
+        services.AddScoped<CreditNoteService>();
+        services.AddScoped<ICreditNoteService>(sp => sp.GetRequiredService<CreditNoteService>());
+        // RebateService chains writes into InventoryService (in-kind stock) and
+        // CreditNoteService (the debit note a cash settlement raises) within one
+        // transaction, and PurchaseService chains into RebateService, so all three are
         // registered by concrete type as well — same dual-registration pattern as
         // InventoryService above.
         services.AddScoped<RebateService>();
@@ -81,7 +87,6 @@ public static class DependencyInjection
         // its own credit/debit notes straight through the repository rather than through
         // CreditNoteService, which keeps that service free of return-specific rules.
         services.AddScoped<IReturnService,       ReturnService>();
-        services.AddScoped<ICreditNoteService,   CreditNoteService>();
         services.AddScoped<IExpenseService,      ExpenseService>();
         services.AddScoped<IAppSettingsService, AppSettingsService>();
         services.AddScoped<SimpleERP.Application.Services.AuditService>();

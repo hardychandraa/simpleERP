@@ -8,7 +8,13 @@ public class AppSettings {
     public string? StorePhone { get; set; }
     public string StoreFooter { get; set; } = "Thank you for your purchase!";
     public string PrinterName { get; set; } = "";
-    public int PaperColumns { get; set; } = 80;
+    public int PaperColumns { get; set; } = 96;
+    /// <summary>
+    /// Printable lines per sheet, sent to the printer as its page length so each invoice
+    /// starts at the top of the next form. 33 = a 5.5-inch form at 6 lines per inch (the
+    /// 9.5 × 5.5 inch, roughly half-A4 continuous form).
+    /// </summary>
+    public int PaperLines { get; set; } = 33;
     public bool PrinterEnabled { get; set; } = false;
     /// <summary>
     /// PPN rate as a fraction (0.11 = 11%). Deliberately configurable, not a constant —

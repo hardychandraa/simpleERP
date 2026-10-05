@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SimpleERP.Infrastructure.Data;
@@ -11,9 +12,11 @@ using SimpleERP.Infrastructure.Data;
 namespace SimpleERP.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261005115345_AddDocumentSequences")]
+    partial class AddDocumentSequences
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -80,9 +83,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<int>("PaperColumns")
                         .HasColumnType("integer");
 
-                    b.Property<int>("PaperLines")
-                        .HasColumnType("integer");
-
                     b.Property<bool>("PrinterEnabled")
                         .HasColumnType("boolean");
 
@@ -124,8 +124,7 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         {
                             Id = "default",
                             AppName = "SimpleERP",
-                            PaperColumns = 96,
-                            PaperLines = 33,
+                            PaperColumns = 80,
                             PrinterEnabled = false,
                             PrinterName = "",
                             RebateWithholdingRate = 0.15m,
@@ -133,7 +132,7 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                             StoreFooter = "Thank you for your purchase!",
                             StoreName = "My Store",
                             StorePhone = "",
-                            VatRate = 0.11m
+                            VatRate = 0.10m
                         });
                 });
 
@@ -178,10 +177,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Code")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
@@ -1040,13 +1035,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasDefaultValue("PCS");
-
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18,4)");
 
@@ -1427,9 +1415,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<int>("PaymentType")
                         .HasColumnType("integer");
 
-                    b.Property<Guid?>("ReplacesSaleId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("SaleDate")
                         .HasColumnType("timestamp without time zone");
 
@@ -1463,8 +1448,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.HasIndex("PaymentTermId");
-
-                    b.HasIndex("ReplacesSaleId");
 
                     b.HasIndex("SaleDate");
 
@@ -1535,10 +1518,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Code")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1552,9 +1531,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -2253,11 +2229,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.HasOne("SimpleERP.Domain.Entities.PaymentTerm", "PaymentTerm")
                         .WithMany()
                         .HasForeignKey("PaymentTermId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("SimpleERP.Domain.Entities.Sale", null)
-                        .WithMany()
-                        .HasForeignKey("ReplacesSaleId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("SimpleERP.Domain.Entities.SalesPerson", "SalesPerson")

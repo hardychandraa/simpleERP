@@ -44,7 +44,7 @@
         <div style="display:flex;gap:12px">
             <div class="fg" style="flex:1">
                 <label>@Localizer["Product"]</label>
-                <select asp-for="Input.ProductId" asp-items="Model.ProductOptions">
+                <select asp-for="Input.ProductId" asp-items="Model.ProductOptions" data-searchable>
                     <option value="">— @Localizer["All products"] —</option>
                 </select>
             </div>

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SimpleERP.Infrastructure.Data;
@@ -11,9 +12,11 @@ using SimpleERP.Infrastructure.Data;
 namespace SimpleERP.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261005124214_InvoicePrintFields")]
+    partial class InvoicePrintFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1427,9 +1430,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<int>("PaymentType")
                         .HasColumnType("integer");
 
-                    b.Property<Guid?>("ReplacesSaleId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("SaleDate")
                         .HasColumnType("timestamp without time zone");
 
@@ -1463,8 +1463,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.HasIndex("PaymentTermId");
-
-                    b.HasIndex("ReplacesSaleId");
 
                     b.HasIndex("SaleDate");
 
@@ -2253,11 +2251,6 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.HasOne("SimpleERP.Domain.Entities.PaymentTerm", "PaymentTerm")
                         .WithMany()
                         .HasForeignKey("PaymentTermId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("SimpleERP.Domain.Entities.Sale", null)
-                        .WithMany()
-                        .HasForeignKey("ReplacesSaleId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("SimpleERP.Domain.Entities.SalesPerson", "SalesPerson")

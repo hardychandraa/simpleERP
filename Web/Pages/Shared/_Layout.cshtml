@@ -57,6 +57,15 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
 .stat-val{font-size:21px;font-weight:700;color:#1a1a2e;margin-top:3px}
 .search-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
 .search-bar input,.search-bar select{flex:1;min-width:160px}
+/* Searchable dropdown (wwwroot/js/searchable-select.js) — the real <select> stays in the form, hidden */
+.ss-wrap{position:relative}
+.ss-native{position:absolute!important;opacity:0;pointer-events:none;width:1px!important;height:1px;min-width:0!important;left:0;bottom:0;padding:0;border:0}
+.ss-input{cursor:pointer}.ss-open .ss-input{cursor:text;border-color:#2563eb}
+.ss-list{display:none;position:absolute;z-index:50;left:0;right:0;top:calc(100% + 2px);max-height:280px;overflow-y:auto;background:#fff;border:1px solid #d1d5db;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.ss-open .ss-list{display:block}
+.ss-item{padding:7px 11px;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ss-item.ss-active{background:#eff6ff}.ss-item.ss-selected{font-weight:600}.ss-item.ss-blank{color:#9ca3af}
+.ss-none{padding:8px 11px;font-size:12px;color:#9ca3af}
 @@media print{.sb,.topbar,.no-print{display:none!important}.main{margin-left:0}.content{padding:0}.card{box-shadow:none;border:none}body{background:#fff;font-family:'Courier New',monospace;font-size:10pt}}
 </style>
 </head>
@@ -183,6 +192,13 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
     @RenderBody()
   </div>
 </div>
+<script>
+  window.SEARCHABLE_T = {
+    noMatch: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["No matches"].Value)),
+    search:  @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Type to search…"].Value))
+  };
+</script>
+<script src="/js/searchable-select.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

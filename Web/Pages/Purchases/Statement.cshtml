@@ -170,12 +170,15 @@ else
         </p>
     }
 
-    @if (Model.Statement.OutstandingRebateAmount.HasValue)
+    @* Admin-only: Staff deliberately cannot see rebate income (2026-08-07). They still see
+       the debit notes a settled rebate raises — those change what is actually paid. *@
+    @if (Model.Statement.OutstandingRebateAmount.HasValue && User.IsInRole("Admin"))
     {
         <div class="alert alert-info" style="font-size:12px;line-height:1.6">
             ℹ @Localizer["This supplier also has"] <strong>@Model.Statement.OutstandingRebateAmount.Value.ToString("N0")</strong>
-            @Localizer["in outstanding cash rebate, unrelated to these purchases. Rebate reconciles on its own cycle against the supplier's sheet — settle it on the"]
-            <a href="/Rebates">@Localizer["Rebates"]</a> @Localizer["page, not here."]
+            @Localizer["in rebate accrued but not yet settled. It is not deducted above — settle it on the"]
+            <a href="/Rebates">@Localizer["Rebates"]</a>
+            @Localizer["page against the supplier's own sheet, and a debit note for the agreed amount (net of withholding) will appear here to apply against these purchases."]
         </div>
     }
 

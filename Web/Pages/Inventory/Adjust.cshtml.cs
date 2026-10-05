@@ -45,6 +45,6 @@ public class AdjustModel : PageModel {
     private async Task Load() {
         var list = await _prod.GetAllActiveAsync();
         Products = list.Select(p => new SelectListItem(
-            $"{p.Name} ({p.SKU}) — Stock: {p.CurrentStock:N0}", p.Id.ToString())).ToList();
+            $"{p.Name} ({p.SKU}) — {_loc["Stk:"]} {p.CurrentStock:N0}", p.Id.ToString())).ToList();
     }
 }

@@ -6,6 +6,8 @@ public class Product
     public string   Name                  { get; set; } = string.Empty;
     public string   SKU                   { get; set; } = string.Empty;
     public decimal  UnitPrice             { get; set; }
+    /// <summary>Unit of sale printed on the invoice ("PCS", "UNIT", "SET"). Stored upper-case.</summary>
+    public string   Unit                  { get; set; } = "PCS";
     public string?  Category              { get; set; }
     public int?     DefaultWarrantyMonths { get; set; }
     public int      LowStockThreshold     { get; set; } = 2;

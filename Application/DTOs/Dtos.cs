@@ -8,6 +8,7 @@ public class ProductDto {
     public string  Name                  { get; set; } = "";
     public string  SKU                   { get; set; } = "";
     public decimal UnitPrice             { get; set; }
+    public string  Unit                  { get; set; } = "PCS";
     public string? Category              { get; set; }
     public int?    DefaultWarrantyMonths { get; set; }
     public int     LowStockThreshold     { get; set; } = 2;
@@ -21,6 +22,7 @@ public class CreateProductDto {
     public string  Name                  { get; set; } = "";
     public string  SKU                   { get; set; } = "";
     public decimal UnitPrice             { get; set; }
+    public string  Unit                  { get; set; } = "PCS";
     public string? Category              { get; set; }
     public int?    DefaultWarrantyMonths { get; set; }
     public int     LowStockThreshold     { get; set; } = 2;
@@ -30,6 +32,7 @@ public class UpdateProductDto {
     public string  Name                  { get; set; } = "";
     public string  SKU                   { get; set; } = "";
     public decimal UnitPrice             { get; set; }
+    public string  Unit                  { get; set; } = "PCS";
     public string? Category              { get; set; }
     public int?    DefaultWarrantyMonths { get; set; }
     public int     LowStockThreshold     { get; set; } = 2;
@@ -703,6 +706,7 @@ public class RebateRealizationDto {
 public class SalesPersonDto {
     public Guid    Id       { get; set; }
     public string  Name     { get; set; } = "";
+    public string? Code     { get; set; }
     public string? Phone    { get; set; }
     public bool    IsActive { get; set; } = true;
     /// <summary>True when a posted sale credits them — the UI hides Delete.</summary>
@@ -772,6 +776,23 @@ public class SaleDto {
     public DateTime  SaleDate      { get; set; }
     public string    CustomerName  { get; set; } = "";
     public string?   CustomerPhone { get; set; }
+    public string?   CustomerAddress { get; set; }
+    /// <summary>Warehouse code of the branch the goods left from. Empty when not set.</summary>
+    public string    BranchCode    { get; set; } = "";
+    /// <summary>Credit term in days, e.g. 30. Null for Cash or open credit.</summary>
+    public int?      PaymentTermDays { get; set; }
+    /// <summary>Credited salesperson's code. Empty when unattributed or no code set.</summary>
+    public string    SalesPersonCode { get; set; } = "";
+    /// <summary>The cancelled invoice this one revised, if any.</summary>
+    public Guid?     ReplacesSaleId        { get; set; }
+    public string?   ReplacesInvoiceNumber { get; set; }
+    /// <summary>The invoice that revised (and cancelled) this one, if any.</summary>
+    public Guid?     ReplacedBySaleId        { get; set; }
+    public string?   ReplacedByInvoiceNumber { get; set; }
+    /// <summary>Raw ids behind the display names above — what Revise pre-fills the form with.</summary>
+    public Guid      CustomerId     { get; set; }
+    public Guid?     PaymentTermId  { get; set; }
+    public Guid?     SalesPersonId  { get; set; }
     public string    PaymentType   { get; set; } = "";
     /// <summary>Term name, e.g. "TOP 30". Empty for Cash or open credit.</summary>
     public string    PaymentTermName { get; set; } = "";
@@ -802,8 +823,10 @@ public class SaleDto {
 }
 public class SaleItemDto {
     public Guid     Id             { get; set; }
+    public Guid     ProductId      { get; set; }
     public string   ProductName    { get; set; } = "";
     public string   SKU            { get; set; } = "";
+    public string   Unit           { get; set; } = "";
     public decimal  Qty            { get; set; }
     public decimal  UnitPrice      { get; set; }
     public decimal  DiscountAmount { get; set; }
@@ -1259,7 +1282,10 @@ public class AppSettingsDto {
     public string? StorePhone    { get; set; }
     public string  StoreFooter   { get; set; } = "Thank you for your purchase!";
     public string  PrinterName   { get; set; } = "";
-    public int     PaperColumns  { get; set; } = 80;
+    public int     PaperColumns  { get; set; } = 96;
+    public int     PaperLines    { get; set; } = 33;
+    /// <summary>The default branch's warehouse code, edited here until branches get their own page.</summary>
+    public string? WarehouseCode { get; set; }
     public bool    PrinterEnabled{ get; set; } = false;
     /// <summary>PPN rate entered as a percentage (10 = 10%). Stored as a fraction on the entity.</summary>
     public decimal VatRatePercent{ get; set; } = 10m;

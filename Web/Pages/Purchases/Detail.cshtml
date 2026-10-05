@@ -191,7 +191,7 @@
                 <form method="post" asp-page-handler="Payment" asp-route-id="@Model.Purchase.Id">
                     <div class="fg">
                         <label>@Localizer["Amount to pay"]</label>
-                        <input type="number" asp-for="PayInput.Amount" min="0.01" step="0.01" max="@Model.StillOwed" placeholder="@Model.StillOwed.ToString("N0")" required />
+                        <input type="number" asp-for="PayInput.Amount" min="0.01" step="0.01" max="@Model.StillOwed.ToString(System.Globalization.CultureInfo.InvariantCulture)" placeholder="@Model.StillOwed.ToString("N0")" required />
                         <div style="font-size:11px;color:#6b7280;margin-top:3px">@Localizer["Outstanding:"] @Model.StillOwed.ToString("N0")</div>
                     </div>
                     <div class="fg">

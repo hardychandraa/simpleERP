@@ -21,6 +21,11 @@ public class Sale
     /// </summary>
     public Guid?       SalesPersonId { get; set; }
     /// <summary>
+    /// Set when this invoice was created by revising another one: the original was
+    /// cancelled in the same transaction that created this. Null for ordinary sales.
+    /// </summary>
+    public Guid?       ReplacesSaleId { get; set; }
+    /// <summary>
     /// When payment falls due. Null for Cash, and for open credit with no agreed term.
     /// Formula: SaleDate + PaymentTerm.DueDays, computed once at posting time so a later
     /// edit to the term never moves an existing invoice's deadline.

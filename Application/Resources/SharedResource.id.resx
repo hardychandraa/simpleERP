@@ -519,7 +519,6 @@
   <data name="Has accrued rebates" xml:space="preserve"><value>Memiliki rebat terakru</value></data>
   <data name="Has posted purchases" xml:space="preserve"><value>Memiliki pembelian terposting</value></data>
   <data name="Higher wins when rules overlap." xml:space="preserve"><value>Nilai lebih tinggi menang bila aturan bertumpuk.</value></data>
-  <data name="in outstanding cash rebate, unrelated to these purchases. Rebate reconciles on its own cycle against the supplier's sheet — settle it on the" xml:space="preserve"><value>dalam rebat tunai yang belum diklaim, tidak terkait dengan pembelian ini. Rebat direkonsiliasi dengan siklusnya sendiri terhadap lembar pemasok — selesaikan di halaman</value></data>
   <data name="in use" xml:space="preserve"><value>terpakai</value></data>
   <data name="In-Kind" xml:space="preserve"><value>Barang</value></data>
   <data name="In-kind goods — free stock" xml:space="preserve"><value>Barang gratis — stok cuma-cuma</value></data>
@@ -647,7 +646,6 @@
   <data name="OVERDUE" xml:space="preserve"><value>JATUH TEMPO</value></data>
   <data name="page once it has been applied to an invoice or refunded." xml:space="preserve"><value>setelah diterapkan ke sebuah faktur atau dikembalikan.</value></data>
   <data name="page once it has been offset against a payable or refunded." xml:space="preserve"><value>setelah diperhitungkan terhadap utang atau dikembalikan.</value></data>
-  <data name="page, not here." xml:space="preserve"><value>, bukan di sini.</value></data>
   <data name="page." xml:space="preserve"><value>.</value></data>
   <data name="Paid" xml:space="preserve"><value>Dibayar</value></data>
   <data name="Paid (at sale)" xml:space="preserve"><value>Dibayar (saat penjualan)</value></data>
@@ -1053,7 +1051,6 @@
   <data name="Phone cannot exceed 50 characters." xml:space="preserve"><value>Telepon tidak boleh lebih dari 50 karakter.</value></data>
   <data name="PPN rate must be between 0 and 100 percent." xml:space="preserve"><value>Tarif PPN harus antara 0 dan 100 persen.</value></data>
   <data name="Price cannot be negative." xml:space="preserve"><value>Harga tidak boleh negatif.</value></data>
-  <data name="Price for '{0}' differs from master price ({1}). Please provide a reason for the price override." xml:space="preserve"><value>Harga untuk '{0}' berbeda dari harga master ({1}). Mohon isi alasan penggantian harga.</value></data>
   <data name="Price-drop rules need a reference cost greater than zero." xml:space="preserve"><value>Aturan penurunan harga memerlukan biaya acuan lebih dari nol.</value></data>
   <data name="Product '{0}' is inactive." xml:space="preserve"><value>Produk '{0}' tidak aktif.</value></data>
   <data name="Product created." xml:space="preserve"><value>Produk dibuat.</value></data>
@@ -1146,7 +1143,6 @@
   <data name="Please select a customer." xml:space="preserve"><value>Pilih pelanggan terlebih dahulu.</value></data>
   <data name="Please select a product." xml:space="preserve"><value>Pilih produk terlebih dahulu.</value></data>
   <data name="Please select a supplier." xml:space="preserve"><value>Pilih pemasok terlebih dahulu.</value></data>
-  <data name="Price differs from master price ({0}). Please enter a price override reason." xml:space="preserve"><value>Harga berbeda dari harga master ({0}). Mohon isi alasan penggantian harga.</value></data>
   <data name="Quantity must be greater than zero." xml:space="preserve"><value>Kuantitas harus lebih dari nol.</value></data>
   <data name="Save Settings first, then open any invoice and click &quot;Print to [printer]&quot; to test." xml:space="preserve"><value>Simpan Pengaturan dulu, lalu buka faktur mana pun dan klik "Cetak ke [printer]" untuk menguji.</value></data>
   <data name="Sending..." xml:space="preserve"><value>Mengirim...</value></data>
@@ -1263,4 +1259,35 @@
   <data name="Create administrator" xml:space="preserve"><value>Buat Administrator</value></data>
   <data name="Setup has already been completed." xml:space="preserve"><value>Pengaturan awal sudah pernah diselesaikan.</value></data>
   <data name="No accounts exist yet. Create the first administrator — it can see everything and manage all other users. This page disappears permanently once the account is created." xml:space="preserve"><value>Belum ada akun sama sekali. Buat administrator pertama — akun ini dapat melihat semuanya dan mengelola seluruh pengguna lain. Halaman ini hilang secara permanen setelah akun dibuat.</value></data>
+  <data name="in rebate accrued but not yet settled. It is not deducted above — settle it on the" xml:space="preserve"><value>rebat yang sudah diakru tetapi belum diselesaikan. Nilai ini belum dikurangkan di atas — selesaikan di halaman</value></data>
+  <data name="page against the supplier's own sheet, and a debit note for the agreed amount (net of withholding) will appear here to apply against these purchases." xml:space="preserve"><value>berdasarkan lembar rekonsiliasi pemasok, dan nota debit sebesar nilai yang disepakati (setelah dipotong PPh) akan muncul di sini untuk diterapkan ke pembelian-pembelian ini.</value></data>
+  <data name="Unit" xml:space="preserve"><value>Satuan</value></data>
+  <data name="e.g. PCS, UNIT, SET" xml:space="preserve"><value>mis. PCS, UNIT, SET</value></data>
+  <data name="Sales Code" xml:space="preserve"><value>Kode Sales</value></data>
+  <data name="e.g. S01" xml:space="preserve"><value>mis. S01</value></data>
+  <data name="Printed on the invoice instead of the name." xml:space="preserve"><value>Dicetak di faktur sebagai pengganti nama.</value></data>
+  <data name="Warehouse Code" xml:space="preserve"><value>Kode Gudang</value></data>
+  <data name="e.g. GD1" xml:space="preserve"><value>mis. GD1</value></data>
+  <data name="Paper Height (lines)" xml:space="preserve"><value>Tinggi Kertas (baris)</value></data>
+  <data name="96 columns — 9.5-inch form, half-A4 (12 cpi)" xml:space="preserve"><value>96 kolom — form 9,5 inci, setengah A4 (12 cpi)</value></data>
+  <data name="For the 9.5 × 5.5 inch (half-A4) continuous form on an Epson LX: 96 columns and 33 lines (5.5 inch at 6 lines per inch). An 11-inch form is 66 lines. Align the paper to the top of a form before the first print." xml:space="preserve"><value>Untuk form continuous 9,5 × 5,5 inci (setengah A4) pada Epson LX: 96 kolom dan 33 baris (5,5 inci pada 6 baris per inci). Form 11 inci = 66 baris. Posisikan kertas di awal form sebelum cetak pertama.</value></data>
+  <data name="Unit is required (e.g. PCS, UNIT, SET)." xml:space="preserve"><value>Satuan wajib diisi (mis. PCS, UNIT, SET).</value></data>
+  <data name="Unit cannot exceed 10 characters." xml:space="preserve"><value>Satuan tidak boleh lebih dari 10 karakter.</value></data>
+  <data name="Sales code is required (e.g. S01)." xml:space="preserve"><value>Kode sales wajib diisi (mis. S01).</value></data>
+  <data name="Sales code cannot exceed 10 characters." xml:space="preserve"><value>Kode sales tidak boleh lebih dari 10 karakter.</value></data>
+  <data name="Sales code &#x27;{0}&#x27; is already used by another sales person." xml:space="preserve"><value>Kode sales '{0}' sudah dipakai oleh sales lain.</value></data>
+  <data name="Paper height must be between 20 and 132 lines." xml:space="preserve"><value>Tinggi kertas harus antara 20 dan 132 baris.</value></data>
+  <data name="Warehouse code cannot exceed 10 characters." xml:space="preserve"><value>Kode gudang tidak boleh lebih dari 10 karakter.</value></data>
+  <data name="You have been logged out. Reload the page and sign in again." xml:space="preserve"><value>Anda telah keluar. Muat ulang halaman dan masuk kembali.</value></data>
+  <data name="Revise" xml:space="preserve"><value>Revisi</value></data>
+  <data name="Revise {0}" xml:space="preserve"><value>Revisi {0}</value></data>
+  <data name="Revising {0}. Saving cancels {0} and creates a new invoice with a new number in its place — both happen together, or neither does. Leaving this page changes nothing." xml:space="preserve"><value>Merevisi {0}. Menyimpan akan membatalkan {0} dan membuat faktur baru dengan nomor baru sebagai penggantinya — keduanya terjadi bersamaan, atau tidak sama sekali. Meninggalkan halaman ini tidak mengubah apa pun.</value></data>
+  <data name="Opens a pre-filled copy. Saving it cancels this invoice and issues a corrected one." xml:space="preserve"><value>Membuka salinan yang sudah terisi. Menyimpannya akan membatalkan faktur ini dan menerbitkan faktur yang sudah dikoreksi.</value></data>
+  <data name="Replaced by" xml:space="preserve"><value>Diganti oleh</value></data>
+  <data name="Revision of" xml:space="preserve"><value>Revisi dari</value></data>
+  <data name="{0} is already cancelled and cannot be revised." xml:space="preserve"><value>{0} sudah dibatalkan dan tidak dapat direvisi.</value></data>
+  <data name="Payments have been recorded against {0}, so it cannot be revised. Correct it with a return or a credit note instead." xml:space="preserve"><value>Sudah ada pembayaran untuk {0}, sehingga tidak dapat direvisi. Koreksi dengan retur atau nota kredit.</value></data>
+  <data name="Commission on {0} has already been paid out, so it cannot be revised." xml:space="preserve"><value>Komisi atas {0} sudah dibayarkan, sehingga tidak dapat direvisi.</value></data>
+  <data name="No matches" xml:space="preserve"><value>Tidak ditemukan</value></data>
+  <data name="Type to search…" xml:space="preserve"><value>Ketik untuk mencari…</value></data>
 </root>

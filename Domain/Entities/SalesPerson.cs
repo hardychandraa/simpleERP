@@ -11,6 +11,12 @@ namespace SimpleERP.Domain.Entities;
 public class SalesPerson {
     public Guid    Id       { get; set; }
     public string  Name     { get; set; } = string.Empty;
+    /// <summary>
+    /// Short sales code printed on the invoice instead of the name (e.g. "S01"). Unique,
+    /// stored upper-case. Nullable only so rows created before codes existed still load;
+    /// the service requires one on every create and edit.
+    /// </summary>
+    public string? Code     { get; set; }
     public string? Phone    { get; set; }
     /// <summary>Deactivated people stay on the sales they closed but drop off new ones.</summary>
     public bool    IsActive { get; set; } = true;

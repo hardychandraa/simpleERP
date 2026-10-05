@@ -91,6 +91,10 @@ public class CommissionService : ICommissionService
     }
 
     /// <summary>Voids (never deletes) a sale's unpaid accruals on cancellation. No SaveChanges.</summary>
+    /// <summary>True when any of this sale's commission has already been paid to the salesperson.</summary>
+    public async Task<bool> HasPaidOutForSaleAsync(Guid saleId) =>
+        (await _accruals.GetBySaleAsync(saleId)).Any(a => a.CommissionPayoutId != null && !a.IsVoided && a.Amount > 0);
+
     public async Task VoidForSaleAsync(Guid saleId)
     {
         var list = await _accruals.GetBySaleAsync(saleId);

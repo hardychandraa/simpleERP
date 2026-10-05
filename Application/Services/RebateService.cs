@@ -41,6 +41,7 @@ public class RebateService : IRebateService
     private readonly IAppSettingsRepository       _settings;
     private readonly IAuditLogRepository          _audit;
     private readonly InventoryService             _inventory;
+    private readonly CreditNoteService            _creditNotes;
     private readonly IUnitOfWork                  _uow;
 
     private readonly IStringLocalizer<SharedResource> _loc;
@@ -49,11 +50,11 @@ public class RebateService : IRebateService
         IRebateRealizationRepository realizations, IPurchaseRepository purchases,
         ISupplierRepository suppliers, IProductRepository products, IBranchRepository branches,
         IAppSettingsRepository settings, IAuditLogRepository audit,
-        InventoryService inventory, IUnitOfWork uow,
+        InventoryService inventory, CreditNoteService creditNotes, IUnitOfWork uow,
         IStringLocalizer<SharedResource> loc, ILogger<RebateService> log)
     { _rules=rules; _accruals=accruals; _realizations=realizations; _purchases=purchases;
       _suppliers=suppliers; _products=products; _branches=branches; _settings=settings;
-      _audit=audit; _inventory=inventory; _uow=uow;  _loc = loc; _log = log; }
+      _audit=audit; _inventory=inventory; _creditNotes=creditNotes; _uow=uow;  _loc = loc; _log = log; }
 
     // ── Evaluation (called inside the PurchaseService transaction — no SaveChanges) ──
 
@@ -395,12 +396,29 @@ public class RebateService : IRebateService
         foreach (var a in accruals)
             a.RebateRealizationId = realization.Id;
 
+        // Raise the debit note that actually reduces AP. Before this, realizing a rebate
+        // only recorded that it happened — nothing connected it to what the supplier was
+        // owed, so the net figure sat inert until someone noticed and raised a note by
+        // hand. This closes that gap for every cash-realization path (manual lump-sum
+        // settle, Lucky Draw, and the auto on-time-payment realize below), since they all
+        // funnel through here. Purely in-kind rebate has no cash dimension and never
+        // reaches this method at all.
+        var noteRef = $"Rebate settlement, {accruals.Count} accrual(s)"
+                    + (reference != null ? $", ref {reference}" : "")
+                    + (notes != null ? $" — {notes}" : "");
+        var noteNumber = await _creditNotes.CreateRebateSettlementNoteAsync(supplierId, net, noteRef, user);
+        if (noteNumber != null)
+            realization.Notes = string.IsNullOrEmpty(realization.Notes)
+                ? $"Debit note {noteNumber} raised."
+                : $"{realization.Notes} — debit note {noteNumber} raised.";
+
         await _audit.LogAsync(user, "Rebate.RealizeCash",
-            $"{gross:N0} gross − {withholding:N0} WHT = {net:N0} net, {accruals.Count} accrual(s)");
+            $"{gross:N0} gross − {withholding:N0} WHT = {net:N0} net, {accruals.Count} accrual(s)"
+            + (noteNumber != null ? $", debit note {noteNumber} raised" : ""));
         _log.LogInformation(
             "Rebate settled in cash — {Gross} gross less {Withholding} withholding = {Net} net, " +
-            "clearing {AccrualCount} accrual(s), reference {Reference}, by {User}",
-            gross, withholding, net, accruals.Count, reference ?? "—", user);
+            "clearing {AccrualCount} accrual(s), debit note {DebitNote}, reference {Reference}, by {User}",
+            gross, withholding, net, accruals.Count, noteNumber ?? "none", reference ?? "—", user);
     }
 
     private async Task RealizeInKindCore(RebateAccrual accrual, Guid productId, decimal qty,

@@ -1,7 +1,16 @@
 @page
 @model SimpleERP.Web.Pages.Sales.CreateModel
 @using System.Text.Json
-@{ ViewData["Title"] = Localizer["New Sale"].Value; }
+@{ ViewData["Title"] = Model.RevisingInvoiceNumber != null
+        ? Localizer["Revise {0}", Model.RevisingInvoiceNumber].Value
+        : Localizer["New Sale"].Value; }
+
+@if (Model.RevisingInvoiceNumber != null)
+{
+    <div class="alert alert-warning">
+        ✎ @Localizer["Revising {0}. Saving cancels {0} and creates a new invoice with a new number in its place — both happen together, or neither does. Leaving this page changes nothing.", Model.RevisingInvoiceNumber]
+    </div>
+}
 
 @if (Model.Error != null)
 {
@@ -9,6 +18,7 @@
 }
 
 <form method="post" id="saleForm">
+    @if (Model.Revise.HasValue) { <input type="hidden" asp-for="Revise" /> }
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
 
         <!-- Left: header fields -->
@@ -156,13 +166,13 @@
         <div style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1.35fr 0.8fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
             <div>
                 <label>@Localizer["Product"]</label>
-                <select id="inProd" onchange="onProductChange()">
+                <select id="inProd" onchange="onProductChange()" data-searchable>
                     <option value="">— @Localizer["Select"] —</option>
                     @foreach (var p in Model.AvailableProducts)
                     {
                         <option value="@p.Id"
-                                data-price="@p.UnitPrice"
-                                data-stock="@p.CurrentStock"
+                                data-price="@p.UnitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                data-stock="@p.CurrentStock.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                 data-warranty="@(p.DefaultWarrantyMonths ?? 0)"
                                 data-name="@p.Name">
                             @p.Name (@p.SKU) — @Localizer["Stk:"] @p.CurrentStock.ToString("N0")
@@ -217,7 +227,7 @@
                 <input type="text" id="inNotes" maxlength="500" placeholder="@Localizer["Optional..."]" />
             </div>
             <div id="priceReasonBlock" style="display:none">
-                <label style="font-size:12px;color:#d97706">⚠ @Localizer["Price Override Reason"] <span style="font-weight:700;color:#dc2626">*@Localizer["Required"]</span></label>
+                <label style="font-size:12px;color:#d97706">⚠ @Localizer["Price Override Reason"] <span style="font-weight:400">(@Localizer["Optional"])</span></label>
                 <input type="text" id="inPriceReason" maxlength="300" placeholder="@Localizer["e.g. Special customer rate, clearance..."]" />
             </div>
         </div>
@@ -261,7 +271,6 @@ const T = {
     discPctMax:     @Html.Raw(Json.Serialize(Localizer["Discount percent must be less than 100."].Value)),
     discExceeds:    @Html.Raw(Json.Serialize(Localizer["Discount cannot equal or exceed price."].Value)),
     productMissing: @Html.Raw(Json.Serialize(Localizer["Product not found."].Value)),
-    needReason:     @Html.Raw(Json.Serialize(Localizer["Price differs from master price ({0}). Please enter a price override reason."].Value)),
     notEnough:      @Html.Raw(Json.Serialize(Localizer["Not enough stock. Available: {0}"].Value)),
     needItem:       @Html.Raw(Json.Serialize(Localizer["Please add at least one item before creating the invoice."].Value)),
     needCustomer:   @Html.Raw(Json.Serialize(Localizer["Please select a customer."].Value)),
@@ -387,10 +396,8 @@ function addItem() {
     const prod = PRODUCTS.find(p => p.id === prodId);
     if (!prod) return showErr('addErr', T.productMissing);
 
-    // Price override requires reason
+    // A reason is optional (HC, 2026-10-05) — kept only when the price actually differs.
     const differs = Math.abs(price - prod.price) > 0.001;
-    if (differs && !priceReason)
-        return showErr('addErr', T.needReason.replace('{0}', fmt(prod.price)));
 
     // Check total qty for this product across all items
     const alreadyQty = items.filter(i => i.productId === prodId).reduce((s,i) => s + i.qty, 0);
@@ -545,6 +552,28 @@ document.getElementById('saleForm').addEventListener('submit', function(e) {
 });
 
 function fmt(n)    { return Math.round(n).toLocaleString(); }
+// Revise, or a refused save: load the lines into the table as if they had just been added.
+(function prefill() {
+    const lines = @Html.Raw(Model.PrefillItemsJson);
+    if (@(Model.InvoiceDiscountIsPercent ? "true" : "false")) {
+        document.getElementById('invDiscMode').value  = 'pct';
+        document.getElementById('invDiscIsPct').value = 'true';
+    }
+    for (const l of lines) {
+        const prod = PRODUCTS.find(p => p.id === String(l.productId).toLowerCase());
+        const disc = l.discountAmount || 0;
+        items.push({
+            productId: String(l.productId).toLowerCase(),
+            name: prod ? prod.name : '?', masterPrice: prod ? prod.price : l.unitPrice,
+            qty: l.qty, price: l.unitPrice, warranty: l.warrantyMonths || 0,
+            disc: disc, discPct: l.discountPercent ?? null,
+            notes: l.notes || null, priceReason: l.priceReason || null,
+            total: (l.unitPrice - disc) * l.qty
+        });
+    }
+    if (lines.length) { onPaymentTypeChange(); render(); }
+})();
+
 function esc(s)    { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block'; }
 function hideErr(id)      { document.getElementById(id).style.display = 'none'; }

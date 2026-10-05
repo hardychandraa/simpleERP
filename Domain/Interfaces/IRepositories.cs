@@ -51,6 +51,9 @@ public record InventoryValuation(int ProductsInStock, decimal TotalValue);
 
 public interface ISaleRepository {
     Task<Sale?> GetByIdWithItemsAsync(Guid id);
+    Task<string?> GetInvoiceNumberAsync(Guid id);
+    /// <summary>The invoice that replaced this one through Revise, if any.</summary>
+    Task<(Guid Id, string InvoiceNumber)?> FindReplacementAsync(Guid saleId);
     /// <summary>
     /// Several sales in one round trip, same includes as GetByIdWithItemsAsync. Backs
     /// multi-invoice settlement, where loading N invoices one at a time would be N queries
@@ -548,6 +551,7 @@ public interface ISalesPersonRepository {
     Task<List<SalesPerson>> GetAllAsync(bool activeOnly = false);
     Task<SalesPerson?> GetByIdAsync(Guid id);
     Task<bool> NameExistsAsync(string name, Guid? excludeId = null);
+    Task<bool> CodeExistsAsync(string code, Guid? excludeId = null);
     /// <summary>True if any posted sale is credited to this person — blocks deletion.</summary>
     Task<bool> IsInUseAsync(Guid id);
     Task AddAsync(SalesPerson person);
@@ -617,6 +621,13 @@ public record AppLogLevelCount(string Level, int Count);
 
 public interface IUnitOfWork {
     Task<int> SaveChangesAsync();
+    /// <summary>
+    /// Runs several service operations as ONE database transaction: every
+    /// SaveChangesAsync inside <paramref name="work"/> writes but does not commit. Commits
+    /// when <paramref name="work"/> returns true; rolls everything back (and forgets all
+    /// tracked changes) when it returns false or throws.
+    /// </summary>
+    Task<bool> InTransactionAsync(Func<Task<bool>> work);
 }
 
 public interface IAppSettingsRepository {

@@ -47,6 +47,15 @@ public class CreateModel : PageModel
     [BindProperty] public decimal InvoiceDiscountInput { get; set; }
     [BindProperty] public bool    InvoiceDiscountIsPercent { get; set; }
 
+    /// <summary>
+    /// Revise mode: the invoice being corrected. Saving cancels it and creates this one in
+    /// a single transaction (SaleService.ReviseAsync); leaving the page changes nothing.
+    /// </summary>
+    [BindProperty(SupportsGet = true)] public Guid? Revise { get; set; }
+    public string? RevisingInvoiceNumber { get; set; }
+    /// <summary>Line items to load into the page on open, in the shape the page posts.</summary>
+    public string PrefillItemsJson { get; set; } = "[]";
+
     public List<PaymentTermDto> TermOptions { get; set; } = new();
     public List<SalesPersonDto> SalesPersonOptions { get; set; } = new();
     /// <summary>PPN rate as a fraction, so the summary can preview tax the same way the server computes it.</summary>
@@ -56,11 +65,36 @@ public class CreateModel : PageModel
     public List<ProductDto>     AvailableProducts { get; set; } = new();
     public string? Error { get; set; }
 
-    public async Task OnGetAsync()
+    public async Task<IActionResult> OnGetAsync()
     {
         ViewData["Title"] = "New Sale";
         SaleDate = DateTime.Now.Date;   // business-local today
+
+        if (Revise.HasValue)
+        {
+            var original = await _sales.GetByIdAsync(Revise.Value);
+            if (original == null || original.Status != "Active")
+                return RedirectToPage("/Sales/Detail", new { id = Revise.Value });
+
+            RevisingInvoiceNumber = original.InvoiceNumber;
+            CustomerId     = original.CustomerId;
+            SaleDate       = original.SaleDate.ToLocalTime().Date;
+            PaymentType    = Enum.Parse<PaymentType>(original.PaymentType);
+            PaymentTermId  = original.PaymentTermId;
+            SalesPersonId  = original.SalesPersonId;
+            IsTaxInclusive = original.IsTaxInclusive;
+            Notes          = original.Notes;
+            InvoiceDiscountIsPercent = original.InvoiceDiscountPercent is > 0;
+            InvoiceDiscountInput     = original.InvoiceDiscountPercent is > 0
+                                     ? original.InvoiceDiscountPercent.Value : original.InvoiceDiscountAmount;
+            PrefillItemsJson = JsonSerializer.Serialize(original.Items.Select(i => new CreateSaleItemDto {
+                ProductId = i.ProductId, Qty = i.Qty, UnitPrice = i.UnitPrice,
+                DiscountAmount = i.DiscountAmount, DiscountPercent = i.DiscountPercent,
+                WarrantyMonths = i.WarrantyMonths, Notes = i.Notes, PriceReason = i.PriceReason
+            }), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        }
         await LoadAsync();
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -87,12 +121,17 @@ public class CreateModel : PageModel
             Error = _loc["Invalid item data."]; return Page();
         }
 
+        // If this post is refused, the page re-opens with the lines that were typed rather
+        // than an empty table. Re-serialized from the parsed items, never echoed raw: it is
+        // written into a <script>, and the serializer escapes < > & and quotes.
+        PrefillItemsJson = JsonSerializer.Serialize(items ?? new(), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
         if (items == null || items.Count == 0) { Error = _loc["Add at least one item."]; return Page(); }
         if (items.Count > 100) { Error = _loc["Too many items in one sale."]; return Page(); }
 
         var user = this.CurrentUserName();
 
-        var result = await _sales.CreateAsync(new CreateSaleDto {
+        var dto = new CreateSaleDto {
             CustomerId     = CustomerId,
             SaleDate       = SaleDate,
             PaymentType    = PaymentType,
@@ -105,7 +144,10 @@ public class CreateModel : PageModel
             InvoiceDiscountAmount  = InvoiceDiscountIsPercent ? 0m : InvoiceDiscountInput,
             InvoiceDiscountPercent = InvoiceDiscountIsPercent ? InvoiceDiscountInput : null,
             Items          = items
-        }, user);
+        };
+        var result = Revise.HasValue
+            ? await _sales.ReviseAsync(Revise.Value, dto, user)
+            : await _sales.CreateAsync(dto, user);
 
         if (!result.Success) { Error = result.Error; return Page(); }
         return RedirectToPage("/Sales/Detail", new { id = result.Data!.Id });
@@ -118,6 +160,15 @@ public class CreateModel : PageModel
             $"{c.Name}{(string.IsNullOrEmpty(c.Phone) ? "" : $"  ({c.Phone})")}",
             c.Id.ToString())).ToList();
         AvailableProducts = await _products.GetAllActiveAsync();
+        if (Revise.HasValue && await _sales.GetByIdAsync(Revise.Value) is { Status: "Active" } original)
+        {
+            RevisingInvoiceNumber = original.InvoiceNumber;
+            // Saving returns the original's goods to stock before the replacement takes
+            // them, so the page's stock check must count them as available — otherwise
+            // an unchanged line would be refused.
+            foreach (var p in AvailableProducts)
+                p.CurrentStock += original.Items.Where(i => i.ProductId == p.Id).Sum(i => i.Qty);
+        }
         TermOptions = await _terms.GetAllAsync(activeOnly: true);
         SalesPersonOptions = await _people.GetAllAsync(activeOnly: true);
         VatRate     = (await _settings.GetAsync()).VatRatePercent / 100m;

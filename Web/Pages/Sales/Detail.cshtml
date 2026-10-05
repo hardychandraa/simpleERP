@@ -20,6 +20,11 @@
   <a href="?handler=Txt&id=@Model.Sale.Id" class="btn btn-outline btn-sm">📄 TXT</a>
   @if (Model.Sale.Status == "Active") {
     <a href="/Returns/Customer/New/@Model.Sale.Id" class="btn btn-warn btn-sm">↩ @Localizer["Return items"]</a>
+    @* Hidden once a credit invoice has payments — ReviseAsync refuses it anyway. *@
+    @if (Model.Sale.PaymentType == "Cash" || Model.Sale.AmountPaid == 0) {
+    <a href="/Sales/Create?revise=@Model.Sale.Id" class="btn btn-outline btn-sm"
+       title="@Localizer["Opens a pre-filled copy. Saving it cancels this invoice and issues a corrected one."]">✎ @Localizer["Revise"]</a>
+    }
     <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Sale.Id" style="margin-left:auto"
           onsubmit="return confirm('@Localizer["Cancel this sale? Stock will be reversed."]')">
       <button type="submit" class="btn btn-danger btn-sm">✕ @Localizer["Cancel Sale"]</button>
@@ -46,6 +51,12 @@
       <div style="color:#9ca3af;font-size:12px">@Model.Sale.SaleDate.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</div>
       @if (Model.Sale.Status == "Cancelled") {
         <div style="color:#dc2626;font-weight:700;font-size:13px;margin-top:4px;text-transform:uppercase">⛔ @Localizer["Cancelled"]</div>
+      }
+      @if (Model.Sale.ReplacedBySaleId.HasValue) {
+        <div style="font-size:12px;margin-top:4px">@Localizer["Replaced by"] <a href="/Sales/@Model.Sale.ReplacedBySaleId">@Model.Sale.ReplacedByInvoiceNumber</a></div>
+      }
+      @if (Model.Sale.ReplacesSaleId.HasValue) {
+        <div style="font-size:12px;margin-top:4px">@Localizer["Revision of"] <a href="/Sales/@Model.Sale.ReplacesSaleId">@Model.Sale.ReplacesInvoiceNumber</a></div>
       }
     </div>
   </div>
@@ -102,7 +113,8 @@
             <div style="font-size:11px;color:#4b5563">📝 @item.Notes</div>
           }
           @if (!string.IsNullOrEmpty(item.PriceReason)) {
-            <div style="font-size:11px;color:#d97706">⚠ @Localizer["Price adj:"] @item.PriceReason</div>
+            @* no-print: an internal note, kept off every printout (HC, 2026-10-05) *@
+            <div class="no-print" style="font-size:11px;color:#d97706">⚠ @Localizer["Price adj:"] @item.PriceReason</div>
           }
           @if (item.WarrantyExpiry.HasValue) {
             <div style="font-size:11px;color:#059669">🛡 @Localizer["Warranty until {0}", item.WarrantyExpiry.Value.ToLocalTime().ToString("dd MMM yyyy")]</div>
@@ -192,7 +204,7 @@
         <form method="post" asp-page-handler="Payment" asp-route-id="@Model.Sale.Id">
           <div class="fg">
             <label>@Localizer["Amount to collect"]</label>
-            <input type="number" asp-for="PayInput.Amount" min="0.01" step="0.01" max="@Model.StillOwed" placeholder="@Model.StillOwed.ToString("N0")" required/>
+            <input type="number" asp-for="PayInput.Amount" min="0.01" step="0.01" max="@Model.StillOwed.ToString(System.Globalization.CultureInfo.InvariantCulture)" placeholder="@Model.StillOwed.ToString("N0")" required/>
             <div style="font-size:11px;color:#6b7280;margin-top:3px">@Localizer["Outstanding:"] @Model.StillOwed.ToString("N0")</div>
           </div>
           <div class="fg">
@@ -336,6 +348,7 @@
 const T = {
     sending:    @Html.Raw(Json.Serialize(Localizer["Sending..."].Value)),
     noPrinter:  @Html.Raw(Json.Serialize(Localizer["Could not reach printer service."].Value)),
+    loggedOut:  @Html.Raw(Json.Serialize(Localizer["You have been logged out. Reload the page and sign in again."].Value)),
     printTo:    @Html.Raw(Json.Serialize(Localizer["Print to {0}", Model.AppSettings.PrinterName].Value))
 };
 
@@ -347,10 +360,14 @@ async function dotPrint(saleId) {
     status.style.display = 'none';
     try {
         const tok = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+        // X-CSRF-TOKEN is the header name configured in Program.cs (AddAntiforgery). This
+        // used to send 'RequestVerificationToken', which the server never reads — so every
+        // print was refused with "session expired" and the printer was never reached.
         const r = await fetch(`/api/print/invoice/${saleId}`, {
-            method: 'POST', headers: { 'RequestVerificationToken': tok }
+            method: 'POST', headers: { 'X-CSRF-TOKEN': tok }
         });
-        const d = await r.json();
+        // 401 = the login itself lapsed; the body is empty, not JSON.
+        const d = r.status === 401 ? { error: T.loggedOut } : await r.json();
         status.className = r.ok ? 'alert alert-success' : 'alert alert-danger';
         status.textContent = r.ok ? '✓ ' + d.message : '✗ ' + d.error;
     } catch(e) {

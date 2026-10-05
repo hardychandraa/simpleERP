@@ -1,4 +1,4 @@
-using SimpleERP.Domain.Entities;
+﻿using SimpleERP.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace SimpleERP.Infrastructure.Data;
@@ -40,17 +40,23 @@ public class AppDbContext : DbContext
     public DbSet<PaymentBatch>       PaymentBatches      => Set<PaymentBatch>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense>         Expenses          => Set<Expense>();
+    public DbSet<DocumentSequence> DocumentSequences => Set<DocumentSequence>();
 
     protected override void OnModelCreating(ModelBuilder m)
     {
         base.OnModelCreating(m);
 
-        m.Entity<Branch>(e => { e.HasKey(b => b.Id); e.Property(b => b.Name).IsRequired().HasMaxLength(200); });
+        m.Entity<Branch>(e => {
+            e.HasKey(b => b.Id);
+            e.Property(b => b.Name).IsRequired().HasMaxLength(200);
+            e.Property(b => b.Code).HasMaxLength(10);
+        });
 
         m.Entity<Product>(e => {
             e.HasKey(p => p.Id);
             e.Property(p => p.Name).IsRequired().HasMaxLength(300);
             e.Property(p => p.SKU).IsRequired().HasMaxLength(100);
+            e.Property(p => p.Unit).IsRequired().HasMaxLength(10).HasDefaultValue("PCS");
             e.Property(p => p.UnitPrice).HasColumnType("decimal(18,4)");
             e.HasIndex(p => p.SKU).IsUnique();
         });
@@ -77,6 +83,10 @@ public class AppDbContext : DbContext
         m.Entity<Sale>(e => {
             e.HasKey(s => s.Id);
             e.Property(s => s.InvoiceNumber).IsRequired().HasMaxLength(50);
+            // Revise link to the cancelled original. Restrict: an invoice someone revised
+            // stays resolvable for as long as its replacement exists.
+            e.HasOne<Sale>().WithMany().HasForeignKey(s => s.ReplacesSaleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(s => s.ReplacesSaleId);
             e.Property(s => s.SubTotal).HasColumnType("decimal(18,4)");
             e.Property(s => s.DiscountTotal).HasColumnType("decimal(18,4)");
             e.Property(s => s.InvoiceDiscountAmount).HasColumnType("decimal(18,4)");
@@ -316,7 +326,10 @@ public class AppDbContext : DbContext
             e.HasKey(p => p.Id);
             e.Property(p => p.Name).IsRequired().HasMaxLength(200);
             e.Property(p => p.Phone).HasMaxLength(50);
+            e.Property(p => p.Code).HasMaxLength(10);
             e.HasIndex(p => p.Name).IsUnique();
+            // Unique among the people who have one; rows from before codes existed are null.
+            e.HasIndex(p => p.Code).IsUnique();
         });
 
         m.Entity<User>(e => {
@@ -525,6 +538,14 @@ public class AppDbContext : DbContext
             e.HasIndex(b => b.SupplierId);
         });
 
+        // Issued-number counters behind every document number. Written only through the
+        // INSERT … ON CONFLICT in DocumentNumber.NextAsync, never through the change tracker.
+        m.Entity<DocumentSequence>(e => {
+            e.ToTable("DocumentSequences");
+            e.HasKey(x => x.Prefix);
+            e.Property(x => x.Prefix).HasMaxLength(32);
+        });
+
         m.Entity<ExpenseCategory>(e => {
             e.HasKey(c => c.Id);
             e.Property(c => c.Name).IsRequired().HasMaxLength(100);
@@ -591,8 +612,10 @@ public class AppDbContext : DbContext
             Id = "default", AppName = "SimpleERP", StoreName = "My Store",
             StoreAddress = "", StorePhone = "",
             StoreFooter = "Thank you for your purchase!",
-            PrinterName = "", PaperColumns = 80, PrinterEnabled = false,
-            VatRate = 0.10m, RebateWithholdingRate = 0.15m
+            PrinterName = "", PaperColumns = 96, PaperLines = 33, PrinterEnabled = false,
+            // Was 0.10 — the entity default moved to 11% on 2026-07-31 but this seed did not,
+            // so a brand-new database would have started at 10%.
+            VatRate = 0.11m, RebateWithholdingRate = 0.15m
         });
     }
 }

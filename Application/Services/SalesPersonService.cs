@@ -48,6 +48,7 @@ public class SalesPersonService : ISalesPersonService
         var person = new SalesPerson {
             Id       = Guid.NewGuid(),
             Name     = dto.Name.Trim(),
+            Code     = NormaliseCode(dto.Code),
             Phone    = Blank(dto.Phone),
             IsActive = dto.IsActive
         };
@@ -67,6 +68,7 @@ public class SalesPersonService : ISalesPersonService
 
         var before = $"{person.Name} (active={person.IsActive})";
         person.Name     = dto.Name.Trim();
+        person.Code     = NormaliseCode(dto.Code);
         person.Phone    = Blank(dto.Phone);
         person.IsActive = dto.IsActive;
 
@@ -101,13 +103,25 @@ public class SalesPersonService : ISalesPersonService
             return _log.Refuse(_loc["Phone cannot exceed 50 characters."]);
         if (await _people.NameExistsAsync(dto.Name.Trim(), excludeId))
             return _log.Refuse(_loc["A sales person named '{0}' already exists.", dto.Name.Trim()]);
+        // The code, not the name, is what the printed invoice shows — so it is required and
+        // must identify exactly one person.
+        var code = NormaliseCode(dto.Code);
+        if (code == null)
+            return _log.Refuse(_loc["Sales code is required (e.g. S01)."]);
+        if (code.Length > 10)
+            return _log.Refuse(_loc["Sales code cannot exceed 10 characters."]);
+        if (await _people.CodeExistsAsync(code, excludeId))
+            return _log.Refuse(_loc["Sales code '{0}' is already used by another sales person.", code]);
         return null;
     }
+
+    private static string? NormaliseCode(string? s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s.Trim().ToUpperInvariant();
 
     private static string? Blank(string? s) =>
         string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
     private static SalesPersonDto Map(SalesPerson p, bool inUse) => new() {
-        Id = p.Id, Name = p.Name, Phone = p.Phone, IsActive = p.IsActive, InUse = inUse
+        Id = p.Id, Name = p.Name, Code = p.Code, Phone = p.Phone, IsActive = p.IsActive, InUse = inUse
     };
 }

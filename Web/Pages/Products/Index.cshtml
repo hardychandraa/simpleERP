@@ -16,7 +16,7 @@
 </div>
 <div class="card">
 <table>
-  <thead><tr><th>@Localizer["Name"]</th><th>@Localizer["SKU"]</th><th>@Localizer["Category"]</th><th>@Localizer["Price"]</th><th>@Localizer["Stock"]</th><th>@Localizer["Low Alert"]</th><th>@Localizer["Avg Cost"]</th><th>@Localizer["Warranty"]</th><th>@Localizer["Status"]</th><th></th></tr></thead>
+  <thead><tr><th>@Localizer["Name"]</th><th>@Localizer["SKU"]</th><th>@Localizer["Category"]</th><th>@Localizer["Price"]</th><th>@Localizer["Unit"]</th><th>@Localizer["Stock"]</th><th>@Localizer["Low Alert"]</th><th>@Localizer["Avg Cost"]</th><th>@Localizer["Warranty"]</th><th>@Localizer["Status"]</th><th></th></tr></thead>
   <tbody>
   @foreach (var p in Model.Products) {
     <tr>
@@ -24,6 +24,7 @@
       <td><code style="font-size:11px">@p.SKU</code></td>
       <td>@(p.Category ?? "—")</td>
       <td>@p.UnitPrice.ToString("N0")</td>
+      <td style="font-size:12px">@p.Unit</td>
       <td><span class="badge @(p.CurrentStock<=0?"err":p.IsLow?"warn":"ok")">@p.CurrentStock.ToString("N0")</span></td>
       <td style="color:#9ca3af;font-size:12px">≤ @p.LowStockThreshold</td>
       <td>@p.AvgCost.ToString("N0")</td>

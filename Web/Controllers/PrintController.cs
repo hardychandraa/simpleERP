@@ -33,11 +33,10 @@ public class PrintController : ControllerBase
             // client's side without this.
             _logger.LogWarning(ex, "Antiforgery validation failed for print request on sale {SaleId}.", id);
 
-            // StatusCode(403), NOT Forbid(). Forbid() asks the authentication stack to
-            // challenge, and this application has no authentication registered at all, so
-            // it threw "No authenticationScheme was specified" and turned every rejected
-            // token into a 500 with a stack trace. Found by the logging added here — the
-            // failure was real before, just silent.
+            // StatusCode(403), NOT Forbid(). When this was written the app had no
+            // authentication scheme, so Forbid() threw and turned every rejected token into
+            // a 500. Cookie auth exists now (2026-08-07), but Forbid() would redirect to the
+            // Denied page — wrong for a fetch() caller expecting JSON — so 403 stays.
             return StatusCode(StatusCodes.Status403Forbidden,
                 new { error = "Your session has expired. Reload the page and try again." });
         }
@@ -51,7 +50,9 @@ public class PrintController : ControllerBase
         var sale = await _sales.GetByIdAsync(id);
         if (sale == null) return NotFound(new { error = "Sale not found." });
 
-        var bytes  = EscpBuilder.BuildInvoice(sale, cfg);
+        // "Dicetak" shows the login ID, not the display name (HC, 2026-10-05).
+        // Never null here: the fallback policy in Program.cs requires a login for /api.
+        var bytes  = EscpBuilder.BuildInvoice(sale, cfg, User.Identity!.Name!, DateTime.Now);
         var result = RawPrinter.Send(cfg.PrinterName, bytes);
 
         if (!result.Success)

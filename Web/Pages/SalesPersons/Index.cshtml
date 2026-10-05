@@ -18,6 +18,10 @@
                 <label>@Localizer["Name"] *</label>
                 <input type="text" asp-for="Input.Name" required maxlength="200" placeholder="@Localizer["e.g. Budi"]" />
             </div>
+            <div class="fg" style="margin:0;width:110px">
+                <label>@Localizer["Sales Code"] *</label>
+                <input type="text" asp-for="Input.Code" required maxlength="10" placeholder="@Localizer["e.g. S01"]" style="text-transform:uppercase" />
+            </div>
             <div class="fg" style="margin:0;width:180px">
                 <label>@Localizer["Phone"]</label>
                 <input type="text" asp-for="Input.Phone" maxlength="50" placeholder="@Localizer["Optional"]" />
@@ -42,6 +46,7 @@
         <table style="width:100%">
             <thead>
                 <tr>
+                    <th style="width:110px">@Localizer["Sales Code"]</th>
                     <th>@Localizer["Name"]</th>
                     <th style="width:180px">@Localizer["Phone"]</th>
                     <th style="width:110px;text-align:center">@Localizer["Status"]</th>
@@ -52,6 +57,7 @@
             @foreach (var p in Model.People)
             {
                 <tr>
+                    <td><code style="font-size:12px">@(string.IsNullOrEmpty(p.Code) ? "—" : p.Code)</code></td>
                     <td style="font-weight:600">@p.Name</td>
                     <td style="color:@(string.IsNullOrEmpty(p.Phone) ? "#9ca3af" : "inherit")">
                         @(string.IsNullOrEmpty(p.Phone) ? "—" : p.Phone)

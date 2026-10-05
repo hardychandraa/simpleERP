@@ -163,13 +163,13 @@
         <div style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1.35fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
             <div>
                 <label>@Localizer["Product"]</label>
-                <select id="inProd" onchange="onProductChange()">
+                <select id="inProd" onchange="onProductChange()" data-searchable>
                     <option value="">— @Localizer["Select"] —</option>
                     @foreach (var p in Model.AvailableProducts)
                     {
                         <option value="@p.Id"
-                                data-cost="@p.AvgCost"
-                                data-stock="@p.CurrentStock"
+                                data-cost="@p.AvgCost.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                data-stock="@p.CurrentStock.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                 data-name="@p.Name">
                             @p.Name (@p.SKU) — @Localizer["Stk:"] @p.CurrentStock.ToString("N0")
                         </option>

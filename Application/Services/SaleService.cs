@@ -47,7 +47,50 @@ public class SaleService : ISaleService
       _batches=batches;
       _commissions=commissions; _uow=uow;  _loc = loc; _log = log; }
 
-    public async Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user)
+    public Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user)
+        => CreateCoreAsync(dto, user, replacesSaleId: null);
+
+    public async Task<ServiceResult<SaleDto>> ReviseAsync(Guid originalId, CreateSaleDto dto, string user)
+    {
+        var original = await _sales.GetByIdWithItemsAsync(originalId);
+        if (original == null) return _log.Refuse<SaleDto>(_loc["Sale not found."]);
+        if (original.Status == SaleStatus.Cancelled)
+            return _log.Refuse<SaleDto>(_loc["{0} is already cancelled and cannot be revised.", original.InvoiceNumber]);
+        // Money already received belongs to this invoice; moving it is a decision, not a
+        // side effect of fixing a typo.
+        if (original.PaymentType == PaymentType.Due && original.AmountPaid > 0)
+            return _log.Refuse<SaleDto>(_loc["Payments have been recorded against {0}, so it cannot be revised. Correct it with a return or a credit note instead.", original.InvoiceNumber]);
+        // Cancelling only voids UNPAID commission, and the replacement would accrue again —
+        // so a paid-out commission would be paid twice.
+        if (await _commissions.HasPaidOutForSaleAsync(originalId))
+            return _log.Refuse<SaleDto>(_loc["Commission on {0} has already been paid out, so it cannot be revised.", original.InvoiceNumber]);
+
+        var originalNumber = original.InvoiceNumber;
+        ServiceResult<SaleDto>? result = null;
+
+        // One transaction: the original is cancelled (stock back in, unpaid commission
+        // voided) and those writes are visible to the replacement's own stock checks — so
+        // an unchanged line is not refused for stock the original is holding. If the
+        // replacement is refused, the cancellation rolls back with it and the original is
+        // untouched.
+        await _uow.InTransactionAsync(async () =>
+        {
+            var cancelled = await CancelAsync(originalId, user);
+            if (!cancelled.Success) { result = ServiceResult<SaleDto>.Fail(cancelled.Error!); return false; }
+
+            var created = await CreateCoreAsync(dto, user, replacesSaleId: originalId);
+            if (!created.Success) { result = created; return false; }
+
+            await _audit.LogAsync(user, "Sale.Revise", $"{originalNumber} -> {created.Data!.InvoiceNumber}");
+            _log.LogInformation("Sale {Original} revised as {Replacement}, by {User}",
+                originalNumber, created.Data.InvoiceNumber, user);
+            result = created;
+            return true;
+        });
+        return result!;
+    }
+
+    private async Task<ServiceResult<SaleDto>> CreateCoreAsync(CreateSaleDto dto, string user, Guid? replacesSaleId)
     {
         if (dto.Items == null || dto.Items.Count == 0)
             return _log.Refuse<SaleDto>(_loc["Add at least one item."]);
@@ -126,10 +169,9 @@ public class SaleService : ISaleService
             var p = await _products.GetByIdAsync(item.ProductId);
             if (p == null)   return _log.Refuse<SaleDto>(_loc["Product not found."]);
             if (!p.IsActive) return _log.Refuse<SaleDto>(_loc["Product '{0}' is inactive.", p.Name]);
-
-            // Price override reason is required when price deviates from master price
-            if (item.UnitPrice != p.UnitPrice && string.IsNullOrWhiteSpace(item.PriceReason))
-                return _log.Refuse<SaleDto>(_loc["Price for '{0}' differs from master price ({1}). Please provide a reason for the price override.", p.Name, p.UnitPrice.ToString("N0")]);
+            // A price different from the master price no longer needs a reason (HC,
+            // 2026-10-05). When one is given it is still stored, audited and shown on the
+            // sale screen — but never printed.
         }
 
         var saleId   = Guid.NewGuid();
@@ -250,6 +292,7 @@ public class SaleService : ISaleService
             PaymentType   = dto.PaymentType,
             PaymentTermId = termId,
             SalesPersonId = salesPersonId,
+            ReplacesSaleId = replacesSaleId,
             DueDate       = dueDate,
             SubTotal      = saleItems.Sum(i => i.UnitPrice * i.Qty),
             DiscountTotal = saleItems.Sum(i => i.DiscountAmount * i.Qty),
@@ -582,6 +625,10 @@ public class SaleService : ISaleService
         if (s == null) return null;
         var dto = MapDto(s);
         dto.AppliedNotesTotal = await _noteApplications.GetAppliedTotalForSaleAsync(id);
+        if (s.ReplacesSaleId.HasValue)
+            dto.ReplacesInvoiceNumber = await _sales.GetInvoiceNumberAsync(s.ReplacesSaleId.Value);
+        if (await _sales.FindReplacementAsync(id) is { } r)
+            (dto.ReplacedBySaleId, dto.ReplacedByInvoiceNumber) = (r.Id, r.InvoiceNumber);
         return dto;
     }
 
@@ -653,46 +700,6 @@ public class SaleService : ISaleService
             .ToList();
     }
 
-    public async Task<string> GenerateTxtInvoiceAsync(Guid saleId)
-    {
-        var sale = await _sales.GetByIdWithItemsAsync(saleId);
-        if (sale == null) return "Sale not found.";
-        const int W = 60;
-        var L = new List<string>();
-        string Pad(string s, int w) => s.Length > w ? s[..w] : s.PadRight(w);
-        L.Add("INVOICE".PadLeft((W + 7) / 2));
-        L.Add($"No   : {sale.InvoiceNumber}".PadLeft(W));
-        L.Add($"Date : {sale.SaleDate.ToLocalTime():dd-MMM-yyyy HH:mm}".PadLeft(W));
-        if (sale.DueDate.HasValue)
-            L.Add($"Due  : {sale.DueDate.Value:dd-MMM-yyyy} ({sale.PaymentType})".PadLeft(W));
-        L.Add(new string('=', W));
-        L.Add($"Customer : {sale.Customer?.Name}");
-        if (!string.IsNullOrEmpty(sale.Customer?.Phone)) L.Add($"Phone    : {sale.Customer.Phone}");
-        L.Add($"Payment  : {sale.PaymentType}");
-        if (sale.Status == SaleStatus.Cancelled) L.Add("*** CANCELLED ***");
-        L.Add(new string('-', W));
-        L.Add($"{"QTY",4}  {"DESCRIPTION",-28}  {"PRICE",8}  {"TOTAL",8}");
-        L.Add(new string('-', W));
-        foreach (var i in sale.SaleItems)
-        {
-            L.Add($"{i.Qty,4:N0}  {Pad(i.Product?.Name ?? "", 28)}  {i.UnitPrice,8:N0}  {i.LineTotal,8:N0}");
-            if (i.DiscountAmount > 0) L.Add($"      Disc: -{i.DiscountAmount:N0}");
-            if (!string.IsNullOrEmpty(i.Notes)) L.Add($"      Note: {i.Notes}");
-            if (!string.IsNullOrEmpty(i.PriceReason)) L.Add($"      Price adj: {i.PriceReason}");
-            if (i.WarrantyExpiry.HasValue) L.Add($"      Warranty: {i.WarrantyExpiry.Value.ToLocalTime():dd-MMM-yyyy}");
-        }
-        L.Add(new string('-', W));
-        L.Add($"{"SUBTOTAL :",45} {sale.SubTotal,8:N0}");
-        if (sale.DiscountTotal > 0) L.Add($"{"DISCOUNT :",45} {sale.DiscountTotal,8:N0}");
-        L.Add($"{"GRAND TOTAL :",45} {sale.GrandTotal,8:N0}");
-        L.Add($"{"PAID :",45} {sale.AmountPaid,8:N0}");
-        if (sale.GrandTotal - sale.AmountPaid > 0)
-            L.Add($"{"BALANCE DUE :",45} {sale.GrandTotal - sale.AmountPaid,8:N0}");
-        L.Add(new string('=', W));
-        L.Add("Thank you for your purchase!".PadLeft((W + 28) / 2));
-        return string.Join(Environment.NewLine, L);
-    }
-
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -739,9 +746,17 @@ public class SaleService : ISaleService
         SaleDate      = s.SaleDate,
         CustomerName  = s.Customer?.Name  ?? "",
         CustomerPhone = s.Customer?.Phone,
+        CustomerAddress = s.Customer?.Address,
+        CustomerId    = s.CustomerId,
+        PaymentTermId = s.PaymentTermId,
+        SalesPersonId = s.SalesPersonId,
+        ReplacesSaleId = s.ReplacesSaleId,
+        BranchCode    = s.Branch?.Code ?? "",
         PaymentType   = s.PaymentType.ToString(),
         PaymentTermName = s.PaymentTerm?.Name ?? "",
+        PaymentTermDays = s.PaymentTerm?.DueDays,
         SalesPersonName = s.SalesPerson?.Name ?? "",
+        SalesPersonCode = s.SalesPerson?.Code ?? "",
         DueDate       = s.DueDate,
         SubTotal      = s.SubTotal,
         DiscountTotal = s.DiscountTotal,
@@ -758,8 +773,10 @@ public class SaleService : ISaleService
         CreatedBy     = s.CreatedBy,
         Items = s.SaleItems.Select(i => new SaleItemDto {
             Id             = i.Id,
+            ProductId      = i.ProductId,
             ProductName    = i.Product?.Name ?? "",
             SKU            = i.Product?.SKU  ?? "",
+            Unit           = i.Product?.Unit ?? "",
             Qty            = i.Qty,
             UnitPrice      = i.UnitPrice,
             DiscountAmount = i.DiscountAmount,

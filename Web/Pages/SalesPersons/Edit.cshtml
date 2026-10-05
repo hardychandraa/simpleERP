@@ -19,6 +19,12 @@
         </div>
 
         <div class="fg">
+            <label>@Localizer["Sales Code"] *</label>
+            <input type="text" asp-for="Input.Code" required maxlength="10" placeholder="@Localizer["e.g. S01"]" style="text-transform:uppercase" />
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px">@Localizer["Printed on the invoice instead of the name."]</div>
+        </div>
+
+        <div class="fg">
             <label>@Localizer["Phone"]</label>
             <input type="text" asp-for="Input.Phone" maxlength="50" placeholder="@Localizer["Optional"]" />
         </div>

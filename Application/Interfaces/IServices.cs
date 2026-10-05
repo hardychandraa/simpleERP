@@ -66,6 +66,12 @@ public interface IInventoryService {
 }
 public interface ISaleService {
     Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user);
+    /// <summary>
+    /// Cancels <paramref name="originalId"/> and creates <paramref name="dto"/> in its place,
+    /// as one transaction — both happen or neither does. Refused when the original has
+    /// recorded payments, paid-out commission, a return or an applied credit note.
+    /// </summary>
+    Task<ServiceResult<SaleDto>> ReviseAsync(Guid originalId, CreateSaleDto dto, string user);
     Task<ServiceResult> CancelAsync(Guid saleId, string user);
     Task<ServiceResult<PaymentRecordDto>> RecordPaymentAsync(RecordPaymentDto dto, string user);
     /// <summary>
@@ -83,7 +89,6 @@ public interface ISaleService {
     Task<SaleDto?> GetByIdAsync(Guid id);
     Task<List<SaleListDto>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null);
     Task<List<DueCustomerDto>> GetDueSummaryAsync();
-    Task<string> GenerateTxtInvoiceAsync(Guid saleId);
 }
 public interface IReportService {
     Task<EndOfDayDto> GetEndOfDayAsync(DateTime date);
@@ -258,6 +263,16 @@ public interface ICreditNoteService {
     Task<List<CreditNoteApplicationDto>> GetApplicationsForPurchaseAsync(Guid purchaseId);
     /// <summary>Remaining value of still-Open notes, by direction — the slice not yet tied to any document.</summary>
     Task<decimal> GetOpenTotalAsync(CreditDebitType type);
+    /// <summary>
+    /// Raises an Open debit note (category RebateSettlement) for a rebate realized in
+    /// cash, so it flows through the same per-purchase <see cref="ApplyAsync"/> mechanism
+    /// as any other debit note — closing the gap where a realized rebate previously
+    /// reduced nothing. Called by RebateService, never directly from a page.
+    /// Returns the new note's document number, or null (creating nothing) when
+    /// netAmount is zero or negative. Does not call SaveChangesAsync — the caller owns
+    /// the transaction, matching InventoryService.StockInForRebateAsync's shape.
+    /// </summary>
+    Task<string?> CreateRebateSettlementNoteAsync(Guid supplierId, decimal netAmount, string reference, string user);
 }
 public interface IFinancialReportService {
     /// <summary>Commercial P&amp;L over an inclusive date range.</summary>

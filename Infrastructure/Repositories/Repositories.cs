@@ -25,13 +25,98 @@ namespace SimpleERP.Infrastructure.Repositories;
 internal static class DocumentNumber
 {
     public static string MonthStamp() => DateTime.Now.ToString("yyyyMM");
+
+    /// <summary>
+    /// Reserves the next number under <paramref name="prefix"/> and returns it formatted
+    /// (<c>INV-202610-0007</c>).
+    ///
+    /// This replaced count-then-append (<c>COUNT(*) + 1</c>), which had two failure modes:
+    /// two people posting at the same moment both read the same count, and two documents
+    /// raised inside one operation (a supplier settlement auto-raising a debit note per
+    /// purchase) could both count only what was already saved. The unique indexes turned
+    /// either into a failed save rather than a duplicate, but a failed save is still a
+    /// staff member retyping an invoice.
+    ///
+    /// Now the counter row is bumped with <c>INSERT … ON CONFLICT DO UPDATE</c>, which takes
+    /// a row lock. A transaction is opened here if the operation does not have one yet, and
+    /// <see cref="UnitOfWork.SaveChangesAsync"/> commits it — so the lock is held until the
+    /// document itself is saved. A second person posting the same document type waits a few
+    /// milliseconds instead of colliding; a second document in the same operation sees the
+    /// row its own transaction already bumped; and a save that fails rolls the counter back
+    /// with it, so no number is ever skipped.
+    ///
+    /// Side effect, deliberately relied on: everything the operation writes after this point
+    /// — including <see cref="AuditLogRepository.LogAsync"/>'s own early SaveChanges — now
+    /// commits or rolls back as one unit.
+    ///
+    /// <paramref name="existingNumbers"/> seeds the counter from the highest number already
+    /// issued, so the first use of a prefix (including the first run after this was
+    /// introduced mid-month) continues the sequence instead of restarting it. GREATEST keeps
+    /// that true even if a row were ever written behind the counter's back.
+    /// </summary>
+    public static async Task<string> NextAsync(AppDbContext db, string prefix, IQueryable<string> existingNumbers)
+    {
+        if (db.Database.CurrentTransaction == null)
+            await db.Database.BeginTransactionAsync();
+
+        var issued = await existingNumbers.Where(n => n.StartsWith(prefix + "-")).ToListAsync();
+        var seed   = issued.Select(n => int.TryParse(n.AsSpan(prefix.Length + 1), out var k) ? k : 0)
+                           .DefaultIfEmpty(0).Max();
+
+        var next = (await db.Database.SqlQuery<int>($@"
+            INSERT INTO ""DocumentSequences"" (""Prefix"", ""LastNumber"") VALUES ({prefix}, {seed + 1})
+            ON CONFLICT (""Prefix"") DO UPDATE
+                SET ""LastNumber"" = GREATEST(""DocumentSequences"".""LastNumber"", {seed}) + 1
+            RETURNING ""LastNumber"" AS ""Value""").ToListAsync()).Single();
+
+        return $"{prefix}-{next:D4}";
+    }
 }
 
 public class UnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _db;
     public UnitOfWork(AppDbContext db) => _db = db;
-    public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();
+    // True while InTransactionAsync owns the transaction: saves inside it must not commit.
+    private bool _outer;
+
+    public async Task<int> SaveChangesAsync()
+    {
+        var written = await _db.SaveChangesAsync();
+        // Opened by DocumentNumber.NextAsync when this operation reserved a number. An
+        // operation that never reserved one has no transaction and saves exactly as before.
+        if (!_outer && _db.Database.CurrentTransaction is { } tx)
+        {
+            await tx.CommitAsync();
+            await tx.DisposeAsync();
+        }
+        return written;
+    }
+
+    public async Task<bool> InTransactionAsync(Func<Task<bool>> work)
+    {
+        if (_outer) return await work();   // already inside one — join it
+
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        _outer = true;
+        try
+        {
+            if (await work()) { await tx.CommitAsync(); return true; }
+            await tx.RollbackAsync();
+            // The rolled-back entities are still tracked with their in-memory edits
+            // (e.g. a sale marked Cancelled); forget them so nothing later in this request
+            // can save them by accident.
+            _db.ChangeTracker.Clear();
+            return false;
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            _db.ChangeTracker.Clear();
+            throw;
+        }
+        finally { _outer = false; }
+    }
 }
 
 public class BranchRepository : IBranchRepository
@@ -292,13 +377,8 @@ public class PurchaseRepository : IPurchaseRepository
 
     public async Task<string> GeneratePurchaseNumberAsync()
     {
-        // Same count-then-append shape as GenerateInvoiceNumberAsync, and the same
-        // caveat: two documents posted in the same instant could collide. The unique
-        // index on PurchaseNumber turns that into a failed save rather than a
-        // duplicate, which on a two-person system is the right trade.
-        var prefix = $"PO-{DocumentNumber.MonthStamp()}";
-        var count  = await _db.Purchases.CountAsync(p => p.PurchaseNumber.StartsWith(prefix));
-        return $"{prefix}-{count + 1:D4}";
+        return await DocumentNumber.NextAsync(_db, $"PO-{DocumentNumber.MonthStamp()}",
+            _db.Purchases.Select(p => p.PurchaseNumber));
     }
 
     public Task<bool> SupplierDocumentExistsAsync(Guid supplierId, string documentNumber, Guid? excludeId = null) =>
@@ -723,12 +803,8 @@ public class CustomerReturnRepository : ICustomerReturnRepository
 
     public async Task<string> GenerateReturnNumberAsync()
     {
-        // Same count-then-append shape as GenerateInvoiceNumberAsync/GeneratePurchaseNumberAsync,
-        // with the same caveat: two returns posted in the same instant could collide, and the
-        // unique index turns that into a failed save rather than a duplicate number.
-        var prefix = $"CRN-{DocumentNumber.MonthStamp()}";
-        var count  = await _db.CustomerReturns.CountAsync(r => r.ReturnNumber.StartsWith(prefix));
-        return $"{prefix}-{count + 1:D4}";
+        return await DocumentNumber.NextAsync(_db, $"CRN-{DocumentNumber.MonthStamp()}",
+            _db.CustomerReturns.Select(r => r.ReturnNumber));
     }
 
     public async Task<Dictionary<Guid, ReturnedLineTally>> GetReturnedQtyBySaleItemAsync(Guid saleId)
@@ -823,9 +899,8 @@ public class SupplierReturnRepository : ISupplierReturnRepository
 
     public async Task<string> GenerateReturnNumberAsync()
     {
-        var prefix = $"SRN-{DocumentNumber.MonthStamp()}";
-        var count  = await _db.SupplierReturns.CountAsync(r => r.ReturnNumber.StartsWith(prefix));
-        return $"{prefix}-{count + 1:D4}";
+        return await DocumentNumber.NextAsync(_db, $"SRN-{DocumentNumber.MonthStamp()}",
+            _db.SupplierReturns.Select(r => r.ReturnNumber));
     }
 
     public async Task<Dictionary<Guid, ReturnedLineTally>> GetReturnedQtyByPurchaseItemAsync(Guid purchaseId)
@@ -921,10 +996,9 @@ public class CreditNoteRepository : ICreditNoteRepository
     public async Task<string> GenerateDocumentNumberAsync(CreditDebitType type)
     {
         // Two independent sequences, so a credit note and a debit note raised in the same
-        // month never share a number. Same count-then-append caveat as the other generators.
+        // month never share a number.
         var prefix = $"{(type == CreditDebitType.Credit ? "CN" : "DN")}-{DocumentNumber.MonthStamp()}";
-        var count  = await _db.CreditNotes.CountAsync(n => n.DocumentNumber.StartsWith(prefix));
-        return $"{prefix}-{count + 1:D4}";
+        return await DocumentNumber.NextAsync(_db, prefix, _db.CreditNotes.Select(n => n.DocumentNumber));
     }
 
     public async Task<decimal> GetOpenTotalAsync(CreditDebitType type) =>
@@ -1064,11 +1138,9 @@ public class PaymentBatchRepository : IPaymentBatchRepository
     public async Task<string> GenerateBatchNumberAsync(PaymentBatchDirection direction)
     {
         // Two independent sequences so a received and a paid settlement in the same month
-        // never share a number. Same count-then-append caveat as the other generators: a
-        // collision becomes a failed save on the unique index, not a duplicate.
+        // never share a number.
         var prefix = $"STL-{(direction == PaymentBatchDirection.Received ? "R" : "P")}-{DocumentNumber.MonthStamp()}";
-        var count  = await _db.PaymentBatches.CountAsync(b => b.BatchNumber.StartsWith(prefix));
-        return $"{prefix}-{count + 1:D4}";
+        return await DocumentNumber.NextAsync(_db, prefix, _db.PaymentBatches.Select(b => b.BatchNumber));
     }
 }
 
@@ -1089,6 +1161,10 @@ public class SalesPersonRepository : ISalesPersonRepository
     public Task<bool> NameExistsAsync(string name, Guid? excludeId = null) =>
         _db.SalesPersons.AnyAsync(p => p.Name.ToLower() == name.ToLower()
                                     && (excludeId == null || p.Id != excludeId));
+
+    // Codes are stored upper-case, so a plain comparison is already case-insensitive.
+    public Task<bool> CodeExistsAsync(string code, Guid? excludeId = null) =>
+        _db.SalesPersons.AnyAsync(p => p.Code == code && (excludeId == null || p.Id != excludeId));
 
     public Task<bool> IsInUseAsync(Guid id) =>
         _db.Sales.AnyAsync(s => s.SalesPersonId == id);
@@ -1223,6 +1299,16 @@ public class SaleRepository : ISaleRepository
 {
     private readonly AppDbContext _db;
     public SaleRepository(AppDbContext db) => _db = db;
+
+    public Task<string?> GetInvoiceNumberAsync(Guid id) =>
+        _db.Sales.Where(s => s.Id == id).Select(s => (string?)s.InvoiceNumber).FirstOrDefaultAsync();
+
+    public async Task<(Guid Id, string InvoiceNumber)?> FindReplacementAsync(Guid saleId)
+    {
+        var r = await _db.Sales.Where(s => s.ReplacesSaleId == saleId)
+                               .Select(s => new { s.Id, s.InvoiceNumber }).FirstOrDefaultAsync();
+        return r == null ? null : (r.Id, r.InvoiceNumber);
+    }
 
     public Task<Sale?> GetByIdWithItemsAsync(Guid id) =>
         _db.Sales
@@ -1396,9 +1482,8 @@ public class SaleRepository : ISaleRepository
 
     public async Task<string> GenerateInvoiceNumberAsync()
     {
-        var prefix = $"INV-{DocumentNumber.MonthStamp()}";
-        var count  = await _db.Sales.CountAsync(s => s.InvoiceNumber.StartsWith(prefix));
-        return $"{prefix}-{count + 1:D4}";
+        return await DocumentNumber.NextAsync(_db, $"INV-{DocumentNumber.MonthStamp()}",
+            _db.Sales.Select(s => s.InvoiceNumber));
     }
 
     public async Task AddAsync(Sale s) => await _db.Sales.AddAsync(s);
@@ -1451,7 +1536,11 @@ public class AuditLogRepository : IAuditLogRepository
         await _db.AuditLogs.AddAsync(new AuditLog {
             Timestamp = DateTime.UtcNow, User = user,
             Action = action, Detail = detail, IpAddress = ip });
-        await _db.SaveChangesAsync();  // Audit writes immediately, independent of UoW
+        // Writes immediately. This is the request's shared DbContext, so it also flushes
+        // whatever the calling operation has staged so far — it is NOT independent of the
+        // unit of work. Once an operation has reserved a document number, that flush
+        // happens inside DocumentNumber.NextAsync's transaction and commits with it.
+        await _db.SaveChangesAsync();
     }
 
     public Task<List<AuditLog>> GetRecentAsync(int count = 100) =>

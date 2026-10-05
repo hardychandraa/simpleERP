@@ -107,15 +107,26 @@
                  style="display:none;margin-top:10px;font-size:12px"></div>
         </div>
 
-        <div class="fg">
-            <label>@Localizer["Paper Width"]</label>
-            <select asp-for="Input.PaperColumns">
-                <option value="80">@Localizer["80 columns — Narrow paper (8 inch)"]</option>
-                <option value="132">@Localizer["132 columns — Wide paper (14 inch)"]</option>
-            </select>
-            <div style="font-size:11px;color:#9ca3af;margin-top:4px">
-                @Localizer["Most small dot-matrix printers use 80 columns. Check your printer manual if unsure."]
+        <div class="frow frow3">
+            <div class="fg">
+                <label>@Localizer["Paper Width"]</label>
+                <select asp-for="Input.PaperColumns">
+                    <option value="96">@Localizer["96 columns — 9.5-inch form, half-A4 (12 cpi)"]</option>
+                    <option value="80">@Localizer["80 columns — Narrow paper (8 inch)"]</option>
+                    <option value="132">@Localizer["132 columns — Wide paper (14 inch)"]</option>
+                </select>
             </div>
+            <div class="fg">
+                <label>@Localizer["Paper Height (lines)"]</label>
+                <input type="number" asp-for="Input.PaperLines" min="20" max="132" step="1" />
+            </div>
+            <div class="fg">
+                <label>@Localizer["Warehouse Code"]</label>
+                <input type="text" asp-for="Input.WarehouseCode" maxlength="10" placeholder="@Localizer["e.g. GD1"]" style="text-transform:uppercase" />
+            </div>
+        </div>
+        <div style="font-size:11px;color:#9ca3af;margin:-4px 0 10px">
+            @Localizer["For the 9.5 × 5.5 inch (half-A4) continuous form on an Epson LX: 96 columns and 33 lines (5.5 inch at 6 lines per inch). An 11-inch form is 66 lines. Align the paper to the top of a form before the first print."]
         </div>
 
         <!-- Test print button -->

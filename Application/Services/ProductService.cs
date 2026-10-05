@@ -44,6 +44,8 @@ public class ProductService : IProductService
         if (string.IsNullOrWhiteSpace(dto.SKU))  return _log.Refuse(_loc["SKU is required."]);
         if (dto.UnitPrice < 0)   return _log.Refuse(_loc["Unit price cannot be negative."]);
         if (dto.LowStockThreshold < 0) return _log.Refuse(_loc["Low stock threshold cannot be negative."]);
+        var unitError = ValidateUnit(dto.Unit);
+        if (unitError != null) return unitError;
 
         var sku = dto.SKU.Trim().ToUpper();
         if (await _products.SkuExistsAsync(sku))
@@ -51,7 +53,7 @@ public class ProductService : IProductService
 
         await _products.AddAsync(new Product {
             Id = Guid.NewGuid(), Name = dto.Name.Trim(), SKU = sku,
-            UnitPrice = dto.UnitPrice, Category = dto.Category?.Trim(),
+            UnitPrice = dto.UnitPrice, Unit = NormaliseUnit(dto.Unit), Category = dto.Category?.Trim(),
             DefaultWarrantyMonths = dto.DefaultWarrantyMonths,
             LowStockThreshold = dto.LowStockThreshold,
             IsActive = true, CreatedAt = DateTime.UtcNow
@@ -68,13 +70,15 @@ public class ProductService : IProductService
         if (string.IsNullOrWhiteSpace(dto.SKU))  return _log.Refuse(_loc["SKU is required."]);
         if (dto.UnitPrice < 0)   return _log.Refuse(_loc["Unit price cannot be negative."]);
         if (dto.LowStockThreshold < 0) return _log.Refuse(_loc["Threshold cannot be negative."]);
+        var unitError = ValidateUnit(dto.Unit);
+        if (unitError != null) return unitError;
 
         var sku = dto.SKU.Trim().ToUpper();
         if (await _products.SkuExistsAsync(sku, dto.Id))
             return _log.Refuse(_loc["SKU '{0}' is already used by another product.", sku]);
 
         p.Name = dto.Name.Trim(); p.SKU = sku;
-        p.UnitPrice = dto.UnitPrice; p.Category = dto.Category?.Trim();
+        p.UnitPrice = dto.UnitPrice; p.Unit = NormaliseUnit(dto.Unit); p.Category = dto.Category?.Trim();
         p.DefaultWarrantyMonths = dto.DefaultWarrantyMonths;
         p.LowStockThreshold = dto.LowStockThreshold;
         p.IsActive = dto.IsActive;
@@ -106,8 +110,18 @@ public class ProductService : IProductService
         return result;
     }
 
+    // Printed in a 5-character invoice column, hence the 10-character ceiling.
+    private ServiceResult? ValidateUnit(string? unit)
+    {
+        if (string.IsNullOrWhiteSpace(unit)) return _log.Refuse(_loc["Unit is required (e.g. PCS, UNIT, SET)."]);
+        if (unit.Trim().Length > 10)         return _log.Refuse(_loc["Unit cannot exceed 10 characters."]);
+        return null;
+    }
+
+    private static string NormaliseUnit(string? unit) => (unit ?? "PCS").Trim().ToUpperInvariant();
+
     private static ProductDto Map(Product p, decimal stock, decimal cost) => new() {
-        Id = p.Id, Name = p.Name, SKU = p.SKU, UnitPrice = p.UnitPrice,
+        Id = p.Id, Name = p.Name, SKU = p.SKU, UnitPrice = p.UnitPrice, Unit = p.Unit,
         Category = p.Category, DefaultWarrantyMonths = p.DefaultWarrantyMonths,
         LowStockThreshold = p.LowStockThreshold, IsActive = p.IsActive,
         CurrentStock = stock, AvgCost = cost
