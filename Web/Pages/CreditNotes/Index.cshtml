@@ -40,7 +40,7 @@
             </div>
             <div class="fg" id="fg-customer">
                 <label>@Localizer["Customer"]</label>
-                <select asp-for="NewNote.CustomerId">
+                <select data-searchable asp-for="NewNote.CustomerId">
                     <option value="">— @Localizer["Select"] —</option>
                     @foreach (var c in Model.CustomerOptions)
                     {
@@ -50,7 +50,7 @@
             </div>
             <div class="fg" id="fg-supplier" style="display:none">
                 <label>@Localizer["Supplier"]</label>
-                <select asp-for="NewNote.SupplierId">
+                <select data-searchable asp-for="NewNote.SupplierId">
                     <option value="">— @Localizer["Select"] —</option>
                     @foreach (var s in Model.SupplierOptions)
                     {
@@ -206,7 +206,7 @@
                             {
                                 <form method="post" asp-page-handler="Apply" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
                                     <input type="hidden" name="Apply.CreditNoteId" value="@n.Id" />
-                                    <select name="@(n.IsCredit ? "Apply.SaleId" : "Apply.PurchaseId")" style="width:150px;font-size:11px">
+                                    <select data-searchable name="@(n.IsCredit ? "Apply.SaleId" : "Apply.PurchaseId")" style="width:150px;font-size:11px">
                                         @foreach (var d in n.OpenDocuments)
                                         {
                                             <option value="@d.DocumentId">@d.DocumentNumber (@d.NetBalanceDue.ToString("N0"))</option>

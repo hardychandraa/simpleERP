@@ -7,7 +7,7 @@
 <div class="card" style="margin-bottom:14px">
 <form method="get" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
   <div class="fg" style="margin:0;flex:2;min-width:240px"><label>@Localizer["Product"]</label>
-    <select name="productId" data-searchable>
+    <select data-searchable name="productId">
       <option value="">— @Localizer["All products"] —</option>
       @foreach (var p in Model.Products)
       {

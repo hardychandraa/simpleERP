@@ -21,13 +21,13 @@
         <div style="display:flex;gap:12px">
             <div class="fg" style="flex:1">
                 <label>@Localizer["Supplier"] *</label>
-                <select asp-for="Input.SupplierId" asp-items="Model.SupplierOptions" required>
+                <select data-searchable asp-for="Input.SupplierId" asp-items="Model.SupplierOptions" required>
                     <option value="">— @Localizer["Select"] —</option>
                 </select>
             </div>
             <div class="fg" style="flex:1">
                 <label>@Localizer["Product"]</label>
-                <select asp-for="Input.ProductId" asp-items="Model.ProductOptions" data-searchable>
+                <select data-searchable asp-for="Input.ProductId" asp-items="Model.ProductOptions">
                     <option value="">— @Localizer["All products from this supplier"] —</option>
                 </select>
             </div>
@@ -124,7 +124,7 @@
             <div style="display:flex;gap:12px">
                 <div class="fg" style="flex:2">
                     <label>@Localizer["Reward Product"]</label>
-                    <select asp-for="Input.RewardProductId" asp-items="Model.ProductOptions" data-searchable>
+                    <select data-searchable asp-for="Input.RewardProductId" asp-items="Model.ProductOptions">
                         <option value="">— @Localizer["Select"] —</option>
                     </select>
                 </div>

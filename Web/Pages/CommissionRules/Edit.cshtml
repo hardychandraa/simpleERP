@@ -37,14 +37,14 @@
         <div class="card-title">@Localizer["Scope — leave a field blank for \"all\""]</div>
         <div class="fg">
             <label>@Localizer["Sales Person"]</label>
-            <select asp-for="Input.SalesPersonId" asp-items="Model.SalesPersonOptions">
+            <select data-searchable asp-for="Input.SalesPersonId" asp-items="Model.SalesPersonOptions">
                 <option value="">— @Localizer["All salespeople"] —</option>
             </select>
         </div>
         <div style="display:flex;gap:12px">
             <div class="fg" style="flex:1">
                 <label>@Localizer["Product"]</label>
-                <select asp-for="Input.ProductId" asp-items="Model.ProductOptions" data-searchable>
+                <select data-searchable asp-for="Input.ProductId" asp-items="Model.ProductOptions">
                     <option value="">— @Localizer["All products"] —</option>
                 </select>
             </div>

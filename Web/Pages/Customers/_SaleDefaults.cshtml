@@ -4,7 +4,7 @@
 <div class="card-title" style="margin-top:18px">@Localizer["Defaults for new sales"]</div>
 <div class="fg">
   <label>@Localizer["Sales Person"]</label>
-  <select name="Input.SalesPersonId">
+  <select data-searchable name="Input.SalesPersonId">
     <option value="">— @Localizer["none"] —</option>
     @foreach (var p in Model.People.Where(p => p.IsActive || p.Id == Model.SalesPersonId))
     {

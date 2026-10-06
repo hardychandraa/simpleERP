@@ -27,7 +27,7 @@
 
         <div class="fg">
             <label>@Localizer["Category"] *</label>
-            <select asp-for="Input.CategoryId" required>
+            <select data-searchable asp-for="Input.CategoryId" required>
                 @foreach (var c in Model.Categories)
                 {
                     <option value="@c.Id">

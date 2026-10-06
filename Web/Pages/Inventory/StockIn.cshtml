@@ -7,7 +7,7 @@
 <div class="card"><div class="card-title">@Localizer["Receive Stock (Purchase)"]</div>
 <form method="post">
   <div class="fg"><label>@Localizer["Product"] *</label>
-    <select asp-for="Input.ProductId" asp-items="Model.Products" required data-searchable>
+    <select data-searchable asp-for="Input.ProductId" asp-items="Model.Products" required>
       <option value="">— @Localizer["Select product"] —</option>
     </select>
   </div>

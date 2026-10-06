@@ -19,7 +19,7 @@
         </div>
         <div class="fg" style="margin:0;min-width:170px">
             <label>@Localizer["Category"]</label>
-            <select name="categoryId">
+            <select data-searchable name="categoryId">
                 <option value="">@Localizer["All categories"]</option>
                 @foreach (var c in Model.Categories)
                 {

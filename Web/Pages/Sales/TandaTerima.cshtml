@@ -30,7 +30,7 @@
   <form method="get" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
     <div class="fg" style="margin:0;flex:2;min-width:220px">
       <label>@Localizer["Customer"]</label>
-      <select name="customerId" required data-searchable>
+      <select data-searchable name="customerId" required>
         <option value="">— @Localizer["Select customer"] —</option>
         @foreach (var c in Model.Customers) {
           <option value="@c.Id" selected="@(c.Id == Model.CustomerId)">@c.Name@(c.IsActive ? "" : $" ({Localizer["Inactive"].Value})")</option>

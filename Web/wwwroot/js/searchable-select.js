@@ -1,5 +1,7 @@
 /*
  * Searchable dropdown — turns any <select data-searchable> into a type-to-filter box.
+ * Used on lists that grow with the business (products, customers, suppliers, sales people,
+ * expense categories, open invoices); fixed short choices stay native (HC, 2026-10-07).
  *
  * The original <select> stays in the page as the source of truth: it keeps its name,
  * its value and its change handler, and is only hidden visually. So every page's own
@@ -94,14 +96,33 @@
             if (items[active]) items[active].scrollIntoView({ block: 'nearest' });
         }
 
+        // Inside a scrolling table the list would be clipped by the wrapper, so there it
+        // floats (position:fixed) under the box and closes if the page scrolls.
+        var inScroller = !!wrap.closest('.table-scroll');
+        function place() {
+            if (!inScroller) return;
+            var r = input.getBoundingClientRect();
+            var vw = document.documentElement.clientWidth;
+            var w  = Math.min(Math.max(r.width, 260), vw - 16);   // never wider than the screen
+            list.style.position = 'fixed';
+            list.style.left  = Math.max(8, Math.min(r.left, vw - w - 8)) + 'px';
+            list.style.top   = (r.bottom + 2) + 'px';
+            list.style.width = w + 'px';
+            list.style.right = 'auto';
+        }
+        function onScroll(e) { if (!list.contains(e.target)) close(); }
+
         function open() {
             if (wrap.classList.contains('ss-open')) return;
+            place();
+            if (inScroller) window.addEventListener('scroll', onScroll, true);
             wrap.classList.add('ss-open');
             input.setAttribute('aria-expanded', 'true');
             render('');
             input.select();
         }
         function close() {
+            if (inScroller) window.removeEventListener('scroll', onScroll, true);
             wrap.classList.remove('ss-open');
             input.setAttribute('aria-expanded', 'false');
             sync();
@@ -116,7 +137,11 @@
         input.addEventListener('focus', open);
         input.addEventListener('click', open);
         input.addEventListener('input', function () {
-            if (!wrap.classList.contains('ss-open')) { wrap.classList.add('ss-open'); input.setAttribute('aria-expanded', 'true'); }
+            if (!wrap.classList.contains('ss-open')) {
+                place();
+                if (inScroller) window.addEventListener('scroll', onScroll, true);
+                wrap.classList.add('ss-open'); input.setAttribute('aria-expanded', 'true');
+            }
             render(input.value);
         });
         input.addEventListener('keydown', function (e) {

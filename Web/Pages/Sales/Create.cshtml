@@ -26,7 +26,7 @@
             <div class="card-title">@Localizer["Sale Info"]</div>
             <div class="fg">
                 <label>@Localizer["Customer"] *</label>
-                <select asp-for="CustomerId" asp-items="Model.CustomerOptions" required onchange="onCustomerChange()">
+                <select data-searchable asp-for="CustomerId" asp-items="Model.CustomerOptions" required onchange="onCustomerChange()">
                     <option value="">— @Localizer["Select customer"] —</option>
                 </select>
             </div>
@@ -42,7 +42,7 @@
             </div>
             <div class="fg">
                 <label>@Localizer["Sales Person"]</label>
-                <select asp-for="SalesPersonId">
+                <select data-searchable asp-for="SalesPersonId">
                     <option value="">— @Localizer["none (unattributed)"] —</option>
                     @foreach (var p in Model.SalesPersonOptions)
                     {
@@ -166,7 +166,7 @@
         <div class="item-row" style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1.35fr 0.8fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
             <div>
                 <label>@Localizer["Product"]</label>
-                <select id="inProd" onchange="onProductChange()" data-searchable>
+                <select data-searchable id="inProd" onchange="onProductChange()">
                     <option value="">— @Localizer["Select"] —</option>
                     @foreach (var p in Model.AvailableProducts)
                     {
