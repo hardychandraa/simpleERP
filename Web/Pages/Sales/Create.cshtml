@@ -17,9 +17,9 @@
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" id="saleForm">
+<form method="post" id="saleForm" class="doc-form">
     @if (Model.Revise.HasValue) { <input type="hidden" asp-for="Revise" /> }
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+    <div class="doc-top" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
 
         <!-- Left: header fields -->
         <div class="card" style="margin-bottom:0">
@@ -98,8 +98,8 @@
             </div>
         </div>
 
-        <!-- Right: live summary + submit -->
-        <div class="card" style="margin-bottom:0">
+        <!-- Right: live summary + submit (moves below the items on a phone) -->
+        <div class="card doc-summary" style="margin-bottom:0">
             <div class="card-title">@Localizer["Summary"]</div>
             <table style="font-size:14px;width:100%">
                 <tr>
@@ -115,7 +115,7 @@
             <!-- Whole-invoice discount: spread across lines pro-rata on save, so
                  per-line margin, commission and returns stay correct. -->
             <div style="border-top:1px solid #f3f4f6;padding-top:10px;margin-top:4px">
-                <label style="font-size:12px;color:#6b7280">@Localizer["Invoice Discount"]</label>
+                <label>@Localizer["Invoice Discount"]</label>
                 <div style="display:flex;gap:4px;margin-top:4px">
                     <input type="number" asp-for="InvoiceDiscountInput" min="0" step="0.01"
                            placeholder="0" style="flex:1;min-width:0" oninput="render()" />
@@ -150,8 +150,8 @@
                 </tr>
             </table>
             <input type="hidden" name="ItemsJson" id="ItemsJson" value="[]" />
-            <button type="submit" id="submitBtn" class="btn btn-primary"
-                    style="width:100%;margin-top:14px;padding:12px;font-size:15px">
+            <button type="submit" id="submitBtn" class="btn btn-primary btn-lg"
+                    style="width:100%;margin-top:14px">
                 🧾 @Localizer["Create Invoice"]
             </button>
             <div id="submitErr" class="alert alert-danger" style="display:none;margin-top:10px"></div>
@@ -159,11 +159,11 @@
     </div>
 
     <!-- Item builder -->
-    <div class="card">
+    <div class="card doc-items">
         <div class="card-title">@Localizer["Add Items"]</div>
 
         <!-- Row 1: product, qty, price, discount, warranty, add button -->
-        <div style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1.35fr 0.8fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
+        <div class="item-row" style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1.35fr 0.8fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
             <div>
                 <label>@Localizer["Product"]</label>
                 <select id="inProd" onchange="onProductChange()" data-searchable>
@@ -214,7 +214,7 @@
                 <label>@Localizer["Warranty(mo)"]</label>
                 <input type="number" id="inWarranty" min="0" value="0" placeholder="0" />
             </div>
-            <div>
+            <div class="item-add">
                 <label>&nbsp;</label>
                 <button type="button" class="btn btn-success" onclick="addItem()">@Localizer["Add"]</button>
             </div>
@@ -223,11 +223,11 @@
         <!-- Row 2: line notes + price reason (contextual) -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
             <div>
-                <label style="font-size:12px;color:#6b7280">@Localizer["Line Notes"] <span style="font-weight:400">(@Localizer["serial number, condition, etc."])</span></label>
+                <label>@Localizer["Line Notes"] <span style="font-weight:400;color:#4b5563">(@Localizer["serial number, condition, etc."])</span></label>
                 <input type="text" id="inNotes" maxlength="500" placeholder="@Localizer["Optional..."]" />
             </div>
             <div id="priceReasonBlock" style="display:none">
-                <label style="font-size:12px;color:#d97706">⚠ @Localizer["Price Override Reason"] <span style="font-weight:400">(@Localizer["Optional"])</span></label>
+                <label style="color:#b45309">⚠ @Localizer["Price Override Reason"] <span style="font-weight:400">(@Localizer["Optional"])</span></label>
                 <input type="text" id="inPriceReason" maxlength="300" placeholder="@Localizer["e.g. Special customer rate, clearance..."]" />
             </div>
         </div>
@@ -277,7 +277,8 @@ const T = {
     perUnit:        @Html.Raw(Json.Serialize(Localizer["/unit"].Value)),
     offInvoice:     @Html.Raw(Json.Serialize(Localizer["off the invoice"].Value)),
     included:       @Html.Raw(Json.Serialize(Localizer["included"].Value)),
-    mo:             @Html.Raw(Json.Serialize(Localizer["mo"].Value))
+    mo:             @Html.Raw(Json.Serialize(Localizer["mo"].Value)),
+    remove:         @Html.Raw(Json.Serialize(Localizer["Remove"].Value))
 };
 
 // Product data from server (master prices stored for price-override detection)
@@ -495,7 +496,7 @@ function render() {
                 : '—'}</td>
             <td style="text-align:right;font-weight:600">${fmt(item.total)}</td>
             <td style="text-align:center">${item.warranty > 0 ? item.warranty + ' ' + T.mo : '—'}</td>
-            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(${i})">✕</button></td>
+            <td><button type="button" class="btn btn-danger-outline btn-sm" onclick="removeItem(${i})" title="${T.remove}" aria-label="${T.remove}">✕</button></td>
         </tr>`;
     });
     body.innerHTML = html;

@@ -83,8 +83,7 @@
                             <form method="post" asp-page-handler="Delete" asp-route-id="@t.Id"
                                   style="display:inline"
                                   onsubmit="return confirm('@Localizer["Delete payment term {0}?", t.Name]');">
-                                <button type="submit" class="btn btn-outline btn-sm"
-                                        style="color:#dc2626;border-color:#fecaca">@Localizer["Delete"]</button>
+                                <button type="submit" class="btn btn-danger-outline btn-sm">@Localizer["Delete"]</button>
                             </form>
                         }
                     </td>

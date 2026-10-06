@@ -13,24 +13,26 @@
 <title>@Localizer["First-time setup"] — SimpleERP</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;background:#1e2433;color:#1a1a2e;
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:16px;line-height:1.5;background:#1e2433;color:#1a1a2e;
      min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
 .box{background:#fff;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.3);padding:32px;width:100%;max-width:420px}
 .brand{text-align:center;margin-bottom:22px}
-.brand h1{font-size:20px;font-weight:800;color:#1e2433;letter-spacing:.5px}
-.brand small{font-size:11px;color:#9ca3af}
-.intro{font-size:12px;color:#6b7280;line-height:1.6;margin-bottom:20px;padding:12px;background:#f9fafb;border-radius:6px}
+.brand h1{font-size:24px;font-weight:800;color:#1e2433;letter-spacing:.5px}
+.brand small{font-size:14px;color:#4b5563}
+.intro{font-size:15px;color:#374151;line-height:1.6;margin-bottom:20px;padding:12px;background:#f9fafb;border-radius:6px}
 .fg{margin-bottom:14px}
-label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
-input[type=text],input[type=password]{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:6px;
-     font-size:14px;color:#1a1a2e;background:#fff;outline:none;transition:border-color .12s}
-input:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.1)}
-.btn{display:block;width:100%;padding:10px;border-radius:6px;font-size:14px;font-weight:600;
+label{display:block;font-size:15px;font-weight:600;color:#111827;margin-bottom:6px}
+input[type=text],input[type=password]{width:100%;min-height:48px;padding:10px 12px;border:1px solid #6b7280;border-radius:8px;
+     font-size:16px;color:#1a1a2e;background:#fff;outline:none;transition:border-color .12s}
+input:focus{border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,.3)}
+.btn{display:block;width:100%;min-height:52px;padding:12px;border-radius:8px;font-size:17px;font-weight:600;
      cursor:pointer;border:none;background:#059669;color:#fff;transition:opacity .12s}
 .btn:hover{opacity:.88}
-.alert{padding:10px 13px;border-radius:6px;margin-bottom:15px;font-size:13px;line-height:1.5;
+.alert{padding:10px 13px;border-radius:6px;margin-bottom:15px;font-size:15px;line-height:1.5;
      background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
-.hint{font-size:11px;color:#9ca3af;margin-top:-8px;margin-bottom:14px}
+.hint{font-size:14px;color:#4b5563;margin-top:-6px;margin-bottom:14px}
+button:focus-visible,a:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+@@media (max-width:480px){body{padding:12px}.box{padding:24px 18px}}
 </style>
 </head>
 <body>

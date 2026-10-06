@@ -1304,4 +1304,6 @@
   <data name="Discount per item (%)" xml:space="preserve"><value>Diskon per barang (%)</value></data>
   <data name="Pre-filled on each new sale for this customer; can still be changed on the sale." xml:space="preserve"><value>Terisi otomatis di setiap penjualan baru untuk pelanggan ini; tetap bisa diubah di penjualan.</value></data>
   <data name="Please fill in every required field with a valid value." xml:space="preserve"><value>Isi semua kolom wajib dengan nilai yang benar.</value></data>
+  <data name="Menu" xml:space="preserve"><value>Menu</value></data>
+  <data name="Remove" xml:space="preserve"><value>Hapus</value></data>
 </root>

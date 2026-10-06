@@ -1,0 +1,219 @@
+/* SimpleERP shared stylesheet.
+   Part 1 is the original v1.0.1 CSS, unchanged: it is what the browser print of the invoice and
+   Tanda Terima is built on, so it must keep applying to print exactly as before.
+   Part 2 (@media screen) is the readable / responsive layer. Nothing in it reaches paper. */
+
+/* ===== Part 1: base (screen + print) ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;background:#f0f2f5;color:#1a1a2e;display:flex;min-height:100vh}
+.sb{width:215px;background:#1e2433;color:#c8d0e0;flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;overflow-y:auto}
+.sb-brand{padding:16px 16px 12px;border-bottom:1px solid #2d3a52}
+.sb-brand h1{font-size:15px;font-weight:800;color:#fff;letter-spacing:.5px}
+.sb-brand small{font-size:10px;color:#4a5568}
+.sb-nav{flex:1;padding:8px 0}
+.sb-sec{padding:10px 16px 3px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#4a5568;font-weight:600}
+.sb-nav a{display:flex;align-items:center;gap:8px;padding:8px 16px;color:#b0bac8;text-decoration:none;font-size:13px;transition:background .1s;border-left:3px solid transparent}
+.sb-nav a:hover{background:#2d3a52;color:#fff}
+.sb-nav a.active{background:#2a3650;color:#60a5fa;border-left-color:#3b82f6;font-weight:600}
+.sb-foot{padding:10px 16px;border-top:1px solid #2d3a52;font-size:10px;color:#4a5568}
+.main{flex:1;display:flex;flex-direction:column;margin-left:215px;min-width:0}
+.topbar{background:#fff;padding:10px 24px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar h2{font-size:15px;font-weight:700;color:#1a1a2e}
+.content{flex:1;padding:20px 24px}
+.card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:20px;margin-bottom:16px}
+.card-title{font-size:12px;font-weight:700;color:#374151;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #f3f4f6;text-transform:uppercase;letter-spacing:.05em}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f9fafb;padding:9px 12px;text-align:left;font-weight:600;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #e5e7eb}
+td{padding:9px 12px;border-bottom:1px solid #f3f4f6;color:#374151;vertical-align:middle}
+tr:hover td{background:#fafafa}
+tr:last-child td{border-bottom:none}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.ok{background:#d1fae5;color:#065f46}.err{background:#fee2e2;color:#991b1b}
+.warn{background:#fef3c7;color:#92400e}.info{background:#dbeafe;color:#1e40af}.gray{background:#f3f4f6;color:#6b7280}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:none;text-decoration:none;transition:opacity .12s;white-space:nowrap}
+.btn:hover{opacity:.85}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:#2563eb;color:#fff}.btn-success{background:#059669;color:#fff}
+.btn-danger{background:#dc2626;color:#fff}.btn-warn{background:#d97706;color:#fff}
+.btn-secondary{background:#6b7280;color:#fff}.btn-outline{background:#fff;border:1px solid #d1d5db;color:#374151}
+.btn-sm{padding:4px 10px;font-size:12px}
+.fg{margin-bottom:13px}
+label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:7px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;color:#1a1a2e;background:#fff;outline:none;transition:border-color .12s}
+input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.1)}
+.frow{display:grid;gap:13px}.frow2{grid-template-columns:1fr 1fr}.frow3{grid-template-columns:1fr 1fr 1fr}
+.alert{padding:10px 14px;border-radius:6px;margin-bottom:13px;font-size:13px;line-height:1.5}
+.alert-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.alert-success{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
+.alert-warning{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+.alert-info{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat{background:#fff;border-radius:8px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:4px solid}
+.stat.blue{border-left-color:#3b82f6}.stat.green{border-left-color:#059669}
+.stat.orange{border-left-color:#d97706}.stat.red{border-left-color:#dc2626}
+.stat.purple{border-left-color:#7c3aed}.stat.teal{border-left-color:#0891b2}
+.stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;font-weight:600}
+.stat-val{font-size:21px;font-weight:700;color:#1a1a2e;margin-top:3px}
+.search-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+.search-bar input,.search-bar select{flex:1;min-width:160px}
+/* Searchable dropdown (wwwroot/js/searchable-select.js) — the real <select> stays in the form, hidden */
+.ss-wrap{position:relative}
+.ss-native{position:absolute!important;opacity:0;pointer-events:none;width:1px!important;height:1px;min-width:0!important;left:0;bottom:0;padding:0;border:0}
+.ss-input{cursor:pointer}.ss-open .ss-input{cursor:text;border-color:#2563eb}
+.ss-list{display:none;position:absolute;z-index:50;left:0;right:0;top:calc(100% + 2px);max-height:280px;overflow-y:auto;background:#fff;border:1px solid #d1d5db;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.ss-open .ss-list{display:block}
+.ss-item{padding:7px 11px;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ss-item.ss-active{background:#eff6ff}.ss-item.ss-selected{font-weight:600}.ss-item.ss-blank{color:#9ca3af}
+.ss-none{padding:8px 11px;font-size:12px;color:#9ca3af}
+/* Upper-case-only text fields (names, SKU, category); the server upper-cases them too */
+.upper{text-transform:uppercase}
+.upper::placeholder{text-transform:none}
+@media print{.sb,.topbar,.no-print{display:none!important}.main{margin-left:0}.content{padding:0}.card{box-shadow:none;border:none}body{background:#fff;font-family:'Courier New',monospace;font-size:10pt}}
+
+/* ===== Part 2: screen only ===== */
+:root{
+  --c-text:#111827;        /* body text, 16:1 on white */
+  --c-text-2:#374151;      /* secondary text, 10:1 */
+  --c-muted:#4b5563;       /* hints, captions, 7.5:1 — the lightest grey allowed for real information */
+  --c-line:#6b7280;        /* input borders, 4.8:1 (non-text 3:1 minimum) */
+  --c-primary:#1d4ed8;
+  --c-focus:#1d4ed8;
+  --c-nav-text:#e2e8f0;
+  --c-nav-dim:#a8b3c7;     /* sidebar section titles, 7:1 on the sidebar */
+  --fs-body:16px;
+  --fs-table:15px;
+  --fs-small:14px;
+  --fs-min:13px;           /* nothing on screen is smaller than this */
+  --tap:44px;              /* minimum height of anything clickable */
+  --sb-w:240px;
+}
+@media screen{
+  body{font-size:var(--fs-body);line-height:1.5;color:var(--c-text)}
+  a{color:var(--c-primary)}
+  small{font-size:max(var(--fs-min),.85em)}
+
+  /* Sidebar */
+  .sb{width:var(--sb-w);z-index:40}
+  .sb-brand h1{font-size:18px}
+  .sb-brand small,.sb-foot{font-size:var(--fs-min);color:var(--c-nav-dim)}
+  .sb-sec{font-size:var(--fs-min);text-transform:none;letter-spacing:0;color:var(--c-nav-dim);padding:14px 16px 4px}
+  .sb-nav a{font-size:15px;min-height:var(--tap);padding:10px 16px;color:var(--c-nav-text)}
+  .sb-nav a.active{color:#93c5fd}
+  .main{margin-left:var(--sb-w)}
+
+  /* Top bar */
+  .topbar{padding:8px 24px;min-height:60px;gap:12px}
+  .topbar h2{font-size:20px}
+  .topbar-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+  .topbar-clock{font-size:var(--fs-small);color:var(--c-muted)}
+  .lang a{display:inline-flex;align-items:center;justify-content:center;min-width:var(--tap);min-height:var(--tap);font-size:var(--fs-small)!important;text-decoration:none;color:var(--c-muted)!important}
+  .lang a.on{color:var(--c-primary)!important;background:#eff6ff;font-weight:700}
+  .user-box{display:flex;align-items:center;gap:10px}
+  .user-box a{font-size:var(--fs-small)!important;color:var(--c-text-2)!important}
+  .nav-toggle{display:none;align-items:center;justify-content:center;width:var(--tap);height:var(--tap);font-size:24px;line-height:1;background:#fff;border:1px solid var(--c-line);border-radius:8px;color:var(--c-text);cursor:pointer}
+  .nav-backdrop{display:none}
+
+  /* Cards, tables */
+  .card{padding:20px 22px}
+  .card-title{font-size:17px;text-transform:none;letter-spacing:0;color:var(--c-text);border-bottom-color:#e5e7eb}
+  table{font-size:var(--fs-table)}
+  th{font-size:var(--fs-small);text-transform:none;letter-spacing:0;color:var(--c-text-2);padding:10px 12px;border-bottom-color:#d1d5db}
+  td{color:var(--c-text);padding:10px 12px;border-bottom-color:#e5e7eb}
+  tr:hover td{background:#f8fafc}
+  .badge{font-size:var(--fs-min);padding:3px 10px}
+  .gray{color:#374151;background:#e5e7eb}
+
+  /* Buttons: 44px minimum, clear gaps, visible focus */
+  .btn{min-height:var(--tap);padding:10px 18px;font-size:15px;font-weight:600;border-radius:8px;gap:6px}
+  .btn-sm{min-height:var(--tap);padding:8px 14px;font-size:var(--fs-small)}
+  .btn-lg{min-height:52px;padding:12px 26px;font-size:17px}
+  .btn-outline{border-color:var(--c-line);color:var(--c-text)}
+  .btn-outline:hover{background:#f3f4f6;opacity:1}
+  .btn-secondary{background:#4b5563}
+  .btn-danger-outline{background:#fff;color:#b91c1c;border:2px solid #b91c1c}
+  .btn-danger-outline:hover{background:#fef2f2;opacity:1}
+  :focus-visible{outline:3px solid var(--c-focus);outline-offset:2px}
+
+  /* Forms: sentence-case labels, 16px inputs (also stops phones zooming in) */
+  .fg{margin-bottom:18px}
+  .frow{gap:16px}
+  label{font-size:var(--fs-small);text-transform:none;letter-spacing:0;color:var(--c-text);margin-bottom:6px}
+  input[type=text],input[type=number],input[type=date],input[type=password],input[type=email],input[type=search],select,textarea{min-height:var(--tap);padding:9px 12px;font-size:var(--fs-body);border-color:var(--c-line);border-radius:8px;color:var(--c-text)}
+  textarea{min-height:88px}
+  input:focus,select:focus,textarea:focus{border-color:var(--c-focus);box-shadow:0 0 0 3px rgba(29,78,216,.25)}
+  input[type=checkbox],input[type=radio]{width:22px;height:22px;accent-color:var(--c-primary);vertical-align:middle}
+  input.input-validation-error,select.input-validation-error,textarea.input-validation-error{border:2px solid #b91c1c}
+  .field-validation-error,.text-danger{color:#b91c1c;font-size:var(--fs-small);font-weight:600}
+  ::placeholder{color:#6b7280}
+
+  /* Alerts and stats */
+  .alert{font-size:15px;padding:12px 16px;border-width:1px 1px 1px 5px}
+  .alert-danger{border-left-color:#b91c1c}.alert-success{border-left-color:#047857}
+  .alert-warning{border-left-color:#b45309}.alert-info{border-left-color:#1d4ed8}
+  .stat-lbl{font-size:var(--fs-small);text-transform:none;letter-spacing:0;color:var(--c-muted)}
+  .stat-val{font-size:26px}
+
+  /* Data tables are wrapped in .table-scroll by _Layout: a wide table scrolls sideways inside
+     its card instead of pushing the page wider; a narrow one still fills the width. */
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+  /* Grid columns may shrink below their widest table (which then scrolls) instead of pushing the page wider */
+  [style*="grid-template-columns"]>*,.doc-top>*{min-width:0}
+
+  /* Searchable dropdown: finger-sized rows */
+  .ss-item{font-size:var(--fs-body);padding:11px 12px;min-height:var(--tap)}
+  .ss-item.ss-blank{color:var(--c-muted)}
+  .ss-none{font-size:var(--fs-small);color:var(--c-muted)}
+  .ss-list{max-height:320px}
+
+  /* Inline styles in the pages (10–12px text, light-grey text) are lifted here on screen only,
+     so print keeps them. Pages are cleaned up one by one later; these are the safety net. */
+  [style*="font-size:10px"],[style*="font-size:11px"],[style*="font-size:12px"]{font-size:var(--fs-min)!important}
+  [style*="color:#9ca3af"],[style*="color:#d1d5db"],[style*="color:#4a5568"]{color:var(--c-muted)!important}
+}
+
+/* Tablet and phone: sidebar becomes a slide-in menu */
+@media screen and (max-width:1023px){
+  .sb{transform:translateX(-100%);transition:transform .2s ease;width:280px}
+  body.nav-open .sb{transform:none;box-shadow:4px 0 20px rgba(0,0,0,.3)}
+  body.nav-open .nav-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:35}
+  body.nav-open{overflow:hidden}
+  .main{margin-left:0}
+  .nav-toggle{display:inline-flex}
+  .topbar{padding:8px 16px}
+  .topbar-left{display:flex;align-items:center;gap:12px;min-width:0}
+  .content{padding:16px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  /* Document entry (Sales/Purchases Create): item builder in two columns, product and Add full width */
+  .content .item-row{grid-template-columns:1fr 1fr!important;row-gap:14px}
+  .content .item-row>:first-child,.content .item-row>.item-add{grid-column:1/-1}
+  .item-add label{display:none}
+  .item-add .btn{width:100%}
+}
+
+/* Phone */
+@media screen and (max-width:767px){
+  .topbar{flex-wrap:wrap;position:static;row-gap:4px}
+  .topbar h2{font-size:18px}
+  .topbar-clock{display:none}
+  .topbar-right{width:100%;justify-content:space-between;gap:8px}
+  .user-box{gap:8px}
+  .user-box .badge{display:none}
+  .card{padding:16px 14px}
+  .frow2,.frow3{grid-template-columns:1fr}
+  .stats{gap:10px}
+  .stat{padding:12px 14px}
+  .stat-val{font-size:22px}
+  th,.table-scroll td{white-space:nowrap}  /* one line per cell; the table scrolls instead */
+  /* Inline multi-column grids and button rows stack / wrap */
+  [style*="grid-template-columns"]{grid-template-columns:1fr!important}
+  [style*="display:flex"]{flex-wrap:wrap}
+  .search-bar input,.search-bar select{min-width:100%}
+  /* The Tanda Terima preview keeps its A4 layout (it is what prints); on a phone it scrolls sideways */
+  #ttDoc{overflow-x:auto}
+  /* Document entry on a phone: header, then items, then the summary with the save button */
+  .doc-form{display:flex;flex-direction:column;gap:16px}
+  .doc-top{display:contents!important}
+  .doc-form>.card,.doc-top>.card{margin-bottom:0!important}
+  .doc-items{order:2}
+  .doc-summary{order:3}
+  .doc-form>*:not(.doc-top):not(.doc-items):not(.doc-summary){order:4}
+}

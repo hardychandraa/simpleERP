@@ -5,75 +5,10 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>@ViewData["Title"] — SimpleERP</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;background:#f0f2f5;color:#1a1a2e;display:flex;min-height:100vh}
-.sb{width:215px;background:#1e2433;color:#c8d0e0;flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;overflow-y:auto}
-.sb-brand{padding:16px 16px 12px;border-bottom:1px solid #2d3a52}
-.sb-brand h1{font-size:15px;font-weight:800;color:#fff;letter-spacing:.5px}
-.sb-brand small{font-size:10px;color:#4a5568}
-.sb-nav{flex:1;padding:8px 0}
-.sb-sec{padding:10px 16px 3px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#4a5568;font-weight:600}
-.sb-nav a{display:flex;align-items:center;gap:8px;padding:8px 16px;color:#b0bac8;text-decoration:none;font-size:13px;transition:background .1s;border-left:3px solid transparent}
-.sb-nav a:hover{background:#2d3a52;color:#fff}
-.sb-nav a.active{background:#2a3650;color:#60a5fa;border-left-color:#3b82f6;font-weight:600}
-.sb-foot{padding:10px 16px;border-top:1px solid #2d3a52;font-size:10px;color:#4a5568}
-.main{flex:1;display:flex;flex-direction:column;margin-left:215px;min-width:0}
-.topbar{background:#fff;padding:10px 24px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
-.topbar h2{font-size:15px;font-weight:700;color:#1a1a2e}
-.content{flex:1;padding:20px 24px}
-.card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:20px;margin-bottom:16px}
-.card-title{font-size:12px;font-weight:700;color:#374151;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #f3f4f6;text-transform:uppercase;letter-spacing:.05em}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{background:#f9fafb;padding:9px 12px;text-align:left;font-weight:600;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #e5e7eb}
-td{padding:9px 12px;border-bottom:1px solid #f3f4f6;color:#374151;vertical-align:middle}
-tr:hover td{background:#fafafa}
-tr:last-child td{border-bottom:none}
-.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
-.ok{background:#d1fae5;color:#065f46}.err{background:#fee2e2;color:#991b1b}
-.warn{background:#fef3c7;color:#92400e}.info{background:#dbeafe;color:#1e40af}.gray{background:#f3f4f6;color:#6b7280}
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:none;text-decoration:none;transition:opacity .12s;white-space:nowrap}
-.btn:hover{opacity:.85}.btn:disabled{opacity:.45;cursor:not-allowed}
-.btn-primary{background:#2563eb;color:#fff}.btn-success{background:#059669;color:#fff}
-.btn-danger{background:#dc2626;color:#fff}.btn-warn{background:#d97706;color:#fff}
-.btn-secondary{background:#6b7280;color:#fff}.btn-outline{background:#fff;border:1px solid #d1d5db;color:#374151}
-.btn-sm{padding:4px 10px;font-size:12px}
-.fg{margin-bottom:13px}
-label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
-input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:7px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;color:#1a1a2e;background:#fff;outline:none;transition:border-color .12s}
-input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.1)}
-.frow{display:grid;gap:13px}.frow2{grid-template-columns:1fr 1fr}.frow3{grid-template-columns:1fr 1fr 1fr}
-.alert{padding:10px 14px;border-radius:6px;margin-bottom:13px;font-size:13px;line-height:1.5}
-.alert-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
-.alert-success{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
-.alert-warning{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
-.alert-info{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
-.stat{background:#fff;border-radius:8px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:4px solid}
-.stat.blue{border-left-color:#3b82f6}.stat.green{border-left-color:#059669}
-.stat.orange{border-left-color:#d97706}.stat.red{border-left-color:#dc2626}
-.stat.purple{border-left-color:#7c3aed}.stat.teal{border-left-color:#0891b2}
-.stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;font-weight:600}
-.stat-val{font-size:21px;font-weight:700;color:#1a1a2e;margin-top:3px}
-.search-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
-.search-bar input,.search-bar select{flex:1;min-width:160px}
-/* Searchable dropdown (wwwroot/js/searchable-select.js) — the real <select> stays in the form, hidden */
-.ss-wrap{position:relative}
-.ss-native{position:absolute!important;opacity:0;pointer-events:none;width:1px!important;height:1px;min-width:0!important;left:0;bottom:0;padding:0;border:0}
-.ss-input{cursor:pointer}.ss-open .ss-input{cursor:text;border-color:#2563eb}
-.ss-list{display:none;position:absolute;z-index:50;left:0;right:0;top:calc(100% + 2px);max-height:280px;overflow-y:auto;background:#fff;border:1px solid #d1d5db;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
-.ss-open .ss-list{display:block}
-.ss-item{padding:7px 11px;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ss-item.ss-active{background:#eff6ff}.ss-item.ss-selected{font-weight:600}.ss-item.ss-blank{color:#9ca3af}
-.ss-none{padding:8px 11px;font-size:12px;color:#9ca3af}
-/* Upper-case-only text fields (names, SKU, category); the server upper-cases them too */
-.upper{text-transform:uppercase}
-.upper::placeholder{text-transform:none}
-@@media print{.sb,.topbar,.no-print{display:none!important}.main{margin-left:0}.content{padding:0}.card{box-shadow:none;border:none}body{background:#fff;font-family:'Courier New',monospace;font-size:10pt}}
-</style>
+<link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
 </head>
 <body>
-<nav class="sb">
+<nav class="sb" id="sb">
   <div class="sb-brand">
     <h1>⚡ SimpleERP</h1>
     <small>@Localizer["Store Management System"]</small>
@@ -157,8 +92,12 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
 </nav>
 <div class="main">
   <div class="topbar">
-    <h2>@ViewData["Title"]</h2>
-    <div style="display:flex;align-items:center;gap:14px">
+    <div class="topbar-left">
+      <button type="button" class="nav-toggle no-print" aria-controls="sb" aria-expanded="false"
+              aria-label="@Localizer["Menu"]" title="@Localizer["Menu"]">☰</button>
+      <h2>@ViewData["Title"]</h2>
+    </div>
+    <div class="topbar-right">
       @{
           // Round-trip back to the page the user is on, query string included, so switching
           // language never loses a filter or a date range they had applied.
@@ -166,19 +105,18 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
                         + ViewContext.HttpContext.Request.QueryString;
           var currentLang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
       }
-      <span class="no-print" style="font-size:11px;color:#9ca3af" title="@Localizer["Language"]">
+      <span class="lang no-print" title="@Localizer["Language"]">
         @foreach (var (code, label) in new[] { ("id", "ID"), ("en", "EN") })
         {
-            var isCurrent = currentLang == code;
             <a href="/set-language?culture=@code&amp;returnUrl=@Uri.EscapeDataString(returnUrl)"
-               style="text-decoration:none;padding:2px 6px;border-radius:4px;font-weight:@(isCurrent ? "700" : "500");color:@(isCurrent ? "#2563eb" : "#9ca3af");background:@(isCurrent ? "#eff6ff" : "transparent")">@label</a>
+               class="@(currentLang == code ? "on" : "")" style="border-radius:6px">@label</a>
         }
       </span>
-      <span style="font-size:12px;color:#9ca3af">@DateTime.Now.ToString("ddd, dd MMM yyyy  HH:mm")</span>
+      <span class="topbar-clock">@DateTime.Now.ToString("ddd, dd MMM yyyy  HH:mm")</span>
       @if (User.Identity?.IsAuthenticated == true)
       {
-        <span class="no-print" style="display:flex;align-items:center;gap:8px;padding-left:14px;border-left:1px solid #e5e7eb">
-          <a href="/Account/ChangePassword" style="text-decoration:none;font-size:12px;color:#374151;font-weight:600"
+        <span class="user-box no-print">
+          <a href="/Account/ChangePassword" style="text-decoration:none;font-weight:600"
              title="@Localizer["Change Password"]">
             @(User.FindFirst("DisplayName")?.Value ?? User.Identity.Name)
             <span class="badge @(isAdmin ? "info" : "gray")" style="margin-left:4px">@Localizer[isAdmin ? "Admin" : "Staff"]</span>
@@ -196,7 +134,26 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
     @RenderBody()
   </div>
 </div>
+<div class="nav-backdrop no-print"></div>
 <script>
+  // Phone/tablet menu: the ☰ button slides the sidebar in; the backdrop, Esc or a link closes it.
+  (() => {
+    const btn = document.querySelector('.nav-toggle');
+    const set = open => { document.body.classList.toggle('nav-open', open); btn.setAttribute('aria-expanded', open); };
+    btn.addEventListener('click', () => set(!document.body.classList.contains('nav-open')));
+    document.querySelector('.nav-backdrop').addEventListener('click', () => set(false));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') set(false); });
+    document.querySelectorAll('.sb-nav a').forEach(a => a.addEventListener('click', () => set(false)));
+  })();
+  // Data tables (those with a header row) get a sideways-scroll wrapper, so on a phone a wide
+  // table scrolls inside its card. Screen only: the wrapper has no style in print.
+  document.querySelectorAll('.content table').forEach(t => {
+    if (!t.tHead || t.parentElement.classList.contains('table-scroll')) return;
+    const w = document.createElement('div');
+    w.className = 'table-scroll';
+    t.parentNode.insertBefore(w, t);
+    w.appendChild(t);
+  });
   window.SEARCHABLE_T = {
     noMatch: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["No matches"].Value)),
     search:  @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Type to search…"].Value))

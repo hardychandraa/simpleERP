@@ -97,8 +97,7 @@
                         {
                             <form method="post" asp-page-handler="Delete" asp-route-id="@r.Id"
                                   style="display:inline" onsubmit="return confirm('@Localizer["Delete rule {0}?", r.Name]');">
-                                <button type="submit" class="btn btn-outline btn-sm"
-                                        style="color:#dc2626;border-color:#fecaca">@Localizer["Delete"]</button>
+                                <button type="submit" class="btn btn-danger-outline btn-sm">@Localizer["Delete"]</button>
                             </form>
                         }
                     </td>

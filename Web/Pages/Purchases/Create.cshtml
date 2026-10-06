@@ -8,8 +8,8 @@
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" id="purchaseForm">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+<form method="post" id="purchaseForm" class="doc-form">
+    <div class="doc-top" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
 
         <!-- Left: document header -->
         <div class="card" style="margin-bottom:0">
@@ -95,8 +95,8 @@
             </div>
         </div>
 
-        <!-- Right: live summary + submit -->
-        <div class="card" style="margin-bottom:0">
+        <!-- Right: live summary + submit (moves below the items on a phone) -->
+        <div class="card doc-summary" style="margin-bottom:0">
             <div class="card-title">@Localizer["Summary"]</div>
             <table style="font-size:14px;width:100%">
                 <tr>
@@ -110,7 +110,7 @@
             </table>
 
             <div style="border-top:1px solid #f3f4f6;padding-top:10px;margin-top:4px">
-                <label style="font-size:12px;color:#6b7280">@Localizer["Document Discount"]</label>
+                <label>@Localizer["Document Discount"]</label>
                 <div style="display:flex;gap:4px;margin-top:4px">
                     <input type="number" asp-for="InvoiceDiscountInput" min="0" step="0.01"
                            placeholder="0" style="flex:1;min-width:0" oninput="render()" />
@@ -145,8 +145,8 @@
                 </tr>
             </table>
             <input type="hidden" name="ItemsJson" id="ItemsJson" value="[]" />
-            <button type="submit" id="submitBtn" class="btn btn-primary"
-                    style="width:100%;margin-top:14px;padding:12px;font-size:15px">
+            <button type="submit" id="submitBtn" class="btn btn-primary btn-lg"
+                    style="width:100%;margin-top:14px">
                 📥 @Localizer["Post Purchase & Receive Stock"]
             </button>
             <div style="font-size:11px;color:#9ca3af;margin-top:8px;text-align:center">
@@ -157,10 +157,10 @@
     </div>
 
     <!-- Item builder -->
-    <div class="card">
+    <div class="card doc-items">
         <div class="card-title">@Localizer["Add Items"]</div>
 
-        <div style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1.35fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
+        <div class="item-row" style="display:grid;grid-template-columns:2.5fr 0.7fr 1.1fr 1.35fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
             <div>
                 <label>@Localizer["Product"]</label>
                 <select id="inProd" onchange="onProductChange()" data-searchable>
@@ -202,14 +202,14 @@
                      style="position:absolute;top:100%;left:0;font-size:10px;color:#9ca3af;
                             white-space:nowrap;pointer-events:none;line-height:1.3"></div>
             </div>
-            <div>
+            <div class="item-add">
                 <label>&nbsp;</label>
                 <button type="button" class="btn btn-success" onclick="addItem()">@Localizer["Add"]</button>
             </div>
         </div>
 
         <div style="margin-bottom:14px">
-            <label style="font-size:12px;color:#6b7280">@Localizer["Line Notes"] <span style="font-weight:400">(@Localizer["batch, expiry, condition…"])</span></label>
+            <label>@Localizer["Line Notes"] <span style="font-weight:400;color:#4b5563">(@Localizer["batch, expiry, condition…"])</span></label>
             <input type="text" id="inNotes" maxlength="500" placeholder="@Localizer["Optional..."]" />
         </div>
 
@@ -256,7 +256,8 @@ const T = {
     needSupplier:   @Html.Raw(Json.Serialize(Localizer["Please select a supplier."].Value)),
     perUnit:        @Html.Raw(Json.Serialize(Localizer["/unit"].Value)),
     offInvoice:     @Html.Raw(Json.Serialize(Localizer["off the invoice"].Value)),
-    included:       @Html.Raw(Json.Serialize(Localizer["included"].Value))
+    included:       @Html.Raw(Json.Serialize(Localizer["included"].Value)),
+    remove:         @Html.Raw(Json.Serialize(Localizer["Remove"].Value))
 };
 
 const PRODUCTS = @Html.Raw(JsonSerializer.Serialize(
@@ -416,7 +417,7 @@ function render() {
                 ? '-' + fmt(item.disc) + (item.discPct ? `<br><small style="color:#9ca3af">(${item.discPct}%)</small>` : '')
                 : '—'}</td>
             <td style="text-align:right;font-weight:600">${fmt(item.total)}</td>
-            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(${i})">✕</button></td>
+            <td><button type="button" class="btn btn-danger-outline btn-sm" onclick="removeItem(${i})" title="${T.remove}" aria-label="${T.remove}">✕</button></td>
         </tr>`;
     });
     body.innerHTML = html;

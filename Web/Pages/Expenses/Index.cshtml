@@ -83,8 +83,7 @@
                               asp-route-to="@Model.To.ToString("yyyy-MM-dd")"
                               style="display:inline"
                               onsubmit="return confirm('@Localizer["Delete this {0} expense of {1}?", e.CategoryName, e.Amount.ToString("N0")]');">
-                            <button type="submit" class="btn btn-outline btn-sm"
-                                    style="color:#dc2626;border-color:#fecaca">@Localizer["Delete"]</button>
+                            <button type="submit" class="btn btn-danger-outline btn-sm">@Localizer["Delete"]</button>
                         </form>
                     </td>
                 </tr>
