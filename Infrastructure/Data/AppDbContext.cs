@@ -66,6 +66,11 @@ public class AppDbContext : DbContext
             e.Property(c => c.Name).IsRequired().HasMaxLength(300);
             e.Property(c => c.Phone).HasMaxLength(50);
             e.Property(c => c.Address).HasMaxLength(500);
+            e.Property(c => c.DefaultDiscountPercent).HasColumnType("decimal(18,4)");
+            e.HasOne(c => c.SalesPerson).WithMany()
+                .HasForeignKey(c => c.SalesPersonId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(c => c.PaymentTerm).WithMany()
+                .HasForeignKey(c => c.PaymentTermId).OnDelete(DeleteBehavior.Restrict);
         });
 
         m.Entity<InventoryLedger>(e => {

@@ -31,7 +31,20 @@ public interface IInventoryLedgerRepository {
     Task AddAsync(InventoryLedger entry);
     Task<decimal> GetCurrentStockAsync(Guid productId, Guid branchId);
     Task<decimal> GetCurrentAvgCostAsync(Guid productId, Guid branchId);
-    Task<List<InventoryLedger>> GetAllAsync(DateTime? from = null, DateTime? to = null);
+    /// <summary>
+    /// Serialises stock-outs per product until this operation saves: opens the transaction if
+    /// none is open (UnitOfWork.SaveChangesAsync commits it) and takes a lock per product.
+    /// </summary>
+    Task LockProductsAsync(IEnumerable<Guid> productIds);
+    /// <summary>Movements in [from, to) by document date, oldest first (ties: posting order).</summary>
+    Task<List<InventoryLedger>> GetStockCardAsync(Guid? productId, DateTime? from, DateTime? to);
+    /// <summary>Stock per product from every movement dated before <paramref name="before"/>.</summary>
+    Task<Dictionary<Guid, decimal>> GetBalancesBeforeAsync(Guid? productId, DateTime before);
+    /// <summary>
+    /// The document number and customer/supplier behind each ledger ReferenceId (sales,
+    /// purchases, returns, rebates). Ids with no document behind them are left out.
+    /// </summary>
+    Task<Dictionary<Guid, LedgerReference>> ResolveReferencesAsync(IEnumerable<Guid> referenceIds);
     /// <summary>
     /// What the stock on hand is currently worth, for the Position Summary.
     /// One grouped query rather than the per-product loop in
@@ -48,6 +61,10 @@ public interface IInventoryLedgerRepository {
 /// Products whose stock has gone to zero contribute nothing and aren't counted.
 /// </summary>
 public record InventoryValuation(int ProductsInStock, decimal TotalValue);
+
+/// <summary>What a stock movement points at: its document number, the other party, and the
+/// page that shows the document (null when there is none).</summary>
+public record LedgerReference(string DocumentNumber, string? Party, string? Link);
 
 public interface ISaleRepository {
     Task<Sale?> GetByIdWithItemsAsync(Guid id);

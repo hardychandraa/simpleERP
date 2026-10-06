@@ -33,6 +33,8 @@ secrets.json
 *.pdf
 *.docx
 *.xlsx
+# Local-only cutover tooling and data (KJ.xlsx, import scripts, generated SQL).
+data migration/
 
 # ── Application logs ──────────────────────────────────────────────────────────
 # Rolling diagnostic logs from Serilog (30 days retained). Local runtime output,

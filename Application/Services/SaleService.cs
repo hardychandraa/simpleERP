@@ -174,13 +174,29 @@ public class SaleService : ISaleService
             // sale screen — but never printed.
         }
 
+        // Concurrent sales of the same product wait here for each other (see LockProductsAsync),
+        // so the stock read below already includes whatever the other sale took.
+        await _inventory.LockStockAsync(dto.Items.Select(i => i.ProductId));
+
+        // Stock is checked per product across all lines, not per line: nothing is saved until
+        // the end, so StockOutAsync sees the same on-hand figure for every line, and two lines
+        // of one product (3 + 3 with 4 in stock) each passed and took stock negative.
+        foreach (var g in dto.Items.GroupBy(i => i.ProductId).Where(g => g.Count() > 1))
+        {
+            var wanted    = g.Sum(i => i.Qty);
+            var available = await _inventory.GetCurrentStockAsync(g.Key);
+            if (available < wanted)
+                return _log.Refuse<SaleDto>(_loc["Insufficient stock. Available: {0}, Requested: {1}",
+                                                 available.ToString("N2"), wanted.ToString("N2")]);
+        }
+
         var saleId   = Guid.NewGuid();
         var saleItems = new List<SaleItem>();
 
         // Stock out each item (validates stock, inserts ledger — no SaveChanges yet)
         foreach (var itemDto in dto.Items)
         {
-            var stockResult = await _inventory.StockOutAsync(itemDto.ProductId, itemDto.Qty, saleId, branch.Id);
+            var stockResult = await _inventory.StockOutAsync(itemDto.ProductId, itemDto.Qty, saleId, branch.Id, saleDate);
             if (!stockResult.Success) return _log.Refuse<SaleDto>(stockResult.Error!);
 
             var product  = await _products.GetByIdAsync(itemDto.ProductId);
@@ -567,8 +583,10 @@ public class SaleService : ISaleService
         var due = await _sales.GetDueSalesAsync(customerId);
         // The window narrows what's listed, never what's payable — a statement covering
         // "last month" still settles against whatever the customer chooses to pay.
-        if (from.HasValue) due = due.Where(s => s.SaleDate.Date >= from.Value.Date).ToList();
-        if (to.HasValue)   due = due.Where(s => s.SaleDate.Date <= to.Value.Date).ToList();
+        // SaleDate is UTC; the window is in local days (a 2 Oct sale is stored as 1 Oct 17:00).
+        static DateTime LocalDay(DateTime utc) => DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime().Date;
+        if (from.HasValue) due = due.Where(s => LocalDay(s.SaleDate) >= from.Value.Date).ToList();
+        if (to.HasValue)   due = due.Where(s => LocalDay(s.SaleDate) <= to.Value.Date).ToList();
 
         var openNotes = await _notes.GetAllAsync(
             type: CreditDebitType.Credit, status: CreditNoteStatus.Open, customerId: customerId);
@@ -654,8 +672,14 @@ public class SaleService : ISaleService
             .OrderBy(s => s.SaleDate).ThenBy(s => s.InvoiceNumber)
             .ToList();
         var applied = await _noteApplications.GetAppliedTotalsForSalesAsync(sales.Select(s => s.Id));
+        // The full invoices, mapped exactly as the invoice print maps them, so both documents
+        // show the same lines and figures. One query each; a receipt covers a handful.
+        var details = new Dictionary<Guid, SaleDto>();
+        foreach (var s in sales)
+            if (await _sales.GetByIdWithItemsAsync(s.Id) is { } full) details[s.Id] = MapDto(full);
 
         return new InvoiceReceiptDto {
+            Details         = details,
             CustomerId      = customer.Id,
             CustomerName    = customer.Name,
             CustomerAddress = customer.Address,

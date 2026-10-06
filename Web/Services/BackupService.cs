@@ -6,7 +6,8 @@ using Npgsql;
 namespace SimpleERP.Web.Services;
 
 /// <summary>
-/// Runs once at startup and then daily at midnight.
+/// Runs once at startup and then daily at noon: the office server may only be switched on
+/// during working hours, so a midnight run could be missed for days (HC, 2026-10-06).
 /// Dumps the PostgreSQL database to a timestamped file in /backups, keeping the last 30.
 ///
 /// Replaces the previous SQLite File.Copy approach — a server-hosted database cannot be
@@ -33,11 +34,12 @@ public class BackupService : BackgroundService
         // Run once at startup
         await RunBackupAsync();
 
-        // Then every day at midnight
+        // Then every day at noon, local time
         while (!stoppingToken.IsCancellationRequested)
         {
             var now  = DateTime.Now;
-            var next = now.Date.AddDays(1);   // midnight tonight
+            var next = now.Date.AddHours(12);
+            if (next <= now) next = next.AddDays(1);
             var wait = next - now;
             try { await Task.Delay(wait, stoppingToken); }
             catch (TaskCanceledException) { break; }

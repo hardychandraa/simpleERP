@@ -38,7 +38,8 @@ public class CreateModel : PageModel
     [BindProperty] public PaymentType PaymentType { get; set; } = PaymentType.Cash;
     [BindProperty] public Guid?       PaymentTermId { get; set; }
     [BindProperty] public string?     Notes       { get; set; }
-    [BindProperty] public bool        IsTaxInclusive { get; set; }
+    /// <summary>Supplier prices include PPN by default (HC, 2026-10-06); untick when they don't.</summary>
+    [BindProperty] public bool        IsTaxInclusive { get; set; } = true;
     [BindProperty] public string      ItemsJson   { get; set; } = "[]";
 
     [BindProperty] public decimal InvoiceDiscountInput { get; set; }

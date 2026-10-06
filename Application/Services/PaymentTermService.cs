@@ -90,7 +90,7 @@ public class PaymentTermService : IPaymentTermService
         if (term == null) return _log.Refuse(_loc["Payment term not found."]);
 
         if (await _terms.IsInUseAsync(id))
-            return _log.Refuse(_loc["'{0}' is used by existing sales and cannot be deleted. Set it to inactive instead — it will stop appearing on new sales while existing invoices keep showing it.", term.Name]);
+            return _log.Refuse(_loc["'{0}' is used by existing documents, suppliers or customers and cannot be deleted. Set it to inactive instead — it will stop appearing on new documents while existing ones keep showing it.", term.Name]);
 
         _terms.Remove(term);
         await _audit.LogAsync(user, "PaymentTerm.Delete", term.Name);

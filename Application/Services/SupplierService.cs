@@ -49,7 +49,7 @@ public class SupplierService : ISupplierService
 
         var supplier = new Supplier {
             Id            = Guid.NewGuid(),
-            Name          = dto.Name.Trim(),
+            Name          = dto.Name.Trim().ToUpperInvariant(),
             Phone         = Blank(dto.Phone),
             Address       = Blank(dto.Address),
             TaxId         = Blank(dto.TaxId),
@@ -73,7 +73,7 @@ public class SupplierService : ISupplierService
         if (invalid != null) return invalid;
 
         var before = $"{supplier.Name} (active={supplier.IsActive})";
-        supplier.Name          = dto.Name.Trim();
+        supplier.Name          = dto.Name.Trim().ToUpperInvariant();
         supplier.Phone         = Blank(dto.Phone);
         supplier.Address       = Blank(dto.Address);
         supplier.TaxId         = Blank(dto.TaxId);
@@ -108,7 +108,7 @@ public class SupplierService : ISupplierService
             return _log.Refuse(_loc["Supplier name is required."]);
         if (dto.Name.Trim().Length > 300)
             return _log.Refuse(_loc["Supplier name cannot exceed 300 characters."]);
-        if (await _suppliers.NameExistsAsync(dto.Name.Trim(), excludeId))
+        if (await _suppliers.NameExistsAsync(dto.Name.Trim().ToUpperInvariant(), excludeId))
             return _log.Refuse(_loc["A supplier named '{0}' already exists.", dto.Name.Trim()]);
 
         if (dto.PaymentTermId.HasValue)

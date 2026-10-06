@@ -171,7 +171,7 @@
                                 data-cost="@p.AvgCost.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                 data-stock="@p.CurrentStock.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                 data-name="@p.Name">
-                            @p.Name (@p.SKU) — @Localizer["Stk:"] @p.CurrentStock.ToString("N0")
+                            @p.Name (@p.SKU) — @Localizer["Qty:"] @p.CurrentStock.ToString("N0")
                         </option>
                     }
                 </select>

@@ -5,9 +5,10 @@
 @if(Model.Error!=null){<div class="alert alert-danger">@Model.Error</div>}
 <div class="card"><div class="card-title">@Localizer["New Customer"]</div>
 <form method="post">
-  <div class="fg"><label>@Localizer["Full Name"] *</label><input type="text" asp-for="Input.Name" required placeholder="@Localizer["e.g. John Doe"]"/></div>
+  <div class="fg"><label>@Localizer["Full Name"] *</label><input type="text" class="upper" asp-for="Input.Name" required placeholder="@Localizer["e.g. John Doe"]"/></div>
   <div class="fg"><label>@Localizer["Phone"]</label><input type="text" asp-for="Input.Phone" placeholder="@Localizer["e.g. 08123456789"]"/></div>
   <div class="fg"><label>@Localizer["Address"]</label><textarea asp-for="Input.Address" rows="2" placeholder="@Localizer["Street address..."]"></textarea></div>
+  <partial name="_SaleDefaults" model="Model.Defaults" />
   <div style="display:flex;gap:10px;margin-top:6px">
     <button type="submit" class="btn btn-primary">@Localizer["Save"]</button>
     <a href="/Customers" class="btn btn-outline">@Localizer["Cancel"]</a>

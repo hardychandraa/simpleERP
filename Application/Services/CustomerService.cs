@@ -11,11 +11,14 @@ namespace SimpleERP.Application.Services;
 public class CustomerService : ICustomerService
 {
     private readonly ICustomerRepository _customers;
+    private readonly ISalesPersonRepository _people;
+    private readonly IPaymentTermRepository _terms;
     private readonly IUnitOfWork _uow;
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<CustomerService> _log;
-    public CustomerService(ICustomerRepository c, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc, ILogger<CustomerService> log) { _customers=c; _uow=uow;  _loc = loc; _log = log; }
+    public CustomerService(ICustomerRepository c, ISalesPersonRepository people, IPaymentTermRepository terms,
+        IUnitOfWork uow, IStringLocalizer<SharedResource> loc, ILogger<CustomerService> log)
+    { _customers=c; _people=people; _terms=terms; _uow=uow;  _loc = loc; _log = log; }
 
     public async Task<List<CustomerDto>> GetAllAsync(string? search = null)
         => Filter(await _customers.GetAllAsync(), search);
@@ -27,9 +30,13 @@ public class CustomerService : ICustomerService
     public async Task<ServiceResult> CreateAsync(CreateCustomerDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Customer name is required."]);
+        var invalid = await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent);
+        if (invalid != null) return invalid;
         await _customers.AddAsync(new Customer {
-            Id = Guid.NewGuid(), Name = dto.Name.Trim(),
+            Id = Guid.NewGuid(), Name = dto.Name.Trim().ToUpperInvariant(),
             Phone = dto.Phone?.Trim(), Address = dto.Address?.Trim(),
+            SalesPersonId = dto.SalesPersonId, PaymentTermId = dto.PaymentTermId,
+            DefaultDiscountPercent = NormaliseDiscount(dto.DefaultDiscountPercent),
             IsActive = true, CreatedAt = DateTime.UtcNow });
         await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
@@ -40,8 +47,13 @@ public class CustomerService : ICustomerService
         var c = await _customers.GetByIdAsync(dto.Id);
         if (c == null) return _log.Refuse(_loc["Customer not found."]);
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Name is required."]);
-        c.Name = dto.Name.Trim(); c.Phone = dto.Phone?.Trim();
+        var invalid = await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent,
+                                                  c.SalesPersonId, c.PaymentTermId);
+        if (invalid != null) return invalid;
+        c.Name = dto.Name.Trim().ToUpperInvariant(); c.Phone = dto.Phone?.Trim();
         c.Address = dto.Address?.Trim(); c.IsActive = dto.IsActive;
+        c.SalesPersonId = dto.SalesPersonId; c.PaymentTermId = dto.PaymentTermId;
+        c.DefaultDiscountPercent = NormaliseDiscount(dto.DefaultDiscountPercent);
         _customers.Update(c); await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
     }
@@ -54,6 +66,28 @@ public class CustomerService : ICustomerService
         return q.Select(Map).ToList();
     }
 
+    /// <summary>
+    /// The sale defaults must point at a real, active salesperson and term (an inactive one
+    /// is still accepted when it is the value already saved, so editing a phone number never
+    /// fails because the term was retired), and the discount must be a usable percentage.
+    /// </summary>
+    private async Task<ServiceResult?> ValidateDefaultsAsync(Guid? personId, Guid? termId, decimal? discount,
+        Guid? currentPersonId = null, Guid? currentTermId = null)
+    {
+        if (discount is < 0 or >= 100)
+            return _log.Refuse(_loc["Discount percent must be between 0 and 100."]);
+        if (personId is { } p && p != currentPersonId && await _people.GetByIdAsync(p) is not { IsActive: true })
+            return _log.Refuse(_loc["Sales person not found."]);
+        if (termId is { } t && t != currentTermId && await _terms.GetByIdAsync(t) is not { IsActive: true })
+            return _log.Refuse(_loc["Payment term not found."]);
+        return null;
+    }
+
+    /// <summary>0% is the same as no discount; stored as null so "none" has one meaning.</summary>
+    private static decimal? NormaliseDiscount(decimal? discount) => discount is > 0 ? discount : null;
+
     private static CustomerDto Map(Domain.Entities.Customer c) => new()
-        { Id=c.Id, Name=c.Name, Phone=c.Phone, Address=c.Address, IsActive=c.IsActive };
+        { Id=c.Id, Name=c.Name, Phone=c.Phone, Address=c.Address, IsActive=c.IsActive,
+          SalesPersonId=c.SalesPersonId, PaymentTermId=c.PaymentTermId,
+          DefaultDiscountPercent=c.DefaultDiscountPercent };
 }

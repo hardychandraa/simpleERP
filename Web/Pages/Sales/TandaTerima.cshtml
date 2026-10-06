@@ -19,6 +19,11 @@
 .tt-sig { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 28px; }
 .tt-sig div { padding-left: 8px; }
 .tt-sig .line { margin-top: 56px; }
+.tt-items .tt-head td { background: #f3f4f6; padding-top: 8px; border-top: 2px solid #9ca3af; }
+.tt-items .tt-sum td { border: none; padding-top: 2px; padding-bottom: 2px; }
+.tt-items .tt-sum td:first-child { text-align: right; color: #4b5563; }
+.tt-items .tt-total td { font-weight: 700; }
+@@media print { .tt-inv { break-inside: avoid; } .tt-items .tt-head td { background: none; } }
 </style>
 
 <div class="card no-print" style="margin-bottom:14px">
@@ -91,48 +96,82 @@
       @if (!string.IsNullOrEmpty(r.CustomerPhone))   { <div style="font-size:12px">Telp @r.CustomerPhone</div> }
     </div>
 
-    <table>
+    @* One block per invoice with everything printed on it, so the receipt alone answers
+       "what was delivered, at what price and discount" (owner, 2026-10-06). The figures come
+       from the same mapping as the invoice print, so the two documents always agree. *@
+    <table class="tt-items">
       <thead>
         <tr>
-          <th style="width:36px">No</th>
-          <th>No. Faktur</th>
-          <th>Tanggal</th>
-          <th>Jatuh Tempo</th>
-          <th>TOP</th>
-          <th class="num">Total</th>
-          <th class="num">Bayar / Potongan</th>
-          <th class="num">Sisa</th>
+          <th style="width:30px">No</th>
+          <th>Nama Barang</th>
+          <th class="num">Qty</th>
+          <th>Sat</th>
+          <th class="num">Harga</th>
+          <th class="num">Disc%</th>
+          <th class="num">Disc.Rp</th>
+          <th class="num">Jumlah</th>
         </tr>
       </thead>
-      <tbody>
-        @{ int n = 0; }
-        @foreach (var inv in r.Invoices) {
-          n++;
-          var settled = inv.AmountPaid + inv.AppliedNotesTotal;
-          var left    = Math.Max(0, inv.NetBalanceDue);
-          <tr>
-            <td>@n</td>
-            <td><a href="/Sales/@inv.Id">@inv.InvoiceNumber</a></td>
-            <td>@inv.SaleDate.ToLocalTime().ToString("dd-MM-yyyy")</td>
-            <td>@(inv.DueDate?.ToString("dd-MM-yyyy") ?? "-")</td>
-            <td>@(inv.PaymentType == "Cash" ? "Tunai" : string.IsNullOrEmpty(inv.PaymentTermName) ? "Kredit" : inv.PaymentTermName)</td>
-            <td class="num">@inv.GrandTotal.ToString("N0", idc)</td>
-            <td class="num">@(settled > 0 ? settled.ToString("N0", idc) : "-")</td>
-            <td class="num" style="font-weight:600">@left.ToString("N0", idc)</td>
+      @{ int n = 0; }
+      @foreach (var inv in r.Invoices) {
+        n++;
+        var d       = r.Details.GetValueOrDefault(inv.Id);
+        var settled = inv.AmountPaid + inv.AppliedNotesTotal;
+        var left    = Math.Max(0, inv.NetBalanceDue);
+        var term    = inv.PaymentType == "Cash" ? "Tunai" : string.IsNullOrEmpty(inv.PaymentTermName) ? "Kredit" : inv.PaymentTermName;
+        <tbody class="tt-inv">
+          <tr class="tt-head">
+            <td colspan="8">
+              <strong>@n. <a href="/Sales/@inv.Id">@inv.InvoiceNumber</a></strong>
+              &nbsp; Tgl @inv.SaleDate.ToLocalTime().ToString("dd-MM-yyyy")
+              &nbsp; @term
+              &nbsp; Jatuh Tempo @(inv.DueDate?.ToString("dd-MM-yyyy") ?? "-")
+              @if (!string.IsNullOrEmpty(d?.SalesPersonCode)) { <span>&nbsp; Sales @d.SalesPersonCode</span> }
+            </td>
           </tr>
-        }
-        @if (r.Invoices.Count == 0) {
-          <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:20px">Tidak ada faktur pada periode ini.</td></tr>
-        }
-      </tbody>
-      <tfoot>
-        <tr style="font-weight:800;border-top:2px solid #111">
-          <td colspan="5">@r.Invoices.Count faktur &nbsp; TOTAL</td>
-          <td class="num">@r.TotalInvoiced.ToString("N0", idc)</td>
-          <td class="num">@r.TotalSettled.ToString("N0", idc)</td>
-          <td class="num">@r.TotalOutstanding.ToString("N0", idc)</td>
-        </tr>
-      </tfoot>
+          @if (d != null) {
+            int k = 0;
+            foreach (var it in d.Items) {
+              k++;
+              var lineDisc = it.DiscountAmount * it.Qty;
+              <tr>
+                <td>@k</td>
+                <td>@it.ProductName</td>
+                <td class="num">@it.Qty.ToString("0.##", idc)</td>
+                <td>@it.Unit</td>
+                <td class="num">@it.UnitPrice.ToString("N0", idc)</td>
+                <td class="num">@(it.DiscountPercent is > 0 ? it.DiscountPercent.Value.ToString("0.##", idc) : "-")</td>
+                <td class="num">@(lineDisc > 0 ? lineDisc.ToString("N0", idc) : "-")</td>
+                <td class="num">@it.LineTotal.ToString("N0", idc)</td>
+              </tr>
+            }
+            <tr class="tt-sum"><td colspan="7">Subtotal</td><td class="num">@d.Items.Sum(i => i.LineTotal).ToString("N0", idc)</td></tr>
+            @if (d.InvoiceDiscountAmount > 0) {
+              <tr class="tt-sum"><td colspan="7">Disc faktur@(d.InvoiceDiscountPercent is > 0 ? $" {d.InvoiceDiscountPercent.Value.ToString("0.##", idc)}%" : "")</td>
+                <td class="num">-@d.InvoiceDiscountAmount.ToString("N0", idc)</td></tr>
+            }
+            <tr class="tt-sum"><td colspan="7">DPP</td><td class="num">@d.TaxBase.ToString("N0", idc)</td></tr>
+            <tr class="tt-sum"><td colspan="7">PPN @((d.TaxRate * 100).ToString("0.##", idc))%</td><td class="num">@d.TaxAmount.ToString("N0", idc)</td></tr>
+          }
+          <tr class="tt-sum tt-total"><td colspan="7">Total faktur</td><td class="num">@inv.GrandTotal.ToString("N0", idc)</td></tr>
+          @if (settled > 0) {
+            <tr class="tt-sum"><td colspan="7">Bayar / Potongan</td><td class="num">-@settled.ToString("N0", idc)</td></tr>
+          }
+          <tr class="tt-sum tt-total"><td colspan="7">Sisa</td><td class="num">@left.ToString("N0", idc)</td></tr>
+        </tbody>
+      }
+      @if (r.Invoices.Count == 0) {
+        <tbody><tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:20px">Tidak ada faktur pada periode ini.</td></tr></tbody>
+      }
+    </table>
+
+    <table style="margin-top:14px">
+      <tr style="font-weight:800;border-top:2px solid #111">
+        <td>@r.Invoices.Count faktur &nbsp; TOTAL</td>
+        <td class="num">Total @r.TotalInvoiced.ToString("N0", idc)</td>
+        <td class="num">Bayar / Potongan @r.TotalSettled.ToString("N0", idc)</td>
+        <td class="num">Sisa @r.TotalOutstanding.ToString("N0", idc)</td>
+      </tr>
     </table>
 
     <div class="tt-sig">

@@ -66,6 +66,9 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
 .ss-item{padding:7px 11px;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ss-item.ss-active{background:#eff6ff}.ss-item.ss-selected{font-weight:600}.ss-item.ss-blank{color:#9ca3af}
 .ss-none{padding:8px 11px;font-size:12px;color:#9ca3af}
+/* Upper-case-only text fields (names, SKU, category); the server upper-cases them too */
+.upper{text-transform:uppercase}
+.upper::placeholder{text-transform:none}
 @@media print{.sb,.topbar,.no-print{display:none!important}.main{margin-left:0}.content{padding:0}.card{box-shadow:none;border:none}body{background:#fff;font-family:'Courier New',monospace;font-size:10pt}}
 </style>
 </head>
@@ -200,6 +203,19 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
   };
 </script>
 <script src="/js/searchable-select.js" asp-append-version="true"></script>
+<script>
+  // .upper fields hold the value itself in upper case, not just its look, so what is
+  // posted, searched and shown elsewhere matches what the user saw while typing.
+  document.addEventListener('input', e => {
+    const el = e.target;
+    if (!el.classList || !el.classList.contains('upper')) return;
+    const up = el.value.toUpperCase();
+    if (up === el.value) return;
+    const start = el.selectionStart, end = el.selectionEnd;
+    el.value = up;
+    el.setSelectionRange(start, end);
+  });
+</script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

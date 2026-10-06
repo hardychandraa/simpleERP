@@ -43,14 +43,15 @@ public class InventoryService : IInventoryService
     }
 
     // Called inside SaleService transaction — does NOT SaveChanges
-    public async Task<ServiceResult> StockOutAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId)
+    public async Task<ServiceResult> StockOutAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId,
+        DateTime? at = null)
     {
         if (qty <= 0) return _log.Refuse(_loc["Quantity must be > 0."]);
         var stock = await _ledger.GetCurrentStockAsync(productId, branchId);
         if (stock < qty) return _log.Refuse(_loc["Insufficient stock. Available: {0}, Requested: {1}", stock.ToString("N2"), qty.ToString("N2")]);
         var cost = await _ledger.GetCurrentAvgCostAsync(productId, branchId);
         await _ledger.AddAsync(new InventoryLedger {
-            Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
+            Id = Guid.NewGuid(), TransactionDate = at ?? DateTime.UtcNow,
             BranchId = branchId, ProductId = productId,
             ReferenceType = ReferenceType.Sale, ReferenceId = referenceId,
             QtyIn = 0, QtyOut = qty, UnitCost = cost, TotalCost = cost * qty });
@@ -79,7 +80,7 @@ public class InventoryService : IInventoryService
     /// documents.
     /// </summary>
     public async Task StockInForPurchaseAsync(
-        IEnumerable<PurchaseReceiptLine> lines, Guid purchaseId, Guid branchId)
+        IEnumerable<PurchaseReceiptLine> lines, Guid purchaseId, Guid branchId, DateTime? at = null)
     {
         var running = new Dictionary<Guid, (decimal Stock, decimal Cost)>();
 
@@ -94,7 +95,7 @@ public class InventoryService : IInventoryService
                 : (state.Stock * state.Cost + line.Qty * line.UnitCost) / (state.Stock + line.Qty);
 
             await _ledger.AddAsync(new InventoryLedger {
-                Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
+                Id = Guid.NewGuid(), TransactionDate = at ?? DateTime.UtcNow,
                 BranchId = branchId, ProductId = line.ProductId,
                 ReferenceType = ReferenceType.PurchaseOrder, ReferenceId = purchaseId,
                 QtyIn = line.Qty, QtyOut = 0,
@@ -137,8 +138,8 @@ public class InventoryService : IInventoryService
     /// pre-return figures.
     /// </summary>
     public Task StockInForCustomerReturnAsync(
-        IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId)
-        => StockInManyCore(lines, returnId, branchId, ReferenceType.CustomerReturn);
+        IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId, DateTime? at = null)
+        => StockInManyCore(lines, returnId, branchId, ReferenceType.CustomerReturn, at);
 
     /// <summary>
     /// Reverses a sales return on cancellation — the goods go back out at the current
@@ -165,8 +166,8 @@ public class InventoryService : IInventoryService
     /// together issue more than exists.
     /// </summary>
     public Task<ServiceResult> StockOutForSupplierReturnAsync(
-        IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId)
-        => StockOutManyCore(lines, returnId, branchId, ReferenceType.SupplierReturn, useCurrentCost: false,
+        IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId, DateTime? at = null)
+        => StockOutManyCore(lines, returnId, branchId, ReferenceType.SupplierReturn, useCurrentCost: false, at: at,
             shortfall: (name, stock, want) =>
                 _loc["{0}: only {1} in stock, {2} being returned. Stock cannot go negative — check the quantity, or adjust stock first.",
                      name, stock.ToString("N2"), want.ToString("N2")]);
@@ -202,6 +203,8 @@ public class InventoryService : IInventoryService
                 _loc["{0}: only {1} of the {2} received units are still in stock — the rest has already been sold or issued. Record a supplier return instead.",
                      name, stock.ToString("N2"), want.ToString("N2")]);
 
+    public Task LockStockAsync(IEnumerable<Guid> productIds) => _ledger.LockProductsAsync(productIds);
+
     public async Task<ServiceResult> AdjustStockAsync(StockAdjustmentDto dto, string user)
     {
         if (string.IsNullOrWhiteSpace(dto.Reason)) return _log.Refuse(_loc["Reason is required."]);
@@ -213,6 +216,7 @@ public class InventoryService : IInventoryService
         var branch = await _branches.GetDefaultAsync();
         if (branch == null) return _log.Refuse(_loc["Default branch not found."]);
 
+        await _ledger.LockProductsAsync(new[] { dto.ProductId });
         var currentStock = await _ledger.GetCurrentStockAsync(dto.ProductId, branch.Id);
         var delta = dto.QtyActual - currentStock;
         if (delta == 0) return _log.Refuse(_loc["No difference between current stock and actual count. No adjustment needed."]);
@@ -268,14 +272,31 @@ public class InventoryService : IInventoryService
         return result;
     }
 
-    public async Task<List<InventoryLedgerDto>> GetLedgerAsync(DateTime? from = null, DateTime? to = null)
+    public async Task<StockCardDto> GetStockCardAsync(Guid? productId, DateTime? fromUtc, DateTime? toUtc)
     {
-        var entries = await _ledger.GetAllAsync(from, to);
-        return entries.Select(e => new InventoryLedgerDto {
-            Id = e.Id, TransactionDate = e.TransactionDate,
-            ProductName = e.Product?.Name ?? "", ReferenceType = e.ReferenceType.ToString(),
-            QtyIn = e.QtyIn, QtyOut = e.QtyOut, UnitCost = e.UnitCost, TotalCost = e.TotalCost
-        }).ToList();
+        var entries = await _ledger.GetStockCardAsync(productId, fromUtc, toUtc);
+        var opening = fromUtc.HasValue
+            ? await _ledger.GetBalancesBeforeAsync(productId, fromUtc.Value)
+            : new Dictionary<Guid, decimal>();
+        var refs = await _ledger.ResolveReferencesAsync(entries.Select(e => e.ReferenceId));
+
+        // Running balance per product, continuing from what it held before the period.
+        var balance = new Dictionary<Guid, decimal>(opening);
+        var rows = new List<InventoryLedgerDto>(entries.Count);
+        foreach (var e in entries)
+        {
+            balance[e.ProductId] = balance.GetValueOrDefault(e.ProductId) + e.QtyIn - e.QtyOut;
+            refs.TryGetValue(e.ReferenceId, out var r);
+            rows.Add(new InventoryLedgerDto {
+                Id = e.Id, TransactionDate = e.TransactionDate,
+                ProductId = e.ProductId, ProductName = e.Product?.Name ?? "",
+                ReferenceType = e.ReferenceType.ToString(),
+                DocumentNumber = r?.DocumentNumber, Party = r?.Party, Link = r?.Link,
+                QtyIn = e.QtyIn, QtyOut = e.QtyOut, Balance = balance[e.ProductId],
+                UnitCost = e.UnitCost, TotalCost = e.TotalCost
+            });
+        }
+        return new StockCardDto { Opening = opening, Rows = rows };
     }
 
     /// <summary>
@@ -283,7 +304,7 @@ public class InventoryService : IInventoryService
     /// across them via a running tally. Each line is valued at its own supplied UnitCost.
     /// </summary>
     private async Task StockInManyCore(IEnumerable<StockMovementLine> lines,
-        Guid referenceId, Guid branchId, ReferenceType refType)
+        Guid referenceId, Guid branchId, ReferenceType refType, DateTime? at = null)
     {
         var running = new Dictionary<Guid, (decimal Stock, decimal Cost)>();
 
@@ -300,7 +321,7 @@ public class InventoryService : IInventoryService
                 : (state.Stock * state.Cost + line.Qty * line.UnitCost) / (state.Stock + line.Qty);
 
             await _ledger.AddAsync(new InventoryLedger {
-                Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
+                Id = Guid.NewGuid(), TransactionDate = at ?? DateTime.UtcNow,
                 BranchId = branchId, ProductId = line.ProductId,
                 ReferenceType = refType, ReferenceId = referenceId,
                 QtyIn = line.Qty, QtyOut = 0,
@@ -321,9 +342,10 @@ public class InventoryService : IInventoryService
     /// </summary>
     private async Task<ServiceResult> StockOutManyCore(IEnumerable<StockMovementLine> lines,
         Guid referenceId, Guid branchId, ReferenceType refType, bool useCurrentCost,
-        Func<string, decimal, decimal, string> shortfall)
+        Func<string, decimal, decimal, string> shortfall, DateTime? at = null)
     {
         var materialised = lines.Where(l => l.Qty > 0).ToList();
+        await _ledger.LockProductsAsync(materialised.Select(l => l.ProductId));
         var available    = new Dictionary<Guid, decimal>();
         var currentCost  = new Dictionary<Guid, decimal>();
 
@@ -345,7 +367,7 @@ public class InventoryService : IInventoryService
         {
             var cost = useCurrentCost ? currentCost[line.ProductId] : line.UnitCost;
             await _ledger.AddAsync(new InventoryLedger {
-                Id = Guid.NewGuid(), TransactionDate = DateTime.UtcNow,
+                Id = Guid.NewGuid(), TransactionDate = at ?? DateTime.UtcNow,
                 BranchId = branchId, ProductId = line.ProductId,
                 ReferenceType = refType, ReferenceId = referenceId,
                 QtyIn = 0, QtyOut = line.Qty,

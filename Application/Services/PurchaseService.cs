@@ -203,7 +203,7 @@ public class PurchaseService : IPurchaseService
         var receipts = purchaseItems.Select(i => new PurchaseReceiptLine(
             i.ProductId, i.Qty, NetUnitCostExTax(i, dto.IsTaxInclusive, taxRate))).ToList();
 
-        await _inventory.StockInForPurchaseAsync(receipts, purchaseId, branch.Id);
+        await _inventory.StockInForPurchaseAsync(receipts, purchaseId, branch.Id, LedgerDate.FromLocalDay(purchaseDate));
 
         var purchase = new Purchase {
             Id                     = purchaseId,

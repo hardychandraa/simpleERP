@@ -815,7 +815,7 @@
   <data name="Statement of Account" xml:space="preserve"><value>Laporan Rekening</value></data>
   <data name="Status" xml:space="preserve"><value>Status</value></data>
   <data name="Still owed:" xml:space="preserve"><value>Masih terutang:</value></data>
-  <data name="Stk:" xml:space="preserve"><value>Stok:</value></data>
+  <data name="Qty:" xml:space="preserve"><value>Qty:</value></data>
   <data name="Stock" xml:space="preserve"><value>Stok</value></data>
   <data name="Stock Adjustment" xml:space="preserve"><value>Penyesuaian Stok</value></data>
   <data name="Stock is always valued ex-PPN either way — input VAT is reclaimed, not a cost of the goods." xml:space="preserve"><value>Stok selalu dinilai di luar PPN, apa pun pilihannya — PPN Masukan dapat dikreditkan, bukan biaya barang.</value></data>
@@ -925,8 +925,8 @@
   <data name="'{0}' has already accrued rebates and cannot be deleted. Set it inactive instead — it stops applying to new purchases while existing accruals keep their link to it." xml:space="preserve"><value>'{0}' sudah menghasilkan akrual rebat dan tidak bisa dihapus. Nonaktifkan saja — aturan berhenti berlaku untuk pembelian baru sementara akrual yang sudah ada tetap tertaut padanya.</value></data>
   <data name="'{0}' has expenses recorded against it and cannot be deleted. Set it to inactive instead — it will stop appearing on new expenses while existing ones stay categorised." xml:space="preserve"><value>'{0}' sudah memiliki catatan biaya dan tidak bisa dihapus. Nonaktifkan saja — kategori berhenti muncul pada biaya baru sementara yang sudah ada tetap terkategori.</value></data>
   <data name="'{0}' has posted purchases and cannot be deleted. Set them to inactive instead — they will stop appearing on new purchases while existing documents keep showing them." xml:space="preserve"><value>'{0}' sudah memiliki pembelian terposting dan tidak bisa dihapus. Nonaktifkan saja — pemasok berhenti muncul pada pembelian baru sementara dokumen yang sudah ada tetap menampilkannya.</value></data>
-  <data name="'{0}' is credited with existing sales and cannot be deleted. Set them to inactive instead — they will stop appearing on new sales while existing invoices keep showing them." xml:space="preserve"><value>'{0}' sudah diatribusikan pada penjualan yang ada dan tidak bisa dihapus. Nonaktifkan saja — namanya berhenti muncul pada penjualan baru sementara faktur yang sudah ada tetap menampilkannya.</value></data>
-  <data name="'{0}' is used by existing sales and cannot be deleted. Set it to inactive instead — it will stop appearing on new sales while existing invoices keep showing it." xml:space="preserve"><value>'{0}' dipakai oleh penjualan yang sudah ada dan tidak bisa dihapus. Nonaktifkan saja — termin berhenti muncul pada penjualan baru sementara faktur yang sudah ada tetap menampilkannya.</value></data>
+  <data name="'{0}' is credited with existing sales or is a customer's default and cannot be deleted. Set them to inactive instead — they will stop appearing on new sales while existing invoices keep showing them." xml:space="preserve"><value>'{0}' sudah diatribusikan pada penjualan yang ada atau menjadi sales bawaan pelanggan, dan tidak bisa dihapus. Nonaktifkan saja — namanya berhenti muncul pada penjualan baru sementara faktur yang sudah ada tetap menampilkannya.</value></data>
+  <data name="'{0}' is used by existing documents, suppliers or customers and cannot be deleted. Set it to inactive instead — it will stop appearing on new documents while existing ones keep showing it." xml:space="preserve"><value>'{0}' dipakai oleh dokumen, supplier atau pelanggan yang sudah ada dan tidak bisa dihapus. Nonaktifkan saja — termin berhenti muncul pada dokumen baru sementara dokumen yang sudah ada tetap menampilkannya.</value></data>
   <data name="'{0}' saved." xml:space="preserve"><value>'{0}' disimpan.</value></data>
   <data name="'{0}': {1} being returned but only {2} of the {3} received is still returnable ({4} already returned)." xml:space="preserve"><value>'{0}': {1} akan diretur tetapi hanya {2} dari {3} yang diterima masih bisa diretur ({4} sudah diretur).</value></data>
   <data name="'{0}': {1} being returned but only {2} of the {3} received is still returnable." xml:space="preserve"><value>'{0}': {1} akan diretur tetapi hanya {2} dari {3} yang diterima masih bisa diretur.</value></data>
@@ -1296,4 +1296,12 @@
   <data name="The start date is after the end date." xml:space="preserve"><value>Tanggal awal lebih besar dari tanggal akhir.</value></data>
   <data name="Settled by credit notes (no cash)" xml:space="preserve"><value>Dilunasi dengan nota kredit (bukan tunai)</value></data>
   <data name="Payments have been recorded against {0}, so it cannot be cancelled. Correct it with a return or a credit note instead." xml:space="preserve"><value>Sudah ada pembayaran untuk {0}, sehingga tidak dapat dibatalkan. Koreksi dengan retur atau nota kredit.</value></data>
+  <data name="Document" xml:space="preserve"><value>Dokumen</value></data>
+  <data name="Customer / Supplier" xml:space="preserve"><value>Pelanggan / Supplier</value></data>
+  <data name="Opening balance" xml:space="preserve"><value>Saldo awal</value></data>
+  <data name="Defaults for new sales" xml:space="preserve"><value>Bawaan untuk penjualan baru</value></data>
+  <data name="cash customer" xml:space="preserve"><value>pelanggan tunai</value></data>
+  <data name="Discount per item (%)" xml:space="preserve"><value>Diskon per barang (%)</value></data>
+  <data name="Pre-filled on each new sale for this customer; can still be changed on the sale." xml:space="preserve"><value>Terisi otomatis di setiap penjualan baru untuk pelanggan ini; tetap bisa diubah di penjualan.</value></data>
+  <data name="Please fill in every required field with a valid value." xml:space="preserve"><value>Isi semua kolom wajib dengan nilai yang benar.</value></data>
 </root>

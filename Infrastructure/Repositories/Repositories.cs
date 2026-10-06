@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore;
 namespace SimpleERP.Infrastructure.Repositories;
 
 /// <summary>
-/// The <c>yyyyMM</c> stamp every document number is prefixed with (INV-, PO-, CRN-, SRN-,
+/// The <c>yyMM</c> stamp (e.g. INV-2610-0001; HC, 2026-10-06) every document number is prefixed with (INV-, PO-, CRN-, SRN-,
 /// CN-/DN-, STL-R-/STL-P-).
 ///
 /// Taken from the **local** business day, not UTC. These generators previously used
 /// <c>DateTime.UtcNow</c>, which on a UTC+7 machine is still the previous day for the first
 /// seven hours of every local day — and on the 1st of a month, the previous *month*. A sale
-/// entered at 06:12 local on 1 August was therefore numbered <c>INV-202607-…</c> while the
+/// entered at 06:12 local on 1 August was therefore numbered <c>INV-2607-…</c> while the
 /// invoice, the list and the printed receipt all showed it as 1 August: an August transaction
 /// filed under July, which is exactly what breaks a month-end reconciliation against the tax
 /// consultant's records.
@@ -24,7 +24,7 @@ namespace SimpleERP.Infrastructure.Repositories;
 /// </summary>
 internal static class DocumentNumber
 {
-    public static string MonthStamp() => DateTime.Now.ToString("yyyyMM");
+    public static string MonthStamp() => DateTime.Now.ToString("yyMM");
 
     /// <summary>
     /// Reserves the next number under <paramref name="prefix"/> and returns it formatted
@@ -225,8 +225,13 @@ public class PaymentTermRepository : IPaymentTermRepository
         _db.PaymentTerms.AnyAsync(t => t.Name.ToLower() == name.ToLower()
                                     && (excludeId == null || t.Id != excludeId));
 
-    public Task<bool> IsInUseAsync(Guid id) =>
-        _db.Sales.AnyAsync(s => s.PaymentTermId == id);
+    // Every row that points at a term blocks deleting it (all FKs are Restrict). Suppliers and
+    // purchases were missing here, so deleting a term a supplier used failed in the database.
+    public async Task<bool> IsInUseAsync(Guid id) =>
+        await _db.Sales.AnyAsync(s => s.PaymentTermId == id)
+        || await _db.Purchases.AnyAsync(p => p.PaymentTermId == id)
+        || await _db.Suppliers.AnyAsync(s => s.PaymentTermId == id)
+        || await _db.Customers.AnyAsync(c => c.PaymentTermId == id);
 
     public async Task AddAsync(PaymentTerm term) => await _db.PaymentTerms.AddAsync(term);
     public void Update(PaymentTerm term) => _db.PaymentTerms.Update(term);
@@ -1166,8 +1171,9 @@ public class SalesPersonRepository : ISalesPersonRepository
     public Task<bool> CodeExistsAsync(string code, Guid? excludeId = null) =>
         _db.SalesPersons.AnyAsync(p => p.Code == code && (excludeId == null || p.Id != excludeId));
 
-    public Task<bool> IsInUseAsync(Guid id) =>
-        _db.Sales.AnyAsync(s => s.SalesPersonId == id);
+    public async Task<bool> IsInUseAsync(Guid id) =>
+        await _db.Sales.AnyAsync(s => s.SalesPersonId == id)
+        || await _db.Customers.AnyAsync(c => c.SalesPersonId == id);
 
     public async Task AddAsync(SalesPerson person) => await _db.SalesPersons.AddAsync(person);
     public void Update(SalesPerson person) => _db.SalesPersons.Update(person);
@@ -1238,7 +1244,42 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
     private readonly AppDbContext _db;
     public InventoryLedgerRepository(AppDbContext db) => _db = db;
 
-    public async Task AddAsync(InventoryLedger e) => await _db.InventoryLedgers.AddAsync(e);
+    public async Task AddAsync(InventoryLedger e)
+    {
+        e.EnteredAt = NextEnteredAt();
+        await _db.InventoryLedgers.AddAsync(e);
+    }
+
+    // EnteredAt must be strictly increasing: two lines of one purchase for the same product
+    // are written in the same instant, and "latest stock-in" has to pick the second one (its
+    // UnitCost already includes the first). PostgreSQL keeps microseconds, so consecutive
+    // stamps are at least 1 µs (10 ticks) apart. One process serves the app, so a static
+    // counter is enough.
+    private static long _lastEnteredTicks;
+    private static DateTime NextEnteredAt()
+    {
+        var now = DateTime.UtcNow.Ticks / 10 * 10;
+        long prev, next;
+        do
+        {
+            prev = Interlocked.Read(ref _lastEnteredTicks);
+            next = Math.Max(now, prev + 10);
+        } while (Interlocked.CompareExchange(ref _lastEnteredTicks, next, prev) != prev);
+        return new DateTime(next, DateTimeKind.Utc);
+    }
+
+    // Two people selling the last units at the same moment both read "3 in stock" and both
+    // posted (6 concurrent sales of 1 took stock to -3). A transaction-scoped advisory lock per
+    // product makes the second one wait until the first has saved, then read the new figure.
+    // Taken in a fixed order so two documents with the same products can't deadlock; held
+    // until commit or rollback, and re-entrant within the same transaction.
+    public async Task LockProductsAsync(IEnumerable<Guid> productIds)
+    {
+        if (_db.Database.CurrentTransaction == null)
+            await _db.Database.BeginTransactionAsync();
+        foreach (var id in productIds.Distinct().OrderBy(i => i))
+            await _db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({id.ToString()}, 0))");
+    }
 
     public async Task<decimal> GetCurrentStockAsync(Guid productId, Guid branchId)
     {
@@ -1250,17 +1291,51 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
     {
         var last = await _db.InventoryLedgers
             .Where(l => l.ProductId == productId && l.BranchId == branchId && l.QtyIn > 0)
-            .OrderByDescending(l => l.TransactionDate)
+            .OrderByDescending(l => l.EnteredAt)   // posting order, not document date: see InventoryLedger.EnteredAt
             .FirstOrDefaultAsync();
         return last?.UnitCost ?? 0;
     }
 
-    public Task<List<InventoryLedger>> GetAllAsync(DateTime? from = null, DateTime? to = null)
+    public Task<List<InventoryLedger>> GetStockCardAsync(Guid? productId, DateTime? from, DateTime? to)
     {
         var q = _db.InventoryLedgers.Include(l => l.Product).AsQueryable();
-        if (from.HasValue) q = q.Where(l => l.TransactionDate >= from.Value);
-        if (to.HasValue)   q = q.Where(l => l.TransactionDate <= to.Value);
-        return q.OrderByDescending(l => l.TransactionDate).ToListAsync();
+        if (productId.HasValue) q = q.Where(l => l.ProductId == productId.Value);
+        if (from.HasValue)      q = q.Where(l => l.TransactionDate >= from.Value);
+        if (to.HasValue)        q = q.Where(l => l.TransactionDate <  to.Value);
+        return q.OrderBy(l => l.TransactionDate).ThenBy(l => l.EnteredAt).ToListAsync();
+    }
+
+    public Task<Dictionary<Guid, decimal>> GetBalancesBeforeAsync(Guid? productId, DateTime before) =>
+        _db.InventoryLedgers
+            .Where(l => l.TransactionDate < before && (productId == null || l.ProductId == productId))
+            .GroupBy(l => l.ProductId)
+            .Select(g => new { g.Key, Qty = g.Sum(l => l.QtyIn) - g.Sum(l => l.QtyOut) })
+            .ToDictionaryAsync(x => x.Key, x => x.Qty);
+
+    public async Task<Dictionary<Guid, LedgerReference>> ResolveReferencesAsync(IEnumerable<Guid> referenceIds)
+    {
+        // A ReferenceId is the id of whichever document moved the stock; cancellations reuse
+        // the cancelled document's id. Manual stock-in and adjustments have no document.
+        var ids = referenceIds.Distinct().ToList();
+        var map = new Dictionary<Guid, LedgerReference>();
+        if (ids.Count == 0) return map;
+
+        foreach (var s in await _db.Sales.Where(x => ids.Contains(x.Id))
+                     .Select(x => new { x.Id, x.InvoiceNumber, Party = x.Customer!.Name }).ToListAsync())
+            map[s.Id] = new(s.InvoiceNumber, s.Party, $"/Sales/{s.Id}");
+        foreach (var p in await _db.Purchases.Where(x => ids.Contains(x.Id))
+                     .Select(x => new { x.Id, x.PurchaseNumber, Party = x.Supplier!.Name }).ToListAsync())
+            map[p.Id] = new(p.PurchaseNumber, p.Party, $"/Purchases/{p.Id}");
+        foreach (var r in await _db.CustomerReturns.Where(x => ids.Contains(x.Id))
+                     .Select(x => new { x.Id, x.ReturnNumber, Party = x.Sale!.Customer!.Name }).ToListAsync())
+            map[r.Id] = new(r.ReturnNumber, r.Party, $"/Returns/Customer/{r.Id}");
+        foreach (var r in await _db.SupplierReturns.Where(x => ids.Contains(x.Id))
+                     .Select(x => new { x.Id, x.ReturnNumber, Party = x.Purchase!.Supplier!.Name }).ToListAsync())
+            map[r.Id] = new(r.ReturnNumber, r.Party, $"/Returns/Supplier/{r.Id}");
+        foreach (var r in await _db.RebateRealizations.Where(x => ids.Contains(x.Id))
+                     .Select(x => new { x.Id, x.ReferenceId, Party = x.Supplier!.Name }).ToListAsync())
+            map[r.Id] = new(string.IsNullOrWhiteSpace(r.ReferenceId) ? "-" : r.ReferenceId, r.Party, null);
+        return map;
     }
 
     public async Task<InventoryValuation> GetValuationAsync(Guid branchId)
@@ -1278,7 +1353,7 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
                 Qty  = g.Sum(l => l.QtyIn) - g.Sum(l => l.QtyOut),
                 Cost = _db.InventoryLedgers
                           .Where(x => x.ProductId == g.Key && x.BranchId == branchId && x.QtyIn > 0)
-                          .OrderByDescending(x => x.TransactionDate)
+                          .OrderByDescending(x => x.EnteredAt)
                           .Select(x => (decimal?)x.UnitCost)
                           .FirstOrDefault()
             })

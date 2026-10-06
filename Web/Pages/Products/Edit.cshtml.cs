@@ -24,7 +24,7 @@ public class EditModel : PageModel {
     }
     public async Task<IActionResult> OnPostAsync() {
         ViewData["Title"]="Edit Product";
-        if (!ModelState.IsValid) return Page();
+        if (!ModelState.IsValid) { Error=_loc["Please fill in every required field with a valid value."]; return Page(); }
         var r = await _svc.UpdateAsync(Input);
         if (!r.Success) { Error=r.Error; return Page(); }
         return RedirectToPage("/Products/Index", new { msg=_loc["Product updated."].Value });

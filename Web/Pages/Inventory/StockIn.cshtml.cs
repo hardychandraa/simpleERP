@@ -15,13 +15,13 @@ public class StockInModel:PageModel{
     public async Task OnGetAsync(){ViewData["Title"]="Stock In";await Load();}
     public async Task<IActionResult> OnPostAsync(){
         ViewData["Title"]="Stock In";await Load();
-        if(!ModelState.IsValid)return Page();
+        if(!ModelState.IsValid){Error=_loc["Please fill in every required field with a valid value."];return Page();}
         var r=await _inv.StockInAsync(Input);
         if(!r.Success){Error=r.Error;return Page();}
         Success=_loc["Stock received successfully."];Input=new StockInDto();return Page();
     }
     private async Task Load(){
         var list=await _prod.GetAllActiveAsync();
-        Products=list.Select(p=>new SelectListItem($"{p.Name} ({p.SKU}) — {_loc["Stk:"]} {p.CurrentStock:N0}",p.Id.ToString())).ToList();
+        Products=list.Select(p=>new SelectListItem($"{p.Name} ({p.SKU}) — {_loc["Qty:"]} {p.CurrentStock:N0}",p.Id.ToString())).ToList();
     }
 }

@@ -85,7 +85,7 @@ public class SalesPersonService : ISalesPersonService
         if (person == null) return _log.Refuse(_loc["Sales person not found."]);
 
         if (await _people.IsInUseAsync(id))
-            return _log.Refuse(_loc["'{0}' is credited with existing sales and cannot be deleted. Set them to inactive instead — they will stop appearing on new sales while existing invoices keep showing them.", person.Name]);
+            return _log.Refuse(_loc["'{0}' is credited with existing sales or is a customer's default and cannot be deleted. Set them to inactive instead — they will stop appearing on new sales while existing invoices keep showing them.", person.Name]);
 
         _people.Remove(person);
         await _audit.LogAsync(user, "SalesPerson.Delete", person.Name);

@@ -1,0 +1,30 @@
+@model SimpleERP.Web.Pages.Customers.SaleDefaultsVm
+@* The customer's sale defaults, shared by Create and Edit. Posted as Input.* like the rest
+   of the form. Inactive people/terms only appear when they are the value already saved. *@
+<div class="card-title" style="margin-top:18px">@Localizer["Defaults for new sales"]</div>
+<div class="fg">
+  <label>@Localizer["Sales Person"]</label>
+  <select name="Input.SalesPersonId">
+    <option value="">— @Localizer["none"] —</option>
+    @foreach (var p in Model.People.Where(p => p.IsActive || p.Id == Model.SalesPersonId))
+    {
+      <option value="@p.Id" selected="@(p.Id == Model.SalesPersonId)">@p.Name@(string.IsNullOrEmpty(p.Code) ? "" : $" ({p.Code})")</option>
+    }
+  </select>
+</div>
+<div class="fg">
+  <label>@Localizer["Credit Term"]</label>
+  <select name="Input.PaymentTermId">
+    <option value="">— @Localizer["cash customer"] —</option>
+    @foreach (var t in Model.Terms.Where(t => t.IsActive || t.Id == Model.PaymentTermId))
+    {
+      <option value="@t.Id" selected="@(t.Id == Model.PaymentTermId)">@t.Name</option>
+    }
+  </select>
+</div>
+<div class="fg">
+  <label>@Localizer["Discount per item (%)"]</label>
+  <input type="number" name="Input.DefaultDiscountPercent" min="0" max="99.99" step="0.01"
+         value="@(Model.DiscountPercent?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))" placeholder="0" />
+  <div style="font-size:11px;color:#9ca3af;margin-top:4px">@Localizer["Pre-filled on each new sale for this customer; can still be changed on the sale."]</div>
+</div>

@@ -36,8 +36,9 @@ public class CreateModel : PageModel
     [BindProperty] public PaymentType PaymentType { get; set; } = PaymentType.Cash;
     [BindProperty] public string?     Notes       { get; set; }
     [BindProperty] public string      ItemsJson   { get; set; } = "[]";
-    /// <summary>True if the entered prices already include PPN. Default: PPN added on top.</summary>
-    [BindProperty] public bool        IsTaxInclusive { get; set; }
+    /// <summary>True if the entered prices already include PPN. Default: included, which is how
+    /// KJ quotes every price (HC, 2026-10-06). Revise copies the original's setting instead.</summary>
+    [BindProperty] public bool        IsTaxInclusive { get; set; } = true;
     /// <summary>Selected credit term. Empty = open credit with no agreed due date.</summary>
     [BindProperty] public Guid?       PaymentTermId  { get; set; }
     /// <summary>Who to credit. Empty = unattributed; the service treats that as valid.</summary>
@@ -62,6 +63,8 @@ public class CreateModel : PageModel
     public decimal VatRate { get; set; }
 
     public List<SelectListItem> CustomerOptions   { get; set; } = new();
+    /// <summary>Each customer's sale defaults (salesperson, term, item discount %), by id.</summary>
+    public List<CustomerDto>    Customers         { get; set; } = new();
     public List<ProductDto>     AvailableProducts { get; set; } = new();
     public string? Error { get; set; }
 
@@ -156,6 +159,7 @@ public class CreateModel : PageModel
     private async Task LoadAsync()
     {
         var customers = await _customers.GetAllActiveAsync();
+        Customers = customers;
         CustomerOptions = customers.Select(c => new SelectListItem(
             $"{c.Name}{(string.IsNullOrEmpty(c.Phone) ? "" : $"  ({c.Phone})")}",
             c.Id.ToString())).ToList();

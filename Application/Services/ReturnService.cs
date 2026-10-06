@@ -169,7 +169,7 @@ public class ReturnService : IReturnService
         await _inventory.StockInForCustomerReturnAsync(
             items.Select(i => new StockMovementLine(
                 i.ProductId, i.Product?.Name ?? "", i.Qty, i.CostAtSale)),
-            returnId, branch.Id);
+            returnId, branch.Id, LedgerDate.FromLocalDay(returnDate));
 
         var ret = new CustomerReturn {
             Id             = returnId,
@@ -389,7 +389,7 @@ public class ReturnService : IReturnService
         var issue = await _inventory.StockOutForSupplierReturnAsync(
             items.Select(i => new StockMovementLine(
                 i.ProductId, i.Product?.Name ?? "", i.Qty, i.CostAtReturn)),
-            returnId, branch.Id);
+            returnId, branch.Id, LedgerDate.FromLocalDay(returnDate));
         if (!issue.Success) return _log.Refuse<SupplierReturnDto>(issue.Error!);
 
         var ret = new SupplierReturn {
@@ -541,10 +541,16 @@ public class ReturnService : IReturnService
         returnDate = supplied?.Date ?? todayLocal;
         if (returnDate > todayLocal)
             return _loc["Return date cannot be in the future."].Value;
-        if (returnDate < sourceDate.Date)
+        // SaleDate is a UTC instant (a 2 Oct sale is stored as 1 Oct 17:00), so it is compared
+        // as the local day it shows as; PurchaseDate is already stored as the local day. Comparing
+        // the UTC date let a return dated the day before its sale through.
+        var sourceDay = againstInvoice
+            ? DateTime.SpecifyKind(sourceDate, DateTimeKind.Utc).ToLocalTime().Date
+            : sourceDate.Date;
+        if (returnDate < sourceDay)
             return againstInvoice
-                ? _loc["Return date cannot be before the invoice date ({0}).", sourceDate.ToString("dd MMM yyyy")].Value
-                : _loc["Return date cannot be before the purchase date ({0}).", sourceDate.ToString("dd MMM yyyy")].Value;
+                ? _loc["Return date cannot be before the invoice date ({0}).", sourceDay.ToString("dd MMM yyyy")].Value
+                : _loc["Return date cannot be before the purchase date ({0}).", sourceDay.ToString("dd MMM yyyy")].Value;
         return null;
     }
 

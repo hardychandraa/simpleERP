@@ -1,23 +1,47 @@
 @page
 @model SimpleERP.Web.Pages.Inventory.LedgerModel
-@{ ViewData["Title"]=Localizer["Inventory Ledger"].Value; }
+@{
+    ViewData["Title"] = Localizer["Inventory Ledger"].Value;
+    var one = Model.ProductId.HasValue;
+}
 <div class="card" style="margin-bottom:14px">
-<form method="get" style="display:flex;gap:14px;align-items:flex-end">
-  <div class="fg" style="margin:0;flex:1"><label>@Localizer["From"]</label><input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))"/></div>
-  <div class="fg" style="margin:0;flex:1"><label>@Localizer["To"]</label><input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))"/></div>
+<form method="get" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+  <div class="fg" style="margin:0;flex:2;min-width:240px"><label>@Localizer["Product"]</label>
+    <select name="productId" data-searchable>
+      <option value="">— @Localizer["All products"] —</option>
+      @foreach (var p in Model.Products)
+      {
+        <option value="@p.Id" selected="@(p.Id == Model.ProductId)">@p.Name (@p.SKU)</option>
+      }
+    </select></div>
+  <div class="fg" style="margin:0;flex:1"><label>@Localizer["From"]</label><input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")"/></div>
+  <div class="fg" style="margin:0;flex:1"><label>@Localizer["To"]</label><input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")"/></div>
   <button type="submit" class="btn btn-primary">@Localizer["Filter"]</button>
   <a href="/Inventory/Ledger" class="btn btn-outline">@Localizer["Reset"]</a>
 </form></div>
-<div class="card"><table><thead><tr><th>@Localizer["Date"]</th><th>@Localizer["Product"]</th><th>@Localizer["Type"]</th><th>@Localizer["Qty In"]</th><th>@Localizer["Qty Out"]</th><th>@Localizer["Unit Cost"]</th><th>@Localizer["Total"]</th></tr></thead><tbody>
-@foreach(var e in Model.Entries)
+<div class="card"><table><thead><tr>
+  <th>@Localizer["Date"]</th><th>@Localizer["Document"]</th><th>@Localizer["Type"]</th><th>@Localizer["Customer / Supplier"]</th>
+  @if (!one) { <th>@Localizer["Product"]</th> }
+  <th style="text-align:right">@Localizer["Qty In"]</th><th style="text-align:right">@Localizer["Qty Out"]</th>
+  <th style="text-align:right">@Localizer["Balance"]</th><th style="text-align:right">@Localizer["Unit Cost"]</th><th style="text-align:right">@Localizer["Total"]</th>
+</tr></thead><tbody>
+@if (one)
 {
-    var bc = e.ReferenceType switch { "Purchase" => "ok", "Sale" => "info", "Cancel" => "warn", _ => "gray" };
-<tr><td>@e.TransactionDate.ToLocalTime().ToString("dd-MMM-yy HH:mm")</td>
-<td>@e.ProductName</td>
-<td><span class="badge @bc">@Localizer[EnumDisplay.Key("ReferenceType", e.ReferenceType)]</span></td>
-<td style="color:@(e.QtyIn>0?"#059669":"#9ca3af")">@(e.QtyIn>0?$"+{e.QtyIn:N2}":"—")</td>
-<td style="color:@(e.QtyOut>0?"#dc2626":"#9ca3af")">@(e.QtyOut>0?$"-{e.QtyOut:N2}":"—")</td>
-<td>@e.UnitCost.ToString("N0")</td><td>@e.TotalCost.ToString("N0")</td></tr>
+  <tr style="background:#f9fafb"><td>@Model.From.ToString("dd-MMM-yy")</td><td colspan="5" style="color:#6b7280">@Localizer["Opening balance"]</td>
+  <td style="text-align:right;font-weight:600">@Model.Card.Opening.GetValueOrDefault(Model.ProductId!.Value).ToString("N0")</td><td></td><td></td></tr>
 }
-@if(!Model.Entries.Any()){<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:28px">@Localizer["No entries found."]</td></tr>}
+@foreach (var e in Model.Card.Rows)
+{
+    var bc = e.ReferenceType switch { "Purchase" or "PurchaseOrder" => "ok", "Sale" => "info", "Cancel" => "warn", _ => "gray" };
+<tr><td style="white-space:nowrap">@e.TransactionDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+<td style="white-space:nowrap">@if (e.Link != null) { <a href="@e.Link">@e.DocumentNumber</a> } else { @(e.DocumentNumber ?? "—") }</td>
+<td><span class="badge @bc">@Localizer[EnumDisplay.Key("ReferenceType", e.ReferenceType)]</span></td>
+<td>@(e.Party ?? "—")</td>
+@if (!one) { <td><a href="/Inventory/Ledger?productId=@e.ProductId&from=@Model.From.ToString("yyyy-MM-dd")&to=@Model.To.ToString("yyyy-MM-dd")">@e.ProductName</a></td> }
+<td style="text-align:right;color:@(e.QtyIn>0?"#059669":"#9ca3af")">@(e.QtyIn>0?$"+{e.QtyIn:N0}":"—")</td>
+<td style="text-align:right;color:@(e.QtyOut>0?"#dc2626":"#9ca3af")">@(e.QtyOut>0?$"-{e.QtyOut:N0}":"—")</td>
+<td style="text-align:right;font-weight:600">@e.Balance.ToString("N0")</td>
+<td style="text-align:right">@e.UnitCost.ToString("N0")</td><td style="text-align:right">@e.TotalCost.ToString("N0")</td></tr>
+}
+@if (!Model.Card.Rows.Any()) { <tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:28px">@Localizer["No entries found."]</td></tr> }
 </tbody></table></div>

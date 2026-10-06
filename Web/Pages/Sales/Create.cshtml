@@ -26,7 +26,7 @@
             <div class="card-title">@Localizer["Sale Info"]</div>
             <div class="fg">
                 <label>@Localizer["Customer"] *</label>
-                <select asp-for="CustomerId" asp-items="Model.CustomerOptions" required>
+                <select asp-for="CustomerId" asp-items="Model.CustomerOptions" required onchange="onCustomerChange()">
                     <option value="">— @Localizer["Select customer"] —</option>
                 </select>
             </div>
@@ -175,7 +175,7 @@
                                 data-stock="@p.CurrentStock.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                 data-warranty="@(p.DefaultWarrantyMonths ?? 0)"
                                 data-name="@p.Name">
-                            @p.Name (@p.SKU) — @Localizer["Stk:"] @p.CurrentStock.ToString("N0")
+                            @p.Name (@p.SKU) — @Localizer["Qty:"] @p.CurrentStock.ToString("N0")
                         </option>
                     }
                 </select>
@@ -292,6 +292,38 @@ const PRODUCTS = @Html.Raw(JsonSerializer.Serialize(
 ));
 
 let items = [];  // { productId, name, masterPrice, qty, price, disc, warranty, notes, priceReason, total }
+
+// ── Customer → sale defaults ─────────────────────────────────────────────────
+// Only defaults, applied when a customer is picked: everything stays editable, and the sale
+// stores its own values, so changing the customer's defaults later never moves a posted one.
+const CUSTOMER_DEFAULTS = @Html.Raw(JsonSerializer.Serialize(
+    Model.Customers.ToDictionary(
+        c => c.Id.ToString(),
+        c => new { sp = c.SalesPersonId?.ToString() ?? "", term = c.PaymentTermId?.ToString() ?? "",
+                   disc = c.DefaultDiscountPercent ?? 0 })
+));
+let customerDisc = 0;   // the picked customer's item discount %, re-applied after each line
+
+function onCustomerChange() {
+    const d = CUSTOMER_DEFAULTS[document.querySelector('select[name="CustomerId"]').value];
+    if (!d) return;
+    const sp = document.querySelector('select[name="SalesPersonId"]');
+    sp.value = d.sp;
+    if (sp.value !== d.sp) sp.value = '';          // an inactive person isn't in the list
+    const term = document.getElementById('paymentTermSelect');
+    document.getElementById('paymentTypeSelect').value = d.term ? '2' : '1';
+    onPaymentTypeChange();
+    if (d.term) { term.value = d.term; if (term.value !== d.term) term.value = ''; }
+    updateDueDatePreview();
+    customerDisc = d.disc;
+    resetLineDiscount();
+}
+
+function resetLineDiscount() {
+    document.getElementById('inDisc').value     = customerDisc > 0 ? String(customerDisc) : '0';
+    document.getElementById('inDiscMode').value = customerDisc > 0 ? 'pct' : 'amt';
+    onDiscountInput();
+}
 
 // ── Payment type → due date preview ──────────────────────────────────────────
 function onPaymentTypeChange() {
@@ -422,9 +454,7 @@ function addItem() {
     selEl.value = '';
     document.getElementById('inQty').value        = '1';
     document.getElementById('inPrice').value      = '';
-    document.getElementById('inDisc').value       = '0';
-    document.getElementById('inDiscMode').value   = 'amt';
-    onDiscountInput();
+    resetLineDiscount();
     document.getElementById('inWarranty').value   = '0';
     document.getElementById('inNotes').value      = '';
     document.getElementById('inPriceReason').value= '';
@@ -572,6 +602,13 @@ function fmt(n)    { return Math.round(n).toLocaleString(); }
         });
     }
     if (lines.length) { onPaymentTypeChange(); render(); }
+})();
+
+// A customer already picked on load (Revise, or a refused save): keep the posted salesperson
+// and term, but new lines still start from that customer's item discount.
+(function () {
+    const d = CUSTOMER_DEFAULTS[document.querySelector('select[name="CustomerId"]').value];
+    if (d) { customerDisc = d.disc; resetLineDiscount(); }
 })();
 
 function esc(s)    { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }

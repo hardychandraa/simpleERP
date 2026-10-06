@@ -49,20 +49,24 @@ public record StockMovementLine(Guid ProductId, string ProductName, decimal Qty,
 
 public interface IInventoryService {
     Task<ServiceResult> StockInAsync(StockInDto dto);
-    Task<ServiceResult> StockOutAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId);
+    /// <param name="at">The document's ledger date (UTC); null = now. See LedgerDate.</param>
+    Task<ServiceResult> StockOutAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId, DateTime? at = null);
     Task StockInForCancelAsync(Guid productId, decimal qty, decimal unitCost, Guid referenceId, Guid branchId);
-    Task StockInForPurchaseAsync(IEnumerable<PurchaseReceiptLine> lines, Guid purchaseId, Guid branchId);
+    Task StockInForPurchaseAsync(IEnumerable<PurchaseReceiptLine> lines, Guid purchaseId, Guid branchId, DateTime? at = null);
     Task<ServiceResult> StockOutForPurchaseCancelAsync(IEnumerable<StockMovementLine> lines, Guid purchaseId, Guid branchId);
     Task StockInForRebateAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId);
-    Task StockInForCustomerReturnAsync(IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId);
+    Task StockInForCustomerReturnAsync(IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId, DateTime? at = null);
     Task<ServiceResult> StockOutForCustomerReturnCancelAsync(IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId);
-    Task<ServiceResult> StockOutForSupplierReturnAsync(IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId);
+    Task<ServiceResult> StockOutForSupplierReturnAsync(IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId, DateTime? at = null);
     Task StockInForSupplierReturnCancelAsync(IEnumerable<StockMovementLine> lines, Guid returnId, Guid branchId);
     Task<ServiceResult> AdjustStockAsync(StockAdjustmentDto dto, string user);
+    /// <summary>Hold these products' stock until the operation saves (see IInventoryLedgerRepository.LockProductsAsync).</summary>
+    Task LockStockAsync(IEnumerable<Guid> productIds);
     Task<decimal> GetCurrentStockAsync(Guid productId);
     Task<decimal> GetCurrentAvgCostAsync(Guid productId);
     Task<List<StockLevelDto>> GetAllStockLevelsAsync();
-    Task<List<InventoryLedgerDto>> GetLedgerAsync(DateTime? from = null, DateTime? to = null);
+    /// <summary>Stock card for one product (or all), movements in [fromUtc, toUtc) by document date.</summary>
+    Task<StockCardDto> GetStockCardAsync(Guid? productId, DateTime? fromUtc, DateTime? toUtc);
 }
 public interface ISaleService {
     Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user);

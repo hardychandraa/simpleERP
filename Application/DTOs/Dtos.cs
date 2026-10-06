@@ -47,11 +47,19 @@ public class CustomerDto {
     public string? Address  { get; set; }
     public bool    IsActive { get; set; }
     public decimal TotalDue { get; set; }
+    /// <summary>Defaults pre-filled on a new sale (see Customer). All optional.</summary>
+    public Guid?   SalesPersonId { get; set; }
+    public Guid?   PaymentTermId { get; set; }
+    public decimal? DefaultDiscountPercent { get; set; }
 }
 public class CreateCustomerDto {
     public string  Name    { get; set; } = "";
     public string? Phone   { get; set; }
     public string? Address { get; set; }
+    /// <summary>Defaults pre-filled on a new sale (see Customer). All optional.</summary>
+    public Guid?   SalesPersonId { get; set; }
+    public Guid?   PaymentTermId { get; set; }
+    public decimal? DefaultDiscountPercent { get; set; }
 }
 public class UpdateCustomerDto {
     public Guid    Id       { get; set; }
@@ -59,6 +67,10 @@ public class UpdateCustomerDto {
     public string? Phone    { get; set; }
     public string? Address  { get; set; }
     public bool    IsActive { get; set; }
+    /// <summary>Defaults pre-filled on a new sale (see Customer). All optional.</summary>
+    public Guid?   SalesPersonId { get; set; }
+    public Guid?   PaymentTermId { get; set; }
+    public decimal? DefaultDiscountPercent { get; set; }
 }
 
 // ── Inventory ─────────────────────────────────────────────────────────────────
@@ -78,15 +90,30 @@ public class StockAdjustmentDto {
     public decimal QtyActual  { get; set; }
     public string  Reason     { get; set; } = "";
 }
+/// <summary>One line of the stock card (kartu stok).</summary>
 public class InventoryLedgerDto {
     public Guid     Id              { get; set; }
+    /// <summary>The document's date (UTC), not when it was keyed in.</summary>
     public DateTime TransactionDate { get; set; }
+    public Guid     ProductId       { get; set; }
     public string   ProductName     { get; set; } = "";
     public string   ReferenceType   { get; set; } = "";
+    /// <summary>Invoice / purchase / return number; null for manual stock-in and adjustments.</summary>
+    public string?  DocumentNumber  { get; set; }
+    /// <summary>Customer or supplier on that document.</summary>
+    public string?  Party           { get; set; }
+    public string?  Link            { get; set; }
     public decimal  QtyIn           { get; set; }
     public decimal  QtyOut          { get; set; }
+    /// <summary>This product's stock after this movement.</summary>
+    public decimal  Balance         { get; set; }
     public decimal  UnitCost        { get; set; }
     public decimal  TotalCost       { get; set; }
+}
+public class StockCardDto {
+    /// <summary>Stock before the period, per product (only products that had any).</summary>
+    public Dictionary<Guid, decimal> Opening { get; set; } = new();
+    public List<InventoryLedgerDto>  Rows    { get; set; } = new();
 }
 public class StockLevelDto {
     public Guid    ProductId         { get; set; }
@@ -859,6 +886,11 @@ public class InvoiceReceiptDto {
     public DateTime To              { get; set; }
     /// <summary>Oldest first, the order the customer will tick them off in.</summary>
     public List<SaleListDto> Invoices { get; set; } = new();
+    /// <summary>
+    /// Each invoice in full (items, discounts, DPP/PPN), by sale id, so the receipt carries
+    /// everything on the invoices and nobody has to flip back to them (owner, 2026-10-06).
+    /// </summary>
+    public Dictionary<Guid, SaleDto> Details { get; set; } = new();
     public decimal  TotalInvoiced    => Invoices.Sum(i => i.GrandTotal);
     /// <summary>Payments plus applied credit notes — everything that reduced the balance.</summary>
     public decimal  TotalSettled     => Invoices.Sum(i => i.AmountPaid + i.AppliedNotesTotal);

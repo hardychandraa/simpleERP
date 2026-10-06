@@ -6,19 +6,29 @@ using Microsoft.AspNetCore.Mvc;using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace SimpleERP.Web.Pages.Customers;
 public class EditModel:PageModel{
     private readonly ICustomerService _svc;    private readonly IStringLocalizer<SharedResource> _loc;
-public EditModel(ICustomerService s, IStringLocalizer<SharedResource> loc) { _svc=s; _loc = loc; }
+    private readonly ISalesPersonService _people; private readonly IPaymentTermService _terms;
+public EditModel(ICustomerService s, ISalesPersonService people, IPaymentTermService terms, IStringLocalizer<SharedResource> loc)
+    { _svc=s; _people=people; _terms=terms; _loc = loc; }
     [BindProperty]public UpdateCustomerDto Input{get;set;}=new();
     public string? Error{get;set;}
+    public SaleDefaultsVm Defaults{get;set;}=null!;
     public async Task<IActionResult> OnGetAsync(Guid id){
         ViewData["Title"]="Edit Customer";
         var c=await _svc.GetByIdAsync(id);if(c==null)return RedirectToPage("/Customers/Index");
-        Input=new UpdateCustomerDto{Id=c.Id,Name=c.Name,Phone=c.Phone,Address=c.Address,IsActive=c.IsActive};
+        Input=new UpdateCustomerDto{Id=c.Id,Name=c.Name,Phone=c.Phone,Address=c.Address,IsActive=c.IsActive,
+            SalesPersonId=c.SalesPersonId,PaymentTermId=c.PaymentTermId,DefaultDiscountPercent=c.DefaultDiscountPercent};
+        await LoadAsync();
         return Page();
     }
     public async Task<IActionResult> OnPostAsync(){
-        ViewData["Title"]="Edit Customer";if(!ModelState.IsValid)return Page();
+        ViewData["Title"]="Edit Customer";
+        if(!ModelState.IsValid){Error=_loc["Please fill in every required field with a valid value."];await LoadAsync();return Page();}
         var r=await _svc.UpdateAsync(Input);
-        if(!r.Success){Error=r.Error;return Page();}
+        if(!r.Success){Error=r.Error;await LoadAsync();return Page();}
         return RedirectToPage("/Customers/Index",new{msg=_loc["Customer updated."].Value});
+    }
+    private async Task LoadAsync(){
+        var (people,terms)=await SaleDefaultsVm.LoadOptionsAsync(_people,_terms);
+        Defaults=new(people,terms,Input.SalesPersonId,Input.PaymentTermId,Input.DefaultDiscountPercent);
     }
 }

@@ -52,8 +52,8 @@ public class ProductService : IProductService
             return _log.Refuse(_loc["SKU '{0}' is already used by another product.", sku]);
 
         await _products.AddAsync(new Product {
-            Id = Guid.NewGuid(), Name = dto.Name.Trim(), SKU = sku,
-            UnitPrice = dto.UnitPrice, Unit = NormaliseUnit(dto.Unit), Category = dto.Category?.Trim(),
+            Id = Guid.NewGuid(), Name = dto.Name.Trim().ToUpperInvariant(), SKU = sku,
+            UnitPrice = dto.UnitPrice, Unit = NormaliseUnit(dto.Unit), Category = NormaliseCategory(dto.Category),
             DefaultWarrantyMonths = dto.DefaultWarrantyMonths,
             LowStockThreshold = dto.LowStockThreshold,
             IsActive = true, CreatedAt = DateTime.UtcNow
@@ -77,8 +77,8 @@ public class ProductService : IProductService
         if (await _products.SkuExistsAsync(sku, dto.Id))
             return _log.Refuse(_loc["SKU '{0}' is already used by another product.", sku]);
 
-        p.Name = dto.Name.Trim(); p.SKU = sku;
-        p.UnitPrice = dto.UnitPrice; p.Unit = NormaliseUnit(dto.Unit); p.Category = dto.Category?.Trim();
+        p.Name = dto.Name.Trim().ToUpperInvariant(); p.SKU = sku;
+        p.UnitPrice = dto.UnitPrice; p.Unit = NormaliseUnit(dto.Unit); p.Category = NormaliseCategory(dto.Category);
         p.DefaultWarrantyMonths = dto.DefaultWarrantyMonths;
         p.LowStockThreshold = dto.LowStockThreshold;
         p.IsActive = dto.IsActive;
@@ -119,6 +119,9 @@ public class ProductService : IProductService
     }
 
     private static string NormaliseUnit(string? unit) => (unit ?? "PCS").Trim().ToUpperInvariant();
+    /// <summary>Upper-case like name and SKU (HC, 2026-10-06); blank means no category.</summary>
+    private static string? NormaliseCategory(string? category) =>
+        string.IsNullOrWhiteSpace(category) ? null : category.Trim().ToUpperInvariant();
 
     private static ProductDto Map(Product p, decimal stock, decimal cost) => new() {
         Id = p.Id, Name = p.Name, SKU = p.SKU, UnitPrice = p.UnitPrice, Unit = p.Unit,
