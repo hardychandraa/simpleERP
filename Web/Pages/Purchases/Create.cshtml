@@ -168,7 +168,7 @@
                     @foreach (var p in Model.AvailableProducts)
                     {
                         <option value="@p.Id"
-                                data-cost="@p.AvgCost.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                data-cost="@((p.PurchasePrice > 0 ? p.PurchasePrice : p.AvgCost).ToString(System.Globalization.CultureInfo.InvariantCulture))"
                                 data-stock="@p.CurrentStock.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                 data-name="@p.Name">
                             @p.Name (@p.SKU) — @Localizer["Qty:"] @p.CurrentStock.ToString("N0")
@@ -264,7 +264,7 @@ const PRODUCTS = @Html.Raw(JsonSerializer.Serialize(
     Model.AvailableProducts.Select(p => new {
         id = p.Id.ToString(),
         name = p.Name,
-        cost = p.AvgCost,
+        cost = p.PurchasePrice > 0 ? p.PurchasePrice : p.AvgCost,
         stock = p.CurrentStock
     })
 ));
@@ -322,10 +322,9 @@ function onProductChange() {
     const sel = document.getElementById('inProd');
     const opt = sel.options[sel.selectedIndex];
     if (!opt || !opt.value) return;
-    // Seed with the current moving-average cost as a starting point; the supplier's
-    // actual billed cost is what should end up here.
-    const costEl = document.getElementById('inCost');
-    if (!costEl.value) costEl.value = opt.dataset.cost;
+    // Seed with the product's usual harga beli (or, if it has none, the moving-average cost),
+    // like Sales seeds the selling price; the supplier's actual billed cost is what should end up here.
+    document.getElementById('inCost').value = opt.dataset.cost;
     onDiscountInput();
 }
 

@@ -58,6 +58,7 @@ public class AppDbContext : DbContext
             e.Property(p => p.SKU).IsRequired().HasMaxLength(100);
             e.Property(p => p.Unit).IsRequired().HasMaxLength(10).HasDefaultValue("PCS");
             e.Property(p => p.UnitPrice).HasColumnType("decimal(18,4)");
+            e.Property(p => p.PurchasePrice).HasColumnType("decimal(18,4)");
             e.HasIndex(p => p.SKU).IsUnique();
         });
 

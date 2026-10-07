@@ -16,7 +16,7 @@ public class EditModel : PageModel {
         var p = await _svc.GetByIdAsync(id);
         if (p==null) return RedirectToPage("/Products/Index");
         Input = new UpdateProductDto {
-            Id=p.Id, Name=p.Name, SKU=p.SKU, UnitPrice=p.UnitPrice, Unit=p.Unit,
+            Id=p.Id, Name=p.Name, SKU=p.SKU, UnitPrice=p.UnitPrice, PurchasePrice=p.PurchasePrice, Unit=p.Unit,
             Category=p.Category, DefaultWarrantyMonths=p.DefaultWarrantyMonths,
             LowStockThreshold=p.LowStockThreshold, IsActive=p.IsActive
         };

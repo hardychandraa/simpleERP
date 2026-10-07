@@ -43,6 +43,7 @@ public class ProductService : IProductService
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Product name is required."]);
         if (string.IsNullOrWhiteSpace(dto.SKU))  return _log.Refuse(_loc["SKU is required."]);
         if (dto.UnitPrice < 0)   return _log.Refuse(_loc["Unit price cannot be negative."]);
+        if (dto.PurchasePrice < 0) return _log.Refuse(_loc["Purchase price cannot be negative."]);
         if (dto.LowStockThreshold < 0) return _log.Refuse(_loc["Low stock threshold cannot be negative."]);
         var unitError = ValidateUnit(dto.Unit);
         if (unitError != null) return unitError;
@@ -53,7 +54,7 @@ public class ProductService : IProductService
 
         await _products.AddAsync(new Product {
             Id = Guid.NewGuid(), Name = dto.Name.Trim().ToUpperInvariant(), SKU = sku,
-            UnitPrice = dto.UnitPrice, Unit = NormaliseUnit(dto.Unit), Category = NormaliseCategory(dto.Category),
+            UnitPrice = dto.UnitPrice, PurchasePrice = dto.PurchasePrice, Unit = NormaliseUnit(dto.Unit), Category = NormaliseCategory(dto.Category),
             DefaultWarrantyMonths = dto.DefaultWarrantyMonths,
             LowStockThreshold = dto.LowStockThreshold,
             IsActive = true, CreatedAt = DateTime.UtcNow
@@ -69,6 +70,7 @@ public class ProductService : IProductService
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Product name is required."]);
         if (string.IsNullOrWhiteSpace(dto.SKU))  return _log.Refuse(_loc["SKU is required."]);
         if (dto.UnitPrice < 0)   return _log.Refuse(_loc["Unit price cannot be negative."]);
+        if (dto.PurchasePrice < 0) return _log.Refuse(_loc["Purchase price cannot be negative."]);
         if (dto.LowStockThreshold < 0) return _log.Refuse(_loc["Threshold cannot be negative."]);
         var unitError = ValidateUnit(dto.Unit);
         if (unitError != null) return unitError;
@@ -78,7 +80,7 @@ public class ProductService : IProductService
             return _log.Refuse(_loc["SKU '{0}' is already used by another product.", sku]);
 
         p.Name = dto.Name.Trim().ToUpperInvariant(); p.SKU = sku;
-        p.UnitPrice = dto.UnitPrice; p.Unit = NormaliseUnit(dto.Unit); p.Category = NormaliseCategory(dto.Category);
+        p.UnitPrice = dto.UnitPrice; p.PurchasePrice = dto.PurchasePrice; p.Unit = NormaliseUnit(dto.Unit); p.Category = NormaliseCategory(dto.Category);
         p.DefaultWarrantyMonths = dto.DefaultWarrantyMonths;
         p.LowStockThreshold = dto.LowStockThreshold;
         p.IsActive = dto.IsActive;
@@ -124,7 +126,7 @@ public class ProductService : IProductService
         string.IsNullOrWhiteSpace(category) ? null : category.Trim().ToUpperInvariant();
 
     private static ProductDto Map(Product p, decimal stock, decimal cost) => new() {
-        Id = p.Id, Name = p.Name, SKU = p.SKU, UnitPrice = p.UnitPrice, Unit = p.Unit,
+        Id = p.Id, Name = p.Name, SKU = p.SKU, UnitPrice = p.UnitPrice, PurchasePrice = p.PurchasePrice, Unit = p.Unit,
         Category = p.Category, DefaultWarrantyMonths = p.DefaultWarrantyMonths,
         LowStockThreshold = p.LowStockThreshold, IsActive = p.IsActive,
         CurrentStock = stock, AvgCost = cost

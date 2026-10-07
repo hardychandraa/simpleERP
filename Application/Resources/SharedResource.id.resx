@@ -1306,4 +1306,7 @@
   <data name="Please fill in every required field with a valid value." xml:space="preserve"><value>Isi semua kolom wajib dengan nilai yang benar.</value></data>
   <data name="Menu" xml:space="preserve"><value>Menu</value></data>
   <data name="Remove" xml:space="preserve"><value>Hapus</value></data>
+  <data name="Purchase Price" xml:space="preserve"><value>Harga Beli</value></data>
+  <data name="Purchase price cannot be negative." xml:space="preserve"><value>Harga beli tidak boleh negatif.</value></data>
+  <data name="The usual harga beli. Shown as the default cost on a new purchase; it can be changed there." xml:space="preserve"><value>Harga beli biasa. Muncul sebagai harga bawaan di pembelian baru; tetap bisa diubah di sana.</value></data>
 </root>

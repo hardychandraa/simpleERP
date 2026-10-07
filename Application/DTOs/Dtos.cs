@@ -8,6 +8,7 @@ public class ProductDto {
     public string  Name                  { get; set; } = "";
     public string  SKU                   { get; set; } = "";
     public decimal UnitPrice             { get; set; }
+    public decimal PurchasePrice         { get; set; }
     public string  Unit                  { get; set; } = "PCS";
     public string? Category              { get; set; }
     public int?    DefaultWarrantyMonths { get; set; }
@@ -22,6 +23,7 @@ public class CreateProductDto {
     public string  Name                  { get; set; } = "";
     public string  SKU                   { get; set; } = "";
     public decimal UnitPrice             { get; set; }
+    public decimal PurchasePrice         { get; set; }
     public string  Unit                  { get; set; } = "PCS";
     public string? Category              { get; set; }
     public int?    DefaultWarrantyMonths { get; set; }
@@ -32,6 +34,7 @@ public class UpdateProductDto {
     public string  Name                  { get; set; } = "";
     public string  SKU                   { get; set; } = "";
     public decimal UnitPrice             { get; set; }
+    public decimal PurchasePrice         { get; set; }
     public string  Unit                  { get; set; } = "PCS";
     public string? Category              { get; set; }
     public int?    DefaultWarrantyMonths { get; set; }
