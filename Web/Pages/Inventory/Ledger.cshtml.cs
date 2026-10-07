@@ -32,5 +32,8 @@ public class LedgerModel : PageModel
         Card = await _svc.GetStockCardAsync(productId,
             DateTime.SpecifyKind(From, DateTimeKind.Local).ToUniversalTime(),
             DateTime.SpecifyKind(To.AddDays(1), DateTimeKind.Local).ToUniversalTime());
+        // Newest first (HC, 2026-10-07). The running balance is worked out oldest-first by the
+        // service, so each row still shows the stock right after that movement.
+        Card.Rows.Reverse();
     }
 }

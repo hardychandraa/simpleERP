@@ -166,7 +166,6 @@
 
   <!-- ══ Layout chrome ═══════════════════════════════════════════════════ -->
   <data name="Store Management System" xml:space="preserve"><value>Sistem Manajemen Toko</value></data>
-  <data name="PostgreSQL · Auto-backup daily" xml:space="preserve"><value>PostgreSQL · Cadangan otomatis harian</value></data>
   <data name="Language" xml:space="preserve"><value>Bahasa</value></data>
 
   <!-- ══ Shared across pages ═════════════════════════════════════════════ -->

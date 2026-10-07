@@ -12,7 +12,14 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<AppDbContext>(o => o.UseNpgsql(connectionString));
+        services.AddDbContext<AppDbContext>(o => o
+            // Single query is EF's default; stating it is what stops the "no QuerySplittingBehavior
+            // configured" warning on every multi-Include load. Behaviour is unchanged.
+            .UseNpgsql(connectionString, n => n.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery))
+            // The report totals use GroupBy(_ => 1)...FirstOrDefault(): one group, so always one
+            // row and nothing to order by. EF can't tell and warned on every report load, which
+            // buried real warnings on Settings → Logs (2026-10-07).
+            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.FirstWithoutOrderByAndFilterWarning)));
 
         // Repositories
         services.AddScoped<IBranchRepository,           BranchRepository>();

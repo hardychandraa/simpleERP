@@ -1315,7 +1315,8 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
     public async Task<Dictionary<Guid, LedgerReference>> ResolveReferencesAsync(IEnumerable<Guid> referenceIds)
     {
         // A ReferenceId is the id of whichever document moved the stock; cancellations reuse
-        // the cancelled document's id. Manual stock-in and adjustments have no document.
+        // the cancelled document's id. Manual stock-in has no document; an adjustment is its
+        // StockAdjustment row (from 2026-10-07; earlier ones used a random id and stay blank).
         var ids = referenceIds.Distinct().ToList();
         var map = new Dictionary<Guid, LedgerReference>();
         if (ids.Count == 0) return map;
@@ -1335,6 +1336,10 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
         foreach (var r in await _db.RebateRealizations.Where(x => ids.Contains(x.Id))
                      .Select(x => new { x.Id, x.ReferenceId, Party = x.Supplier!.Name }).ToListAsync())
             map[r.Id] = new(string.IsNullOrWhiteSpace(r.ReferenceId) ? "-" : r.ReferenceId, r.Party, null);
+        // An adjustment has no document or party; its reason and who made it are what explain it.
+        foreach (var a in await _db.StockAdjustments.Where(x => ids.Contains(x.Id))
+                     .Select(x => new { x.Id, x.Reason, x.CreatedBy }).ToListAsync())
+            map[a.Id] = new("—", $"{a.Reason} ({a.CreatedBy})", null);
         return map;
     }
 

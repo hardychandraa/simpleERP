@@ -233,8 +233,9 @@ public class InventoryService : IInventoryService
                 ReferenceType = ReferenceType.Adjustment, ReferenceId = refId,
                 QtyIn = 0, QtyOut = Math.Abs(delta), UnitCost = currentCost, TotalCost = Math.Abs(delta) * currentCost });
 
+        // The adjustment's id is the ledger's ReferenceId, so the Kartu Stok can show its reason.
         await _adjustments.AddAsync(new StockAdjustment {
-            Id = Guid.NewGuid(), ProductId = dto.ProductId, BranchId = branch.Id,
+            Id = refId, ProductId = dto.ProductId, BranchId = branch.Id,
             AdjustmentDate = DateTime.UtcNow, QtyBefore = currentStock,
             QtyAfter = dto.QtyActual, Reason = dto.Reason.Trim(), CreatedBy = user });
 

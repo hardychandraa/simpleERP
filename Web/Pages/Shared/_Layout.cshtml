@@ -88,7 +88,6 @@
         <a href="/Settings/Logs" class="@(page=="/Settings/Logs"?"active":"")">🩺 @Localizer["Diagnostic Log"]</a>
     }
   </div>
-  <div class="sb-foot">@Localizer["PostgreSQL · Auto-backup daily"]</div>
 </nav>
 <div class="main">
   <div class="topbar">
@@ -112,7 +111,7 @@
                class="@(currentLang == code ? "on" : "")" style="border-radius:6px">@label</a>
         }
       </span>
-      <span class="topbar-clock">@DateTime.Now.ToString("ddd, dd MMM yyyy  HH:mm")</span>
+      <span class="topbar-clock" id="topbarClock">@DateTime.Now.ToString("ddd, dd MMM yyyy  HH:mm")</span>
       @if (User.Identity?.IsAuthenticated == true)
       {
         <span class="user-box no-print">
@@ -172,6 +171,25 @@
     el.value = up;
     el.setSelectionRange(start, end);
   });
+</script>
+@{ var dtf = CultureInfo.CurrentCulture.DateTimeFormat; }
+<script>
+  // The top-bar clock was rendered once by the server and then stood still (HC, 2026-10-07).
+  // Keep it ticking with the browser's clock, in the same "ddd, dd MMM yyyy  HH:mm" format
+  // and the same day/month names as the server's culture.
+  (function () {
+    const el = document.getElementById('topbarClock');
+    if (!el) return;
+    const days   = @Html.Raw(Json.Serialize(dtf.AbbreviatedDayNames));
+    const months = @Html.Raw(Json.Serialize(dtf.AbbreviatedMonthNames));
+    const p2 = n => String(n).padStart(2, '0');
+    function tick() {
+      const d = new Date();
+      el.textContent = `${days[d.getDay()]}, ${p2(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}  ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+    }
+    tick();
+    setInterval(tick, 15000);
+  })();
 </script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>

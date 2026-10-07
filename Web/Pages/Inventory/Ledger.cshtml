@@ -25,11 +25,6 @@
   <th style="text-align:right">@Localizer["Qty In"]</th><th style="text-align:right">@Localizer["Qty Out"]</th>
   <th style="text-align:right">@Localizer["Balance"]</th><th style="text-align:right">@Localizer["Unit Cost"]</th><th style="text-align:right">@Localizer["Total"]</th>
 </tr></thead><tbody>
-@if (one)
-{
-  <tr style="background:#f9fafb"><td>@Model.From.ToString("dd-MMM-yy")</td><td colspan="5" style="color:#6b7280">@Localizer["Opening balance"]</td>
-  <td style="text-align:right;font-weight:600">@Model.Card.Opening.GetValueOrDefault(Model.ProductId!.Value).ToString("N0")</td><td></td><td></td></tr>
-}
 @foreach (var e in Model.Card.Rows)
 {
     var bc = e.ReferenceType switch { "Purchase" or "PurchaseOrder" => "ok", "Sale" => "info", "Cancel" => "warn", _ => "gray" };
@@ -42,6 +37,12 @@
 <td style="text-align:right;color:@(e.QtyOut>0?"#dc2626":"#9ca3af")">@(e.QtyOut>0?$"-{e.QtyOut:N0}":"—")</td>
 <td style="text-align:right;font-weight:600">@e.Balance.ToString("N0")</td>
 <td style="text-align:right">@e.UnitCost.ToString("N0")</td><td style="text-align:right">@e.TotalCost.ToString("N0")</td></tr>
+}
+@* Rows are newest first, so the opening balance closes the list. *@
+@if (one)
+{
+  <tr style="background:#f9fafb"><td>@Model.From.ToString("dd-MMM-yy")</td><td colspan="5" style="color:#6b7280">@Localizer["Opening balance"]</td>
+  <td style="text-align:right;font-weight:600">@Model.Card.Opening.GetValueOrDefault(Model.ProductId!.Value).ToString("N0")</td><td></td><td></td></tr>
 }
 @if (!Model.Card.Rows.Any()) { <tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:28px">@Localizer["No entries found."]</td></tr> }
 </tbody></table></div>
