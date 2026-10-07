@@ -209,13 +209,15 @@
                                     <select data-searchable name="@(n.IsCredit ? "Apply.SaleId" : "Apply.PurchaseId")" style="width:150px;font-size:11px">
                                         @foreach (var d in n.OpenDocuments)
                                         {
-                                            <option value="@d.DocumentId">@d.DocumentNumber (@d.NetBalanceDue.ToString("N0"))</option>
+                                            <option value="@d.DocumentId" data-balance="@d.NetBalanceDue.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">@d.DocumentNumber (@d.NetBalanceDue.ToString("N0"))</option>
                                         }
                                     </select>
                                     <input type="number" name="Apply.Amount" step="0.01" min="0.01"
                                            max="@n.RemainingAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                            value="@n.RemainingAmount.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
                                            style="width:90px;font-size:11px" />
+                                    @* The smaller of what is left on the note and what the chosen document still owes. *@
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="fillApply(this)">@Localizer["Full amount"]</button>
                                     <button type="submit" class="btn btn-primary btn-sm">@Localizer["Apply"]</button>
                                 </form>
                             }
@@ -287,5 +289,14 @@ function syncCounterparty() {
 }
 typeSel.addEventListener('change', syncCounterparty);
 syncCounterparty();
+
+// "Full amount" on Apply: the smaller of the note's remainder (the input's max) and what the
+// chosen document still owes.
+function fillApply(btn) {
+    const f = btn.form, amt = f.querySelector('input[name="Apply.Amount"]');
+    const opt = f.querySelector('select').selectedOptions[0];
+    const bal = parseFloat(opt?.dataset.balance), rem = parseFloat(amt.max);
+    amt.value = isNaN(bal) ? rem : Math.min(bal, rem);
+}
 </script>
 }

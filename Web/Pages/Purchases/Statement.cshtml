@@ -74,7 +74,12 @@ else
                 <th style="text-align:right">@Localizer["Total"]</th>
                 <th style="text-align:right">@Localizer["Paid"]</th>
                 <th style="text-align:right">@Localizer["Balance"]</th>
-                <th style="width:130px;text-align:center" class="no-print">@Localizer["Pay now"]</th>
+                <th style="width:130px;text-align:center" class="no-print">@Localizer["Pay now"]
+                    <div style="display:flex;gap:4px;justify-content:center;margin-top:4px">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="fillAll(true)">@Localizer["Fill all"]</button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="fillAll(false)">@Localizer["Clear all"]</button>
+                    </div>
+                </th>
             </tr>
         </thead>
         <tbody>
@@ -229,6 +234,12 @@ function preview() {
     document.getElementById('pv-gross').textContent = fmt(gross);
     document.getElementById('pv-notes').textContent = notes > 0 ? '−' + fmt(notes) : '0';
     netEl.textContent = fmt(gross - notes);
+}
+
+// Every line back to its full balance (its max), or all to 0.
+function fillAll(full) {
+    document.querySelectorAll('.pay-amt').forEach(el => { el.value = full ? el.max : 0; });
+    preview();
 }
 
 document.querySelectorAll('.pay-amt').forEach(el => el.addEventListener('input', preview));

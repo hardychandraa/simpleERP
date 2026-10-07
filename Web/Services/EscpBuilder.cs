@@ -154,7 +154,7 @@ public static class EscpBuilder
         if (totals.Count == 0) totals.Add(("", "", false));   // keep the bold TOTAL off the signature titles
         totals.Add(("TOTAL", Money(sale.GrandTotal), true));
         if (sale.IsTaxInclusive && sale.TaxAmount > 0)
-            totals.Add(($"Harga sudah termasuk PPN {Pct(sale.TaxRate * 100m)}%", "", false));
+            totals.Add(("Harga sudah termasuk PPN", "", false));
         // At least 4 rows: titles on the first, the lines to sign on on the last, room between.
         while (totals.Count < 4) totals.Add(("", "", false));
 

@@ -1313,4 +1313,7 @@
   <data name="{0} product with 0 stock hidden." xml:space="preserve"><value>{0} produk dengan stok 0 disembunyikan.</value></data>
   <data name="{0} products with 0 stock hidden." xml:space="preserve"><value>{0} produk dengan stok 0 disembunyikan.</value></data>
   <data name="No products in stock." xml:space="preserve"><value>Tidak ada produk yang masih ada stoknya.</value></data>
+  <data name="Full amount" xml:space="preserve"><value>Isi penuh</value></data>
+  <data name="Fill all" xml:space="preserve"><value>Isi semua</value></data>
+  <data name="Clear all" xml:space="preserve"><value>Kosongkan</value></data>
 </root>

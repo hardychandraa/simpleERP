@@ -191,7 +191,11 @@
                 <form method="post" asp-page-handler="Payment" asp-route-id="@Model.Purchase.Id">
                     <div class="fg">
                         <label>@Localizer["Amount to pay"]</label>
-                        <input type="number" asp-for="PayInput.Amount" min="0.01" step="0.01" max="@Model.StillOwed.ToString(System.Globalization.CultureInfo.InvariantCulture)" placeholder="@Model.StillOwed.ToString("N0")" required />
+                        <div style="display:flex;gap:6px;align-items:stretch">
+              <input type="number" asp-for="PayInput.Amount" id="payAmt" style="flex:1;min-width:0" min="0.01" step="0.01" max="@Model.StillOwed.ToString(System.Globalization.CultureInfo.InvariantCulture)" placeholder="@Model.StillOwed.ToString("N0")" required />
+              @* Fills what is still owed, so it need not be typed (HC, 2026-10-07). *@
+              <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('payAmt').value='@Model.StillOwed.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)'">@Localizer["Full amount"]</button>
+            </div>
                         <div style="font-size:11px;color:#6b7280;margin-top:3px">@Localizer["Outstanding:"] @Model.StillOwed.ToString("N0")</div>
                     </div>
                     <div class="fg">
