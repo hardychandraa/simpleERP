@@ -1,0 +1,47 @@
+@page "/Settings/Backup"
+@model SimpleERP.Web.Pages.Settings.BackupModel
+@{ ViewData["Title"] = Localizer["Backup"].Value; }
+
+@if (Model.Msg != null) {
+  <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">
+    @(Model.IsErr ? Localizer["Backup failed:"] : Localizer["Backup created:"]) @Model.Msg.TrimStart('✓', '✗', ' ')
+  </div>
+}
+
+<div class="card">
+  <div class="card-title">💾 @Localizer["Backup now"]</div>
+  <p style="margin-bottom:12px">
+    @Localizer["Make a backup before something risky: an import, an update, month-end, or a large correction. Backups made here are never deleted automatically."]
+  </p>
+  <form method="post" onsubmit="this.querySelector('button').disabled = true">
+    <button type="submit" class="btn btn-primary">💾 @Localizer["Backup now"]</button>
+  </form>
+  <p style="font-size:12px;color:#6b7280;margin-top:12px">
+    @Localizer["Automatic backups: when the app starts and every day at 12:00; the last 30 are kept."]
+    @Localizer["Folder on the server:"] <code>@Model.BackupDir</code>
+  </p>
+</div>
+
+<div class="card">
+  <div class="card-title">@Localizer["Backups"] (@Model.Files.Count)</div>
+  <p style="font-size:12px;color:#6b7280;margin-bottom:10px">
+    @Localizer["Download a backup to keep a copy off the server (USB drive or another computer). It contains all business data — keep it safe."]
+  </p>
+  <table>
+    <thead><tr><th>@Localizer["Date"]</th><th>@Localizer["File"]</th><th>@Localizer["Type"]</th><th style="text-align:right">@Localizer["Size"]</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var f in Model.Files) {
+      <tr>
+        <td style="white-space:nowrap">@f.CreatedLocal.ToString("dd-MM-yyyy HH:mm")</td>
+        <td><code style="font-size:12px">@f.FileName</code></td>
+        <td><span class="badge @(f.Manual ? "info" : "gray")">@(f.Manual ? Localizer["Manual"] : Localizer["Automatic"])</span></td>
+        <td style="text-align:right;white-space:nowrap">@((f.Size / 1024.0).ToString("N0")) KB</td>
+        <td style="text-align:right"><a class="btn btn-outline btn-sm" href="/Settings/Backup?handler=Download&file=@Uri.EscapeDataString(f.FileName)">⬇ @Localizer["Download"]</a></td>
+      </tr>
+    }
+    @if (!Model.Files.Any()) {
+      <tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:20px">@Localizer["No backups yet."]</td></tr>
+    }
+    </tbody>
+  </table>
+</div>

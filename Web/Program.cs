@@ -242,7 +242,9 @@ builder.Services.AddInfrastructure(connectionString);
 // pg_dump to /backups — once at startup, then nightly. Keeps the last 30.
 // (Previously this was an inline File.Copy of the SQLite file here, duplicating an
 // unregistered BackupService. Now consolidated onto the single hosted service.)
-builder.Services.AddHostedService<SimpleERP.Web.Services.BackupService>();
+// One instance serves both the schedule and Settings → Backup ("Backup now").
+builder.Services.AddSingleton<SimpleERP.Web.Services.BackupService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<SimpleERP.Web.Services.BackupService>());
 
 // ── Log retention ─────────────────────────────────────────────────────────────
 // Keeps the AppLogs table to the same 30-day window as the log files. The files are

@@ -1315,4 +1315,19 @@
   <data name="Full amount" xml:space="preserve"><value>Isi penuh</value></data>
   <data name="Fill all" xml:space="preserve"><value>Isi semua</value></data>
   <data name="Clear all" xml:space="preserve"><value>Kosongkan</value></data>
+  <data name="Backup" xml:space="preserve"><value>Cadangan</value></data>
+  <data name="Backup now" xml:space="preserve"><value>Cadangkan sekarang</value></data>
+  <data name="Backup created:" xml:space="preserve"><value>Cadangan dibuat:</value></data>
+  <data name="Backup failed:" xml:space="preserve"><value>Gagal membuat cadangan:</value></data>
+  <data name="Make a backup before something risky: an import, an update, month-end, or a large correction. Backups made here are never deleted automatically." xml:space="preserve"><value>Buat cadangan sebelum melakukan hal berisiko: impor data, pembaruan aplikasi, tutup bulan, atau koreksi besar. Cadangan yang dibuat di sini tidak pernah dihapus otomatis.</value></data>
+  <data name="Automatic backups: when the app starts and every day at 12:00; the last 30 are kept." xml:space="preserve"><value>Cadangan otomatis: saat aplikasi dinyalakan dan setiap hari pukul 12:00; 30 terakhir disimpan.</value></data>
+  <data name="Folder on the server:" xml:space="preserve"><value>Folder di server:</value></data>
+  <data name="Backups" xml:space="preserve"><value>Daftar cadangan</value></data>
+  <data name="Download a backup to keep a copy off the server (USB drive or another computer). It contains all business data — keep it safe." xml:space="preserve"><value>Unduh cadangan untuk menyimpan salinan di luar server (flashdisk atau komputer lain). Isinya seluruh data usaha — simpan dengan aman.</value></data>
+  <data name="File" xml:space="preserve"><value>File</value></data>
+  <data name="Size" xml:space="preserve"><value>Ukuran</value></data>
+  <data name="Manual" xml:space="preserve"><value>Manual</value></data>
+  <data name="Automatic" xml:space="preserve"><value>Otomatis</value></data>
+  <data name="Download" xml:space="preserve"><value>Unduh</value></data>
+  <data name="No backups yet." xml:space="preserve"><value>Belum ada cadangan.</value></data>
 </root>

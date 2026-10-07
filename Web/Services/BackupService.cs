@@ -13,6 +13,10 @@ namespace SimpleERP.Web.Services;
 /// Replaces the previous SQLite File.Copy approach — a server-hosted database cannot be
 /// backed up by copying a file off disk, so this shells out to pg_dump instead.
 /// Uses custom format (-Fc): compressed, and restorable selectively via pg_restore.
+///
+/// Also run on demand from Settings → Backup (HC, 2026-10-07). Those files end in
+/// <c>_manual.dump</c> and are never pruned: they are deliberate safe points, taken before
+/// something risky, and HC copies them off the server by hand.
 /// </summary>
 public class BackupService : BackgroundService
 {
@@ -21,6 +25,15 @@ public class BackupService : BackgroundService
     private readonly ILogger<BackupService> _logger;
     private readonly IConfiguration         _config;
     private readonly string                 _backupDir;
+    // One pg_dump at a time: the schedule and the button may meet.
+    private readonly SemaphoreSlim          _gate = new(1, 1);
+
+    /// <summary>Outcome of one backup, for the Settings page.</summary>
+    public record BackupResult(bool Success, string? FileName, long Size, string? Error);
+    /// <summary>One file in the backups folder.</summary>
+    public record BackupFile(string FileName, long Size, DateTime CreatedLocal, bool Manual);
+
+    public string BackupDir => _backupDir;
 
     public BackupService(ILogger<BackupService> logger, IConfiguration config, IWebHostEnvironment env)
     {
@@ -32,7 +45,7 @@ public class BackupService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Run once at startup
-        await RunBackupAsync();
+        await RunBackupAsync(manual: false);
 
         // Then every day at noon, local time
         while (!stoppingToken.IsCancellationRequested)
@@ -45,26 +58,28 @@ public class BackupService : BackgroundService
             catch (TaskCanceledException) { break; }
 
             if (!stoppingToken.IsCancellationRequested)
-                await RunBackupAsync();
+                await RunBackupAsync(manual: false);
         }
     }
 
-    private async Task RunBackupAsync()
+    /// <summary>Dumps the database now. Never throws: a failure comes back as the result.</summary>
+    public async Task<BackupResult> RunBackupAsync(bool manual, string? requestedBy = null)
     {
+        await _gate.WaitAsync();
         try
         {
             var connectionString = _config.GetConnectionString("SimpleERP");
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 _logger.LogWarning("Backup skipped: no SimpleERP connection string configured.");
-                return;
+                return new(false, null, 0, "No database connection string is configured.");
             }
 
             var csb = new NpgsqlConnectionStringBuilder(connectionString);
             Directory.CreateDirectory(_backupDir);
 
             var stamp      = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            var backupFile = Path.Combine(_backupDir, $"simpleerp_{stamp}.dump");
+            var backupFile = Path.Combine(_backupDir, $"simpleerp_{stamp}{(manual ? "_manual" : "")}.dump");
 
             var psi = new ProcessStartInfo
             {
@@ -90,7 +105,7 @@ public class BackupService : BackgroundService
             if (proc is null)
             {
                 _logger.LogError("Backup failed: could not start pg_dump.");
-                return;
+                return new(false, null, 0, "Could not start pg_dump.");
             }
 
             var stderr = await proc.StandardError.ReadToEndAsync();
@@ -101,17 +116,50 @@ public class BackupService : BackgroundService
                 _logger.LogError("Backup failed (pg_dump exit {code}): {err}", proc.ExitCode, stderr.Trim());
                 // Don't leave a truncated/empty dump lying around looking like a good backup.
                 if (File.Exists(backupFile)) File.Delete(backupFile);
-                return;
+                return new(false, null, 0, $"pg_dump exit {proc.ExitCode}: {stderr.Trim()}");
             }
 
-            _logger.LogInformation("Backup created: {file}", backupFile);
+            if (manual) _logger.LogInformation("Backup created on demand by {User}: {file}", requestedBy, backupFile);
+            else        _logger.LogInformation("Backup created: {file}", backupFile);
             PurgeOldBackups();
+            return new(true, Path.GetFileName(backupFile), new FileInfo(backupFile).Length, null);
         }
         catch (Exception ex)
         {
             // A backup failure must never take the application down.
             _logger.LogError(ex, "Backup failed");
+            return new(false, null, 0, ex.Message);
         }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Every backup in the folder, newest first.</summary>
+    public List<BackupFile> ListBackups()
+    {
+        if (!Directory.Exists(_backupDir)) return new();
+        return new DirectoryInfo(_backupDir).GetFiles("*.dump")
+            .OrderByDescending(f => f.LastWriteTimeUtc)
+            // Only simpleerp_yyyyMMdd_HHmmss.dump comes from the schedule; anything else (the
+            // button's _manual files, or a pre_*.dump taken by hand) was made on purpose.
+            .Select(f => new BackupFile(f.Name, f.Length, f.LastWriteTime,
+                                        !f.Name.StartsWith("simpleerp_", StringComparison.OrdinalIgnoreCase)
+                                        || f.Name.EndsWith("_manual.dump", StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Full path of a backup to download, or null. Only a bare file name that exists in the
+    /// backups folder is accepted, so the name can't be used to reach anything else on disk.
+    /// </summary>
+    public string? ResolveBackupPath(string? fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName) || fileName != Path.GetFileName(fileName)
+            || !fileName.EndsWith(".dump", StringComparison.OrdinalIgnoreCase)) return null;
+        var path = Path.Combine(_backupDir, fileName);
+        return File.Exists(path) ? path : null;
     }
 
     /// <summary>
@@ -136,7 +184,9 @@ public class BackupService : BackgroundService
     private void PurgeOldBackups()
     {
         // Filenames are timestamped yyyyMMdd_HHmmss, so lexical order == chronological order.
+        // Manual backups are kept: they were taken on purpose.
         var stale = Directory.GetFiles(_backupDir, "simpleerp_*.dump")
+                             .Where(f => !f.EndsWith("_manual.dump", StringComparison.OrdinalIgnoreCase))
                              .OrderByDescending(f => f)
                              .Skip(KeepCount)
                              .ToList();
