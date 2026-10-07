@@ -17,6 +17,16 @@
   </div>
   <div class="fg"><label>@Localizer["Notes"]</label><input type="text" asp-for="Input.Notes" placeholder="@Localizer["Supplier / PO ref..."]"/></div>
   <div class="alert alert-warning" style="font-size:12px;margin-bottom:14px">⚠ @Localizer["Cost will update the Moving Average for this product."]</div>
+  @if(Model.NeedsZeroCostConfirm){
+    <div class="alert alert-warning" style="margin-bottom:14px">
+      <strong>⚠ @Localizer["Unit cost is 0."]</strong>
+      @Localizer["Receiving at cost 0 lowers this product's average cost, and the margin on every later sale. Only do this for goods received free."]
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;text-transform:none;letter-spacing:0;font-size:14px;cursor:pointer">
+        <input type="checkbox" name="ConfirmZeroCost" value="true" style="width:18px;height:18px" />
+        @Localizer["Yes, receive at cost 0"]
+      </label>
+    </div>
+  }
   <div style="display:flex;gap:10px">
     <button type="submit" class="btn btn-success">📥 @Localizer["Receive"]</button>
     <a href="/Inventory" class="btn btn-outline">@Localizer["Cancel"]</a>

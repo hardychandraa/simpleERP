@@ -126,6 +126,8 @@ public class StockLevelDto {
     public decimal AvgCost           { get; set; }
     public decimal StockValue        { get; set; }
     public int     LowStockThreshold { get; set; } = 2;
+    /// <summary>False for a deactivated product that still holds stock (it stays listed and valued).</summary>
+    public bool    IsActive          { get; set; } = true;
     public bool    IsLow             => CurrentStock <= LowStockThreshold && CurrentStock > 0;
     public bool    IsOut             => CurrentStock <= 0;
 }

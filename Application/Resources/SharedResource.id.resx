@@ -1330,4 +1330,10 @@
   <data name="Automatic" xml:space="preserve"><value>Otomatis</value></data>
   <data name="Download" xml:space="preserve"><value>Unduh</value></data>
   <data name="No backups yet." xml:space="preserve"><value>Belum ada cadangan.</value></data>
+  <data name="Unit cost is 0." xml:space="preserve"><value>Harga pokok 0.</value></data>
+  <data name="Receiving at cost 0 lowers this product's average cost, and the margin on every later sale. Only do this for goods received free." xml:space="preserve"><value>Menerima dengan harga pokok 0 akan menurunkan harga rata-rata produk ini, dan margin setiap penjualan berikutnya. Lakukan hanya untuk barang yang diterima gratis.</value></data>
+  <data name="Yes, receive at cost 0" xml:space="preserve"><value>Ya, terima dengan harga pokok 0</value></data>
+  <data name="bonus?" xml:space="preserve"><value>bonus?</value></data>
+  <data name="These items have unit cost 0: {0}" xml:space="preserve"><value>Barang berikut harga pokoknya 0: {0}</value></data>
+  <data name="Post them as free (bonus) items?" xml:space="preserve"><value>Simpan sebagai barang gratis (bonus)?</value></data>
 </root>

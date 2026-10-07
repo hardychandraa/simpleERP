@@ -58,7 +58,7 @@ public class IndexModel : PageModel
         RecentSales = (await _s.GetAllAsync()).Take(8).ToList();
 
         LowStock = (await _inv.GetAllStockLevelsAsync())
-                    .Where(s => s.IsLow)
+                    .Where(s => s.IsLow && s.IsActive)
                     .OrderBy(s => s.CurrentStock)
                     .Take(8)
                     .ToList();

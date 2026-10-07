@@ -10,7 +10,7 @@
 </div>
 <div class="card"><table><thead><tr><th>@Localizer["Product"]</th><th>@Localizer["SKU"]</th><th>@Localizer["Stock"]</th><th>@Localizer["Avg Cost"]</th><th>@Localizer["Stock Value"]</th></tr></thead><tbody>
 @foreach(var s in Model.Levels){
-<tr><td><strong>@s.ProductName</strong></td><td><code>@s.SKU</code></td>
+<tr><td><strong>@s.ProductName</strong>@if(!s.IsActive){<span class="badge gray" style="margin-left:6px">@Localizer["Inactive"]</span>}</td><td><code>@s.SKU</code></td>
 <td>@{var sc=s.CurrentStock<=0?"err":s.CurrentStock<=2?"warn":"ok";}<span class="badge @sc">@s.CurrentStock.ToString("N0")</span></td>
 <td>@s.AvgCost.ToString("N0")</td><td>@s.StockValue.ToString("N0")</td></tr>}
 @if(!Model.Levels.Any()){<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:28px">@Localizer["No products found."]</td></tr>}

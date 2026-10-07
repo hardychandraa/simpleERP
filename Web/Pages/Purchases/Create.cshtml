@@ -257,7 +257,11 @@ const T = {
     perUnit:        @Html.Raw(Json.Serialize(Localizer["/unit"].Value)),
     offInvoice:     @Html.Raw(Json.Serialize(Localizer["off the invoice"].Value)),
     included:       @Html.Raw(Json.Serialize(Localizer["included"].Value)),
-    remove:         @Html.Raw(Json.Serialize(Localizer["Remove"].Value))
+    remove:         @Html.Raw(Json.Serialize(Localizer["Remove"].Value)),
+    zeroTag:        @Html.Raw(Json.Serialize(Localizer["bonus?"].Value)),
+    zeroList:       @Html.Raw(Json.Serialize(Localizer["These items have unit cost 0: {0}"].Value)),
+    zeroWhy:        @Html.Raw(Json.Serialize(Localizer["Receiving at cost 0 lowers this product's average cost, and the margin on every later sale. Only do this for goods received free."].Value)),
+    zeroAsk:        @Html.Raw(Json.Serialize(Localizer["Post them as free (bonus) items?"].Value))
 };
 
 const PRODUCTS = @Html.Raw(JsonSerializer.Serialize(
@@ -411,7 +415,8 @@ function render() {
         html += `<tr>
             <td><strong>${esc(item.name)}</strong>${notesTag}</td>
             <td style="text-align:center">${item.qty}</td>
-            <td style="text-align:right">${fmt(item.cost)}</td>
+            <td style="text-align:right">${item.cost === 0
+                ? `<span style="color:#b45309;font-weight:700">0 · ${T.zeroTag}</span>` : fmt(item.cost)}</td>
             <td style="text-align:right;color:#dc2626">${item.disc > 0
                 ? '-' + fmt(item.disc) + (item.discPct ? `<br><small style="color:#9ca3af">(${item.discPct}%)</small>` : '')
                 : '—'}</td>
@@ -492,6 +497,16 @@ document.getElementById('purchaseForm').addEventListener('submit', function(e) {
     if (!document.getElementById('supplierSelect').value) {
         e.preventDefault();
         showErr('submitErr', T.needSupplier);
+        return;
+    }
+    // Cost 0 is allowed (supplier bonus units, e.g. "beli 10 bonus 1") but must be confirmed:
+    // a new product with no harga beli and no stock starts at 0, and a 0 that slips through
+    // drags the average cost and every later margin down (HC, 2026-10-07). Checked here, not
+    // on the server, because a server refusal re-renders this page without its lines.
+    const zero = items.filter(i => i.cost === 0).map(i => i.name);
+    if (!e.defaultPrevented && zero.length &&
+        !confirm([T.zeroList.replace('{0}', zero.join(', ')), T.zeroWhy, T.zeroAsk].join('\n\n'))) {
+        e.preventDefault();
     }
 });
 

@@ -262,13 +262,17 @@ public class InventoryService : IInventoryService
         var b = await _branches.GetDefaultAsync();
         if (b == null) return new();
         var result = new List<StockLevelDto>();
-        foreach (var p in await _products.GetAllActiveAsync()) {
+        // Active products, plus inactive ones that still hold stock: goods on the shelf must
+        // stay visible and valued, or this total and the Position Summary's Persediaan
+        // disagree (found by the 2026-10-07 regression: a deactivated product with 5 units).
+        foreach (var p in await _products.GetAllAsync()) {
             var s = await _ledger.GetCurrentStockAsync(p.Id, b.Id);
+            if (!p.IsActive && s == 0) continue;
             var c = await _ledger.GetCurrentAvgCostAsync(p.Id, b.Id);
             result.Add(new StockLevelDto {
                 ProductId = p.Id, ProductName = p.Name, SKU = p.SKU,
                 CurrentStock = s, AvgCost = c, StockValue = s * c,
-                LowStockThreshold = p.LowStockThreshold });
+                LowStockThreshold = p.LowStockThreshold, IsActive = p.IsActive });
         }
         return result;
     }

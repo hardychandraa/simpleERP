@@ -64,15 +64,23 @@ public class FinancialReportService : IFinancialReportService
         // an empty window.
         var start = from.Date;
         var end   = to.Date.AddDays(1);
+        // Two kinds of date column. Purchase, expense and return dates are calendar days
+        // (stored at 00:00) and compare as they are. Sale dates and accrual/realization
+        // stamps are UTC instants: local midnight on the 1st is 17:00 UTC on the previous
+        // day, so comparing them to bare calendar days dropped every sale of the 1st from
+        // its month (the regression of 2026-10-07 found 14 invoices / Rp171M missing from
+        // October). Those get the local day converted to UTC, the same as End of Day.
+        var startUtc = DateTime.SpecifyKind(start, DateTimeKind.Local).ToUniversalTime();
+        var endUtc   = DateTime.SpecifyKind(end,   DateTimeKind.Local).ToUniversalTime();
 
-        var totals          = await _sales.GetPeriodTotalsAsync(start, end);
+        var totals          = await _sales.GetPeriodTotalsAsync(startUtc, endUtc);
         var expenseTotals   = await _expenses.GetCategoryTotalsAsync(start, end);
         var purchaseTotals  = await _purchases.GetPeriodTotalsAsync(start, end);
         var salesReturns    = await _customerReturns.GetPeriodTotalsAsync(start, end);
         var purchaseReturns = await _supplierReturns.GetPeriodTotalsAsync(start, end);
-        var rebateAccrued   = await _rebateAccruals.GetPeriodTotalsAsync(start, end);
-        var rebateRealized  = await _rebateRealizations.GetPeriodTotalsAsync(start, end);
-        var commission      = await _commissionAccruals.GetPeriodTotalsAsync(start, end);
+        var rebateAccrued   = await _rebateAccruals.GetPeriodTotalsAsync(startUtc, endUtc);
+        var rebateRealized  = await _rebateRealizations.GetPeriodTotalsAsync(startUtc, endUtc);
+        var commission      = await _commissionAccruals.GetPeriodTotalsAsync(startUtc, endUtc);
 
         // Rebate is recognised when it accrues, consistent with revenue being recognised
         // at invoice rather than at collection. LuckyDraw is the one exception: it accrues
@@ -80,52 +88,58 @@ public class FinancialReportService : IFinancialReportService
         // settlement is the first moment it can be measured — and the only slice of the
         // realization figures that may be added without double-counting rebate already
         // recognised on the accrual side.
-        var rebateIncome = rebateAccrued.CashAccrued + rebateRealized.LuckyDrawGross;
+        var rebateIncome = R(rebateAccrued.CashAccrued) + R(rebateRealized.LuckyDrawGross);
 
         // A purchase return releases inventory at moving-average cost but is credited by
         // the supplier at the price they agree to. The two are not equal, and the gap is a
         // real gain or loss — dropping it would leave inventory and payables unable to
         // reconcile. NetAmount is ex-PPN, matching StockValue, which is a cost.
-        var purchaseReturnVariance = purchaseReturns.NetAmount - purchaseReturns.StockValue;
+        var purchaseReturnVariance = R(purchaseReturns.NetAmount) - R(purchaseReturns.StockValue);
+
+        // Every money line is rounded to whole rupiah here, once, so the subtotals the DTO
+        // derives (Penjualan Bersih, HPP Bersih, Laba Kotor…) are sums of the printed
+        // figures. Moving-average costs carry fractions of a rupiah; rounding only at
+        // display left the printout 1 rupiah off its own arithmetic (2026-10-07 regression).
+        static decimal R(decimal v) => Math.Round(v, 0, MidpointRounding.AwayFromZero);
 
         return new ProfitAndLossDto {
             From         = start,
             To           = end.AddDays(-1),
             InvoiceCount = totals.InvoiceCount,
 
-            Revenue          = totals.Revenue,
-            SalesReturns     = salesReturns.NetAmount,
+            Revenue          = R(totals.Revenue),
+            SalesReturns     = R(salesReturns.NetAmount),
             SalesReturnCount = salesReturns.ReturnCount,
 
-            Cogs            = totals.Cogs,
-            SalesReturnCogs = salesReturns.StockValue,
+            Cogs            = R(totals.Cogs),
+            SalesReturnCogs = R(salesReturns.StockValue),
 
             ExpenseLines = expenseTotals.Select(t => new ProfitAndLossExpenseLineDto {
                 CategoryName    = t.CategoryName,
                 IsTaxDeductible = t.IsTaxDeductible,
                 EntryCount      = t.EntryCount,
-                Amount          = t.Amount
+                Amount          = R(t.Amount)
             }).ToList(),
 
-            CommissionExpense      = commission.Amount,
+            CommissionExpense      = R(commission.Amount),
             CommissionAccrualCount = commission.AccrualCount,
 
             RebateIncome            = rebateIncome,
-            RebateAccrued           = rebateAccrued.CashAccrued,
-            RebateLuckyDrawRealized = rebateRealized.LuckyDrawGross,
+            RebateAccrued           = R(rebateAccrued.CashAccrued),
+            RebateLuckyDrawRealized = R(rebateRealized.LuckyDrawGross),
             RebateAccrualCount      = rebateAccrued.AccrualCount,
             RebateInKindCount       = rebateAccrued.InKindCount,
 
             PurchaseReturnVariance   = purchaseReturnVariance,
-            PurchaseReturnCredit     = purchaseReturns.NetAmount,
-            PurchaseReturnStockValue = purchaseReturns.StockValue,
+            PurchaseReturnCredit     = R(purchaseReturns.NetAmount),
+            PurchaseReturnStockValue = R(purchaseReturns.StockValue),
             PurchaseReturnCount      = purchaseReturns.ReturnCount,
 
-            TaxCollected         = totals.TaxCollected,
-            TaxOnSalesReturns    = salesReturns.TaxReversed,
-            TaxPaid              = purchaseTotals.TaxPaid,
-            TaxOnPurchaseReturns = purchaseReturns.TaxReversed,
-            GrossSales           = totals.GrossSales
+            TaxCollected         = R(totals.TaxCollected),
+            TaxOnSalesReturns    = R(salesReturns.TaxReversed),
+            TaxPaid              = R(purchaseTotals.TaxPaid),
+            TaxOnPurchaseReturns = R(purchaseReturns.TaxReversed),
+            GrossSales           = R(totals.GrossSales)
 
             // PendingSections is deliberately left empty from Step 9 onward: rebate income,
             // commission and returns are all wired in above, so the report now runs to a
