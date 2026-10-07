@@ -140,16 +140,23 @@ public static class EscpBuilder
         };
 
         // ── Totals + receiver's signature (last sheet only) ──────────────────
+        // Only the total, with a note that prices include PPN (HC, 2026-10-07): Subtotal, DPP and
+        // PPN are left off. An invoice discount still shows, and so does PPN on a PPN-exclusive
+        // invoice, otherwise the items would not add up to the total.
         const int lblW = 14, amtW = 15;
-        var totals = new List<(string Label, string Amount, bool Bold)> {
-            ("Subtotal", Money(sale.Items.Sum(i => i.LineTotal)), false)
-        };
+        bool inclusive = sale.IsTaxInclusive || sale.TaxAmount == 0;
+        var totals = new List<(string Label, string Amount, bool Bold)>();
         if (sale.InvoiceDiscountAmount > 0)
             totals.Add((sale.InvoiceDiscountPercent is > 0 ? $"Disc {Pct(sale.InvoiceDiscountPercent.Value)}%" : "Disc",
                         Money(sale.InvoiceDiscountAmount), false));
-        totals.Add(("DPP", Money(sale.TaxBase), false));
-        totals.Add(($"PPN {Pct(sale.TaxRate * 100m)}%", Money(sale.TaxAmount), false));
+        if (!inclusive)
+            totals.Add(($"PPN {Pct(sale.TaxRate * 100m)}%", Money(sale.TaxAmount), false));
+        if (totals.Count == 0) totals.Add(("", "", false));   // keep the bold TOTAL off the signature titles
         totals.Add(("TOTAL", Money(sale.GrandTotal), true));
+        if (sale.IsTaxInclusive && sale.TaxAmount > 0)
+            totals.Add(($"Harga sudah termasuk PPN {Pct(sale.TaxRate * 100m)}%", "", false));
+        // At least 4 rows: titles on the first, the lines to sign on on the last, room between.
+        while (totals.Count < 4) totals.Add(("", "", false));
 
         // Three signatures sit beside the totals (owner's request, 2026-10-06): the driver who
         // delivers, whoever hands the goods over, and the customer. Titles on the first row,
@@ -165,8 +172,9 @@ public static class EscpBuilder
                 var left = i == 0 ? Sigs("Pengirim,", "Diserahkan oleh,", "Penerima,")
                          : i == totals.Count - 1 ? Sigs("(______________)", "(______________)", "(______________)")
                          : "";
-                f.Add(new(Lft(left, sigW) + Lft(totals[i].Label, lblW) + " " + R(totals[i].Amount, amtW),
-                          totals[i].Bold));
+                var right = totals[i].Amount.Length == 0 ? Lft(totals[i].Label, lblW + 1 + amtW)   // the note
+                          : Lft(totals[i].Label, lblW) + " " + R(totals[i].Amount, amtW);
+                f.Add(new(Lft(left, sigW) + right, totals[i].Bold));
             }
             return f;
         }

@@ -146,9 +146,11 @@
   </table>
 
   <div style="max-width:240px;margin-left:auto">
-    <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6"><span style="color:#6b7280">@Localizer["Subtotal"]</span><span>@Model.Sale.SubTotal.ToString("N0")</span></div>
+    @* On paper only the total shows, with a note that prices include PPN (HC, 2026-10-07):
+       the rows marked inv-detail stay on screen. *@
+    <div class="inv-detail" style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6"><span style="color:#6b7280">@Localizer["Subtotal"]</span><span>@Model.Sale.SubTotal.ToString("N0")</span></div>
     @if (Model.Sale.DiscountTotal > 0) {
-      <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#dc2626">@Localizer["Line discount"]</span><span style="color:#dc2626">-@Model.Sale.DiscountTotal.ToString("N0")</span></div>
+      <div class="inv-detail" style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#dc2626">@Localizer["Line discount"]</span><span style="color:#dc2626">-@Model.Sale.DiscountTotal.ToString("N0")</span></div>
     }
     @if (Model.Sale.InvoiceDiscountAmount > 0) {
       <div style="display:flex;justify-content:space-between;padding:4px 0">
@@ -164,8 +166,9 @@
     @if (Model.Sale.TaxAmount > 0) {
       @* DPP and PPN are Indonesian tax terms — identical in both languages, left bare.
          Only the English gloss next to DPP is localized. *@
-      <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6"><span style="color:#6b7280">DPP (@Localizer["tax base"])</span><span>@Model.Sale.TaxBase.ToString("N0")</span></div>
-      <div style="display:flex;justify-content:space-between;padding:4px 0">
+      <div class="inv-detail" style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid #f3f4f6"><span style="color:#6b7280">DPP (@Localizer["tax base"])</span><span>@Model.Sale.TaxBase.ToString("N0")</span></div>
+      @* A PPN-exclusive invoice keeps its PPN row on paper, or the items would not add up to the total. *@
+      <div class="@(Model.Sale.IsTaxInclusive ? "inv-detail" : "")" style="display:flex;justify-content:space-between;padding:4px 0">
         <span style="color:#6b7280">
           PPN @((Model.Sale.TaxRate * 100).ToString("0.##"))%
           @if (Model.Sale.IsTaxInclusive) { <span style="font-size:11px;color:#9ca3af">(@Localizer["included"])</span> }
@@ -174,6 +177,10 @@
       </div>
     }
     <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1a1a2e;font-size:16px;font-weight:700"><span>@Localizer["Grand Total"]</span><span>@Model.Sale.GrandTotal.ToString("N0")</span></div>
+    @if (Model.Sale.IsTaxInclusive && Model.Sale.TaxAmount > 0) {
+      @* Same wording as the dot-matrix invoice; Indonesian, it is the customer's document. *@
+      <div class="inv-note">Harga sudah termasuk PPN @((Model.Sale.TaxRate * 100).ToString("0.##"))%</div>
+    }
     <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#6b7280">@Localizer["Paid (at sale)"]</span><span style="color:#059669;font-weight:600">@Model.Sale.AmountPaid.ToString("N0")</span></div>
     @if (Model.TotalCollected > 0) {
       <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#6b7280">@Localizer["Collected later"]</span><span style="color:#059669;font-weight:600">@Model.TotalCollected.ToString("N0")</span></div>
@@ -198,8 +205,10 @@
   <div style="text-align:center;margin-top:18px;padding-top:12px;border-top:1px solid #f3f4f6;color:#9ca3af;font-size:12px">@Model.AppSettings.StoreFooter</div>
 </div>
 <style>
-  .inv-sigs{display:none}
+  .inv-sigs,.inv-note{display:none}
   @@media print{
+    .inv-detail{display:none!important}
+    .inv-note{display:block;text-align:right;font-size:9pt;font-style:italic;margin:-2px 0 4px}
     .inv-sigs{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:22px;font-size:10pt;text-align:center}
     .inv-sigs span{display:block;margin:52px auto 0;width:80%;border-top:1px solid #000}
   }
