@@ -19,11 +19,64 @@
 .tt-sig { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 28px; }
 .tt-sig div { padding-left: 8px; }
 .tt-sig .line { margin-top: 56px; }
-.tt-items .tt-head td { background: #f3f4f6; padding-top: 8px; border-top: 2px solid #9ca3af; }
-.tt-items .tt-sum td { border: none; padding-top: 2px; padding-bottom: 2px; }
-.tt-items .tt-sum td:first-child { text-align: right; color: #4b5563; }
-.tt-items .tt-total td { font-weight: 700; }
-@@media print { .tt-inv { break-inside: avoid; } .tt-items .tt-head td { background: none; } }
+/* Screen only: summary → invoice cards (date, number, amounts) → items → calculation.
+   The printout is the flat .tt-print table below (HC, 2026-10-07). */
+.tt-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.tt-summary > div { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; }
+.tt-summary .lbl { font-size: 12px; color: #6b7280; }
+.tt-summary .val { font-size: 18px; font-weight: 700; color: #111827; white-space: nowrap; }
+.tt-summary .due .val { color: #b91c1c; }
+.tt-inv-card { border: 1px solid #e5e7eb; border-left: 4px solid #2563eb; border-radius: 8px; margin-bottom: 14px; }
+.tt-inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+               padding: 12px 14px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; border-radius: 0 8px 0 0; }
+.tt-inv-id { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tt-inv-n { font-size: 12px; font-weight: 700; color: #6b7280; }
+.tt-inv-date { font-weight: 700; color: #111827; white-space: nowrap; }
+.tt-inv-no { font-weight: 700; font-size: 16px; color: #1d4ed8; text-decoration: none; white-space: nowrap; }
+.tt-inv-no:hover { text-decoration: underline; }
+.tt-inv-meta { margin-top: 4px; font-size: 13px; color: #4b5563; }
+.tt-inv-meta span + span::before { content: "\00b7"; margin: 0 8px; color: #9ca3af; }
+.tt-inv-amt { text-align: right; margin-left: auto; }
+.tt-inv-amt .lbl { font-size: 12px; color: #6b7280; }
+.tt-inv-amt .val { font-size: 18px; font-weight: 800; color: #111827; white-space: nowrap; }
+.tt-inv-amt .sisa { font-size: 13px; color: #b91c1c; font-weight: 600; white-space: nowrap; }
+.tt-inv-amt .sisa.paid { color: #047857; }
+.tt-inv-body { padding: 4px 14px 12px; }
+.tt-lines th { background: none; }
+.tt-calc { display: grid; grid-template-columns: auto auto; justify-content: end; column-gap: 24px; row-gap: 2px;
+           margin: 10px 0 0; font-size: 14px; }
+.tt-calc dt { color: #6b7280; text-align: right; }
+.tt-calc dd { margin: 0; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tt-calc .strong { font-weight: 700; color: #111827; }
+.tt-calc .line { border-top: 1px solid #e5e7eb; padding-top: 3px; margin-top: 2px; }
+@@media screen and (max-width: 767px) {
+  .tt-summary { grid-template-columns: 1fr 1fr !important; gap: 8px; }
+  .tt-summary > div:nth-child(n+3) { grid-column: 1 / -1; }
+  .tt-summary .val { font-size: 17px; }
+  .tt-inv-head, .tt-inv-body { padding-left: 12px; padding-right: 12px; }
+  .tt-inv-amt { margin-left: 0; text-align: left; width: 100%; }
+  .tt-calc { justify-content: stretch; grid-template-columns: 1fr auto; }
+}
+/* Printout only: the flat, paper-saving list (HC, 2026-10-07). The screen keeps the full blocks above. */
+@@media screen { .tt-print { display: none; } }
+@@media print {
+  @@page { margin: 10mm; }
+  #ttDoc .tt-top { margin-bottom: 6px !important; }
+  #ttDoc .tt-to  { margin-bottom: 6px !important; padding: 0 !important; background: none !important; }
+  #ttDoc .tt-to div { display: inline; font-size: 9.5pt !important; }
+  #ttDoc .tt-to div + div::before { content: "  \00b7  "; }
+  .tt-print { font-size: 9pt !important; }
+  #ttDoc .tt-print th, #ttDoc .tt-print td { padding: 2px 4px; vertical-align: top; }
+  .tt-print thead th { border-bottom: 1px solid #111; }
+  .tt-print tbody { break-inside: avoid; }
+  .tt-print .tt-gap td { padding: 0; height: 7px; border: none; }
+  .tt-print .tt-net { font-weight: 700; }
+  .tt-print-sum { margin-top: 8px; border-top: 1px solid #111; padding-top: 4px; font-weight: 700; }
+  .tt-print-sum div span { display: inline-block; width: 150px; }
+  .tt-sig { margin-top: 14px; }
+  .tt-sig .line { margin-top: 40px; }
+  #ttDoc .tt-printed { margin-top: 6px !important; }
+}
 </style>
 
 <div class="card no-print" style="margin-bottom:14px">
@@ -72,7 +125,7 @@
   @Html.AntiForgeryToken()
 
   <div class="card" id="ttDoc">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+    <div class="tt-top" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
       <div>
         <div style="font-size:18px;font-weight:800">@Model.AppSettings.StoreName</div>
         @if (!string.IsNullOrEmpty(Model.AppSettings.StoreAddress)) {
@@ -89,29 +142,25 @@
       </div>
     </div>
 
-    <div style="margin-bottom:12px;padding:10px 12px;background:#f9fafb;border-radius:6px">
+    <div class="tt-to" style="margin-bottom:12px;padding:10px 12px;background:#f9fafb;border-radius:6px">
       <div style="font-size:11px;color:#6b7280">Kepada</div>
       <div style="font-weight:700">@r.CustomerName</div>
       @if (!string.IsNullOrEmpty(r.CustomerAddress)) { <div style="font-size:12px">@r.CustomerAddress</div> }
       @if (!string.IsNullOrEmpty(r.CustomerPhone))   { <div style="font-size:12px">Telp @r.CustomerPhone</div> }
     </div>
 
-    @* One block per invoice with everything printed on it, so the receipt alone answers
-       "what was delivered, at what price and discount" (owner, 2026-10-06). The figures come
-       from the same mapping as the invoice print, so the two documents always agree. *@
-    <table class="tt-items">
-      <thead>
-        <tr>
-          <th style="width:30px">No</th>
-          <th>Nama Barang</th>
-          <th class="num">Qty</th>
-          <th>Sat</th>
-          <th class="num">Harga</th>
-          <th class="num">Disc%</th>
-          <th class="num">Disc.Rp</th>
-          <th class="num">Jumlah</th>
-        </tr>
-      </thead>
+    @* Screen view, in levels: the summary of the whole receipt, then one card per invoice
+       (date first, then number, with its total and sisa), its items, then how the total is
+       made up. Everything on the invoice is here (owner, 2026-10-06); the figures come from
+       the same mapping as the invoice print, so the two always agree. *@
+    <div class="no-print">
+      <div class="tt-summary">
+        <div><div class="lbl">Jumlah faktur</div><div class="val">@r.Invoices.Count</div></div>
+        <div><div class="lbl">Jumlah item</div><div class="val">@r.Details.Values.Sum(d => d.Items.Count)</div></div>
+        <div><div class="lbl">Total nilai faktur</div><div class="val">Rp @r.TotalInvoiced.ToString("N0", idc)</div></div>
+        <div class="due"><div class="lbl">Sisa</div><div class="val">Rp @r.TotalOutstanding.ToString("N0", idc)</div></div>
+      </div>
+
       @{ int n = 0; }
       @foreach (var inv in r.Invoices) {
         n++;
@@ -119,66 +168,135 @@
         var settled = inv.AmountPaid + inv.AppliedNotesTotal;
         var left    = Math.Max(0, inv.NetBalanceDue);
         var term    = inv.PaymentType == "Cash" ? "Tunai" : string.IsNullOrEmpty(inv.PaymentTermName) ? "Kredit" : inv.PaymentTermName;
-        <tbody class="tt-inv">
-          <tr class="tt-head">
-            <td colspan="8">
-              <strong>@n. <a href="/Sales/@inv.Id">@inv.InvoiceNumber</a></strong>
-              &nbsp; Tgl @inv.SaleDate.ToLocalTime().ToString("dd-MM-yyyy")
-              &nbsp; @term
-              &nbsp; Jatuh Tempo @(inv.DueDate?.ToString("dd-MM-yyyy") ?? "-")
-              @if (!string.IsNullOrEmpty(d?.SalesPersonCode)) { <span>&nbsp; Sales @d.SalesPersonCode</span> }
-            </td>
-          </tr>
+        <section class="tt-inv-card">
+          <div class="tt-inv-head">
+            <div>
+              <div class="tt-inv-id">
+                <span class="tt-inv-n">@n.</span>
+                <span class="tt-inv-date">@inv.SaleDate.ToLocalTime().ToString("dd-MM-yyyy")</span>
+                <a class="tt-inv-no" href="/Sales/@inv.Id">@inv.InvoiceNumber</a>
+              </div>
+              <div class="tt-inv-meta">
+                <span>@term</span>
+                <span>Jatuh Tempo @(inv.DueDate?.ToString("dd-MM-yyyy") ?? "-")</span>
+                @if (!string.IsNullOrEmpty(d?.SalesPersonCode)) { <span>Sales @d.SalesPersonCode</span> }
+              </div>
+            </div>
+            <div class="tt-inv-amt">
+              <div class="lbl">Total faktur</div>
+              <div class="val">@inv.GrandTotal.ToString("N0", idc)</div>
+              <div class="sisa @(left == 0 ? "paid" : "")">@(left == 0 ? "Lunas" : $"Sisa {left.ToString("N0", idc)}")</div>
+            </div>
+          </div>
           @if (d != null) {
-            int k = 0;
-            foreach (var it in d.Items) {
-              k++;
-              var lineDisc = it.DiscountAmount * it.Qty;
-              <tr>
-                <td>@k</td>
-                <td>@it.ProductName</td>
-                <td class="num">@it.Qty.ToString("0.##", idc)</td>
-                <td>@it.Unit</td>
-                <td class="num">@it.UnitPrice.ToString("N0", idc)</td>
-                <td class="num">@(it.DiscountPercent is > 0 ? it.DiscountPercent.Value.ToString("0.##", idc) : "-")</td>
-                <td class="num">@(lineDisc > 0 ? lineDisc.ToString("N0", idc) : "-")</td>
-                <td class="num">@it.LineTotal.ToString("N0", idc)</td>
-              </tr>
-            }
-            <tr class="tt-sum"><td colspan="7">Subtotal</td><td class="num">@d.Items.Sum(i => i.LineTotal).ToString("N0", idc)</td></tr>
-            @if (d.InvoiceDiscountAmount > 0) {
-              <tr class="tt-sum"><td colspan="7">Disc faktur@(d.InvoiceDiscountPercent is > 0 ? $" {d.InvoiceDiscountPercent.Value.ToString("0.##", idc)}%" : "")</td>
-                <td class="num">-@d.InvoiceDiscountAmount.ToString("N0", idc)</td></tr>
-            }
-            <tr class="tt-sum"><td colspan="7">DPP</td><td class="num">@d.TaxBase.ToString("N0", idc)</td></tr>
-            <tr class="tt-sum"><td colspan="7">PPN @((d.TaxRate * 100).ToString("0.##", idc))%</td><td class="num">@d.TaxAmount.ToString("N0", idc)</td></tr>
+            <div class="tt-inv-body">
+              <table class="tt-lines">
+                <thead>
+                  <tr>
+                    <th style="width:30px">No</th>
+                    <th>Nama Barang</th>
+                    <th class="num">Qty</th>
+                    <th>Sat</th>
+                    <th class="num">Harga</th>
+                    <th class="num">Disc%</th>
+                    <th class="num">Disc.Rp</th>
+                    <th class="num">Jumlah</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @{ int k = 0; }
+                  @foreach (var it in d.Items) {
+                    k++;
+                    var lineDisc = it.DiscountAmount * it.Qty;
+                    <tr>
+                      <td>@k</td>
+                      <td>@it.ProductName</td>
+                      <td class="num">@it.Qty.ToString("0.##", idc)</td>
+                      <td>@it.Unit</td>
+                      <td class="num">@it.UnitPrice.ToString("N0", idc)</td>
+                      <td class="num">@(it.DiscountPercent is > 0 ? it.DiscountPercent.Value.ToString("0.##", idc) : "-")</td>
+                      <td class="num">@(lineDisc > 0 ? lineDisc.ToString("N0", idc) : "-")</td>
+                      <td class="num">@it.LineTotal.ToString("N0", idc)</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              <dl class="tt-calc">
+                <dt>Subtotal</dt><dd>@d.Items.Sum(i => i.LineTotal).ToString("N0", idc)</dd>
+                @if (d.InvoiceDiscountAmount > 0) {
+                  <dt>Disc faktur@(d.InvoiceDiscountPercent is > 0 ? $" {d.InvoiceDiscountPercent.Value.ToString("0.##", idc)}%" : "")</dt>
+                  <dd>-@d.InvoiceDiscountAmount.ToString("N0", idc)</dd>
+                }
+                <dt>DPP</dt><dd>@d.TaxBase.ToString("N0", idc)</dd>
+                <dt>PPN @((d.TaxRate * 100).ToString("0.##", idc))%</dt><dd>@d.TaxAmount.ToString("N0", idc)</dd>
+                <dt class="strong line">Total faktur</dt><dd class="strong line">@inv.GrandTotal.ToString("N0", idc)</dd>
+                @if (settled > 0) {
+                  <dt>Bayar / Potongan</dt><dd>-@settled.ToString("N0", idc)</dd>
+                }
+                <dt class="strong">Sisa</dt><dd class="strong">@left.ToString("N0", idc)</dd>
+              </dl>
+            </div>
           }
-          <tr class="tt-sum tt-total"><td colspan="7">Total faktur</td><td class="num">@inv.GrandTotal.ToString("N0", idc)</td></tr>
-          @if (settled > 0) {
-            <tr class="tt-sum"><td colspan="7">Bayar / Potongan</td><td class="num">-@settled.ToString("N0", idc)</td></tr>
-          }
-          <tr class="tt-sum tt-total"><td colspan="7">Sisa</td><td class="num">@left.ToString("N0", idc)</td></tr>
-        </tbody>
+        </section>
       }
       @if (r.Invoices.Count == 0) {
-        <tbody><tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:20px">Tidak ada faktur pada periode ini.</td></tr></tbody>
+        <div style="text-align:center;color:#9ca3af;padding:20px">Tidak ada faktur pada periode ini.</div>
+      }
+    </div>
+
+    @* Printout: one row per item; date, number and Total Netto on the invoice's first row.
+       Same columns as the dot-matrix (EscpBuilder.RenderReceiptPages). *@
+    <table class="tt-print">
+      <thead>
+        <tr>
+          <th>Tgl</th><th>No Faktur</th><th>Nama Barang</th><th class="num">Qty</th><th>Sat</th>
+          <th class="num">Harga</th><th class="num">Disc</th><th class="num">Jumlah</th><th class="num">Total Netto</th>
+        </tr>
+      </thead>
+      @{ int itemCount = 0; }
+      @foreach (var inv in r.Invoices) {
+        var d = r.Details.GetValueOrDefault(inv.Id);
+        var rows = new List<(string Name, string Qty, string Unit, string Price, string Pct, string Amt)>();
+        foreach (var it in d?.Items ?? new()) {
+          itemCount++;
+          rows.Add((it.ProductName, it.Qty.ToString("0.##", idc), it.Unit, it.UnitPrice.ToString("N0", idc),
+                    it.DiscountPercent is > 0 ? it.DiscountPercent.Value.ToString("0.##", idc) : "-", it.LineTotal.ToString("N0", idc)));
+        }
+        if (d is { InvoiceDiscountAmount: > 0 }) {
+          rows.Add((d.InvoiceDiscountPercent is > 0 ? $"Disc faktur {d.InvoiceDiscountPercent.Value.ToString("0.##", idc)}%" : "Disc faktur",
+                    "", "", "", "", "-" + d.InvoiceDiscountAmount.ToString("N0", idc)));
+        }
+        if (rows.Count == 0) { rows.Add(("", "", "", "", "", "")); }
+        <tbody>
+          @for (int i = 0; i < rows.Count; i++) {
+            var x = rows[i];
+            <tr>
+              <td style="white-space:nowrap">@(i == 0 ? inv.SaleDate.ToLocalTime().ToString("dd-MM-yyyy") : "")</td>
+              <td style="white-space:nowrap">@(i == 0 ? inv.InvoiceNumber : "")</td>
+              <td>@x.Name</td>
+              <td class="num">@x.Qty</td>
+              <td>@x.Unit</td>
+              <td class="num">@x.Price</td>
+              <td class="num">@x.Pct</td>
+              <td class="num">@x.Amt</td>
+              <td class="num tt-net">@(i == 0 ? inv.GrandTotal.ToString("N0", idc) : "")</td>
+            </tr>
+          }
+          <tr class="tt-gap"><td colspan="9"></td></tr>
+        </tbody>
       }
     </table>
-
-    <table style="margin-top:14px">
-      <tr style="font-weight:800;border-top:2px solid #111">
-        <td>@r.Invoices.Count faktur &nbsp; TOTAL</td>
-        <td class="num">Total @r.TotalInvoiced.ToString("N0", idc)</td>
-        <td class="num">Bayar / Potongan @r.TotalSettled.ToString("N0", idc)</td>
-        <td class="num">Sisa @r.TotalOutstanding.ToString("N0", idc)</td>
-      </tr>
-    </table>
+    <div class="tt-print tt-print-sum">
+      <div><span>JUMLAH FAKTUR</span>: @r.Invoices.Count FAKTUR</div>
+      <div><span>JUMLAH ITEM</span>: @itemCount ITEM</div>
+      <div><span>TOTAL NILAI FAKTUR</span>: Rp @r.TotalInvoiced.ToString("N0", idc)</div>
+    </div>
 
     <div class="tt-sig">
       <div>Yang Menerima,<div class="line">(______________________)</div><div>Tgl:</div></div>
       <div>Yang Menyerahkan,<div class="line">(______________________)</div><div>Tgl:</div></div>
     </div>
-    <div style="font-size:10px;color:#9ca3af;margin-top:16px">Dicetak: @User.Identity?.Name @DateTime.Now.ToString("dd-MM-yy HH:mm")</div>
+    <div class="tt-printed" style="font-size:10px;color:#9ca3af;margin-top:16px">Dicetak: @User.Identity?.Name @DateTime.Now.ToString("dd-MM-yy HH:mm")</div>
   </div>
 
 }

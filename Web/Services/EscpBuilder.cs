@@ -225,12 +225,12 @@ public static class EscpBuilder
     }
 
     /// <summary>
-    /// The tanda terima faktur as sheets of at most <see cref="ReceiptPaperLines"/> lines.
-    /// Each invoice is a full block (owner, 2026-10-06): its header, every item with qty,
-    /// price and discount, then subtotal, invoice discount, DPP, PPN, total, paid and what is
-    /// left, laid out like the invoice itself. Blocks never split across sheets unless one is
-    /// longer than a sheet. The page header repeats; only the last sheet has the grand totals
-    /// and the two signatures.
+    /// The tanda terima faktur as sheets of at most <see cref="ReceiptPaperLines"/> lines, as a
+    /// flat list to save paper (HC, 2026-10-07): one row per item, with the invoice date,
+    /// number and Total Netto on the invoice's first row, and a blank line between invoices.
+    /// Term, due date, salesperson, Disc.Rp, DPP/PPN, paid and sisa are left to the invoice
+    /// itself. Blocks never split across sheets unless one is longer than a sheet. The page
+    /// header repeats; only the last sheet has the summary and the two signatures.
     /// </summary>
     public static List<List<PrintLine>> RenderReceiptPages(InvoiceReceiptDto doc, AppSettings cfg,
         string printedBy, DateTime printedAtLocal)
@@ -238,76 +238,85 @@ public static class EscpBuilder
         int W = cfg.PaperColumns;
         int L = ReceiptPaperLines;
 
-        // Item columns as on the invoice: No | Nama Barang | Qty | Sat | Harga | Disc% | Disc.Rp | Jumlah
-        const int noW = 3, qtyW = 6, unitW = 5, priceW = 12, pctW = 6, discW = 11, totW = 13;
-        int nameW = W - (noW + qtyW + unitW + priceW + pctW + discW + totW) - 7;
-        string Row(string no, string name, string qty, string unit, string price,
-                   string pct, string disc, string total) =>
-            $"{R(no, noW)} {Lft(name, nameW)} {R(qty, qtyW)} {Lft(unit, unitW)} {R(price, priceW)} " +
-            $"{R(pct, pctW)} {R(disc, discW)} {R(total, totW)}";
-        // Summary lines sit under the Jumlah column, label right-aligned before it.
-        string Sum(string label, string amount) => R(label, W - totW - 1) + " " + R(amount, totW);
+        // Tgl | No Faktur | Nama Barang | Qty | Sat | Harga | Disc | Jumlah | Total Netto.
+        // Every column but the name is as wide as its widest value, so no number is ever cut;
+        // the name takes what is left and wraps.
+        var items = doc.Invoices
+            .SelectMany(i => doc.Details.GetValueOrDefault(i.Id)?.Items ?? new())
+            .ToList();
+        int Wd(string head, IEnumerable<string> vals) => vals.Select(v => v.Length).Append(head.Length).Max();
+        int dateW  = 5;
+        int noW    = Wd("No Faktur", doc.Invoices.Select(i => i.InvoiceNumber));
+        int qtyW   = Wd("Qty", items.Select(i => Qty(i.Qty)));
+        int unitW  = Wd("Sat", items.Select(i => i.Unit));
+        int priceW = Wd("Harga", items.Select(i => Money(i.UnitPrice)));
+        int pctW   = Wd("Disc", items.Select(i => i.DiscountPercent is > 0 ? Pct(i.DiscountPercent.Value) : "-"));
+        int amtW   = Wd("Jumlah", items.Select(i => Money(i.LineTotal))
+                         .Concat(doc.Details.Values.Select(d => "-" + Money(d.InvoiceDiscountAmount))));
+        int totW   = Wd("Total Netto", doc.Invoices.Select(i => Money(i.GrandTotal)));
+        int nameW  = Math.Max(12, W - (dateW + noW + qtyW + unitW + priceW + pctW + amtW + totW) - 8);
+        string Row(string date, string no, string name, string qty, string unit, string price,
+                   string pct, string amt, string total) =>
+            $"{Lft(date, dateW)} {Lft(no, noW)} {Lft(name, nameW)} {R(qty, qtyW)} {Lft(unit, unitW)} " +
+            $"{R(price, priceW)} {R(pct, pctW)} {R(amt, amtW)} {R(total, totW)}";
 
         var blocks = new List<List<PrintLine>>();
-        int n = 0;
         foreach (var inv in doc.Invoices)
         {
-            n++;
             var d = doc.Details.GetValueOrDefault(inv.Id);
-            var term = inv.PaymentType == "Cash" ? "Tunai"
-                     : string.IsNullOrEmpty(inv.PaymentTermName) ? "Kredit" : inv.PaymentTermName;
-            var settled = inv.AmountPaid + inv.AppliedNotesTotal;
-            var block = new List<PrintLine> {
-                new(Lft($"{n}. {inv.InvoiceNumber}  Tgl {inv.SaleDate.ToLocalTime():dd-MM-yyyy}  {term}" +
-                        $"  Jth Tempo {(inv.DueDate.HasValue ? inv.DueDate.Value.ToString("dd-MM-yyyy") : "-")}" +
-                        (string.IsNullOrEmpty(d?.SalesPersonCode) ? "" : $"  Sales {d.SalesPersonCode}"), W), Bold: true)
-            };
-            if (d != null)
+            var block = new List<PrintLine>();
+            bool first = true;
+            // The first row of the invoice carries its date, number and Total Netto.
+            void Add(string name, string qty, string unit, string price, string pct, string amt)
             {
-                int k = 0;
-                foreach (var it in d.Items)
-                {
-                    k++;
-                    var lineDisc = it.DiscountAmount * it.Qty;
-                    block.Add(new(Row(k.ToString(), it.ProductName, Qty(it.Qty), it.Unit, Money(it.UnitPrice),
-                        it.DiscountPercent is > 0 ? Pct(it.DiscountPercent.Value) : "-",
-                        lineDisc > 0 ? Money(lineDisc) : "-", Money(it.LineTotal))));
-                }
-                block.Add(new(Sum("Subtotal", Money(d.Items.Sum(i => i.LineTotal)))));
-                if (d.InvoiceDiscountAmount > 0)
-                    block.Add(new(Sum(d.InvoiceDiscountPercent is > 0 ? $"Disc faktur {Pct(d.InvoiceDiscountPercent.Value)}%" : "Disc faktur",
-                                      "-" + Money(d.InvoiceDiscountAmount))));
-                block.Add(new(Sum("DPP", Money(d.TaxBase))));
-                block.Add(new(Sum($"PPN {Pct(d.TaxRate * 100m)}%", Money(d.TaxAmount))));
+                var parts = Wrap(name, nameW);
+                block.Add(new(Row(first ? $"{inv.SaleDate.ToLocalTime():dd-MM}" : "",
+                                  first ? inv.InvoiceNumber : "", parts[0], qty, unit, price, pct, amt,
+                                  first ? Money(inv.GrandTotal) : "")));
+                foreach (var more in parts.Skip(1)) block.Add(new(Row("", "", more, "", "", "", "", "", "")));
+                first = false;
             }
-            block.Add(new(Sum("Total faktur", Money(inv.GrandTotal)), Bold: true));
-            if (settled > 0) block.Add(new(Sum("Bayar/Potongan", "-" + Money(settled))));
-            block.Add(new(Sum("Sisa", Money(Math.Max(0, inv.NetBalanceDue))), Bold: true));
+            foreach (var it in d?.Items ?? new())
+                Add(it.ProductName, Qty(it.Qty), it.Unit, Money(it.UnitPrice),
+                    it.DiscountPercent is > 0 ? Pct(it.DiscountPercent.Value) : "-", Money(it.LineTotal));
+            if (d is { InvoiceDiscountAmount: > 0 })
+                Add(d.InvoiceDiscountPercent is > 0 ? $"Disc faktur {Pct(d.InvoiceDiscountPercent.Value)}%" : "Disc faktur",
+                    "", "", "", "", "-" + Money(d.InvoiceDiscountAmount));
+            if (first) Add("", "", "", "", "", "");   // no detail: still list the invoice
             block.Add(new(""));
             blocks.Add(block);
         }
+        if (blocks.Count > 0) blocks[^1].RemoveAt(blocks[^1].Count - 1);   // no gap before the closing rule
 
         const int rightW = 36;   // fits "Periode : dd-MM-yyyy s/d dd-MM-yyyy"
-        List<PrintLine> Header() => new() {
-            new(Lft(cfg.StoreName, W - rightW - 1) + " " + R("TANDA TERIMA FAKTUR", rightW), Bold: true),
-            new(Lft(cfg.StoreAddress ?? "", W - rightW - 1) + " " + Lft($"Tgl     : {printedAtLocal:dd-MM-yyyy}", rightW)),
-            new(Lft(string.IsNullOrWhiteSpace(cfg.StorePhone) ? "" : $"Telp {cfg.StorePhone}", W - rightW - 1)
-                + " " + Lft($"Periode : {doc.From:dd-MM-yyyy} s/d {doc.To:dd-MM-yyyy}", rightW)),
-            new(Lft($"Kepada : {doc.CustomerName}", W)),
-            new(Lft($"         {doc.CustomerAddress ?? ""}" +
-                    (string.IsNullOrWhiteSpace(doc.CustomerPhone) ? "" : $"  Telp {doc.CustomerPhone}"), W)),
-            new(new string('-', W)),
-            new(Row("No", "Nama Barang", "Qty", "Sat", "Harga", "Disc%", "Disc.Rp", "Jumlah"), Bold: true),
-            new(new string('-', W)),
-        };
+        var kepada = $"Kepada : {doc.CustomerName}";
+        var kepadaMore = (doc.CustomerAddress ?? "").Trim() +
+                         (string.IsNullOrWhiteSpace(doc.CustomerPhone) ? "" : $"  Telp {doc.CustomerPhone}");
+        // Customer on one line when it fits, else the address on a second line as before.
+        var kepadaLines = string.IsNullOrWhiteSpace(kepadaMore) ? new[] { kepada }
+                        : kepada.Length + 3 + kepadaMore.Trim().Length <= W ? new[] { $"{kepada}   {kepadaMore.Trim()}" }
+                        : new[] { kepada, $"         {kepadaMore.Trim()}" };
+        List<PrintLine> Header()
+        {
+            var h = new List<PrintLine> {
+                new(Lft(cfg.StoreName, W - rightW - 1) + " " + R("TANDA TERIMA FAKTUR", rightW), Bold: true),
+                new(Lft(cfg.StoreAddress ?? "", W - rightW - 1) + " " + Lft($"Tgl     : {printedAtLocal:dd-MM-yyyy}", rightW)),
+                new(Lft(string.IsNullOrWhiteSpace(cfg.StorePhone) ? "" : $"Telp {cfg.StorePhone}", W - rightW - 1)
+                    + " " + Lft($"Periode : {doc.From:dd-MM-yyyy} s/d {doc.To:dd-MM-yyyy}", rightW)),
+            };
+            h.AddRange(kepadaLines.Select(k => new PrintLine(Lft(k, W))));
+            h.Add(new(new string('-', W)));
+            h.Add(new(Row("Tgl", "No Faktur", "Nama Barang", "Qty", "Sat", "Harga", "Disc", "Jumlah", "Total Netto"), Bold: true));
+            h.Add(new(new string('-', W)));
+            return h;
+        }
 
         string sigCol(string s) => Lft("  " + s, W / 2);
         List<PrintLine> LastFooter() => new() {
             new(new string('-', W)),
-            new(Lft($"{doc.Invoices.Count} faktur", W), Bold: true),
-            new(Sum("TOTAL FAKTUR", Money(doc.TotalInvoiced)), Bold: true),
-            new(Sum("BAYAR/POTONGAN", Money(doc.TotalSettled))),
-            new(Sum("SISA", Money(doc.TotalOutstanding)), Bold: true),
+            new(Lft($"JUMLAH FAKTUR       : {doc.Invoices.Count} FAKTUR", W), Bold: true),
+            new(Lft($"JUMLAH ITEM         : {items.Count} ITEM", W), Bold: true),
+            new(Lft($"TOTAL NILAI FAKTUR  : Rp {Money(doc.TotalInvoiced)}", W), Bold: true),
             new(""),
             new(sigCol("Yang Menerima,") + "  Yang Menyerahkan,"),
             new(""), new(""), new(""),
@@ -328,19 +337,21 @@ public static class EscpBuilder
         int lastCap = Math.Max(1, usable - headerH - LastFooter().Count - 1);
 
         // A block longer than a whole sheet is cut into sheet-sized pieces; each later piece
-        // starts with the invoice line again, marked "(lanjutan)".
+        // starts with a line naming the invoice again, marked "(lanjutan)".
         var units = new List<List<PrintLine>>();
-        foreach (var b in blocks)
+        for (int bi = 0; bi < blocks.Count; bi++)
         {
+            var b = blocks[bi];
             if (b.Count <= contCap) { units.Add(b); continue; }
-            var rest  = b.Skip(1).ToList();
-            var head  = b[0];
+            var rest  = b.ToList();
+            var title = new PrintLine(Lft($"{new string(' ', dateW)} {doc.Invoices[bi].InvoiceNumber} (lanjutan)", W));
             bool first = true;
             while (rest.Count > 0)
             {
-                var title = first ? head : new PrintLine(Lft(head.Text.TrimEnd() + " (lanjutan)", W), true);
-                var take  = Math.Min(contCap - 1, rest.Count);
-                units.Add(new List<PrintLine> { title }.Concat(rest.Take(take)).ToList());
+                var take  = Math.Min(first ? contCap : contCap - 1, rest.Count);
+                var piece = first ? new List<PrintLine>() : new List<PrintLine> { title };
+                piece.AddRange(rest.Take(take));
+                units.Add(piece);
                 rest.RemoveRange(0, take);
                 first = false;
             }
@@ -389,6 +400,22 @@ public static class EscpBuilder
     private static string Pct(decimal v)   => v.ToString("0.##", Id);
     private static string Qty(decimal v)   => v.ToString("0.##", Id);
     private static string Dash(string? s)  => string.IsNullOrWhiteSpace(s) ? "-" : s;
+
+    /// <summary>Splits text into lines of at most <paramref name="w"/> characters, at spaces where it can.</summary>
+    private static List<string> Wrap(string s, int w)
+    {
+        var lines = new List<string>();
+        var rest  = (s ?? "").Trim();
+        while (rest.Length > w)
+        {
+            var cut = rest.LastIndexOf(' ', w);
+            if (cut <= 0) cut = w;
+            lines.Add(rest[..cut].TrimEnd());
+            rest = rest[cut..].TrimStart();
+        }
+        lines.Add(rest);
+        return lines;
+    }
 
     /// <summary>Left-aligned, cut or padded to exactly <paramref name="w"/> characters.</summary>
     private static string Lft(string s, int w) => s.Length > w ? s[..w] : s.PadRight(w);
