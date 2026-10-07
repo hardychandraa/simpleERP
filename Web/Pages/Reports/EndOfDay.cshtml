@@ -1,6 +1,9 @@
 @page "/Reports/EndOfDay"
 @model SimpleERP.Web.Pages.Reports.EndOfDayModel
 @{ ViewData["Title"] = Localizer["End of Day"].Value; }
+@* One link per invoice number; on paper it prints as plain text. (There used to be a second
+   "print-only" copy, but no such class exists, so the number showed twice on screen.) *@
+<style>@@media print { .eod-inv { color: inherit !important; font-weight: normal !important; } }</style>
 
 <div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:18px" class="no-print">
   <form method="get" style="display:flex;gap:10px;align-items:flex-end">
@@ -84,7 +87,7 @@
       <tbody>
       @foreach (var s in Model.Report.SalesList) {
         <tr>
-          <td><a href="/Sales/@s.Id" style="color:#2563eb;text-decoration:none;font-weight:600" class="no-print">@s.InvoiceNumber</a><span class="print-only">@s.InvoiceNumber</span></td>
+          <td><a href="/Sales/@s.Id" class="eod-inv" style="color:#2563eb;text-decoration:none;font-weight:600">@s.InvoiceNumber</a></td>
           <td>@s.CustomerName</td>
           <td><span class="badge @(s.PaymentType=="Cash"?"ok":"warn")">@Localizer[EnumDisplay.Key("PaymentType", s.PaymentType)]</span></td>
           <td style="text-align:right">@s.GrandTotal.ToString("N0")</td>
