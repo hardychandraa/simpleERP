@@ -10,19 +10,27 @@ public class IndexModel : PageModel {
     public string? Search   { get; set; }
     public string? Msg      { get; set; }
     public bool    IsErr    { get; set; }
-    public async Task OnGetAsync(string? search, string? msg, bool err = false) {
+    /// <summary>Products with exactly 0 in stock are hidden unless this is on (HC, 2026-10-07).</summary>
+    public bool    ShowEmpty { get; set; }
+    public int     HiddenEmpty { get; set; }
+    public async Task OnGetAsync(string? search, string? msg, bool err = false, bool showEmpty = false) {
         ViewData["Title"] = "Products";
-        Search = search?.Trim(); Msg = msg; IsErr = err;
+        Search = search?.Trim(); Msg = msg; IsErr = err; ShowEmpty = showEmpty;
         var all = await _svc.GetAllAsync();
         if (!string.IsNullOrEmpty(Search)) {
             var s = Search.ToLower();
             all = all.Where(p => p.Name.ToLower().Contains(s) || p.SKU.ToLower().Contains(s)
                               || (p.Category?.ToLower().Contains(s) ?? false)).ToList();
         }
+        // Negative stock is never hidden: it would point at a problem.
+        if (!ShowEmpty) {
+            HiddenEmpty = all.Count(p => p.CurrentStock == 0);
+            all = all.Where(p => p.CurrentStock != 0).ToList();
+        }
         Products = all;
     }
-    public async Task<IActionResult> OnPostDeactivateAsync(Guid id, string? search) {
+    public async Task<IActionResult> OnPostDeactivateAsync(Guid id, string? search, bool showEmpty = false) {
         var r = await _svc.DeactivateAsync(id);
-        return RedirectToPage(new { search, msg = r.Success ? "Product deactivated." : r.Error, err = !r.Success });
+        return RedirectToPage(new { search, showEmpty, msg = r.Success ? "Product deactivated." : r.Error, err = !r.Success });
     }
 }

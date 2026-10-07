@@ -9,8 +9,12 @@
         <input type="text" name="search" value="@Model.Search" placeholder="@Localizer["Search name, SKU, category..."]" />
         <button type="submit" class="btn btn-primary btn-sm">@Localizer["Search"]</button>
         @if (!string.IsNullOrEmpty(Model.Search)) {
-            <a href="/Products" class="btn btn-outline btn-sm">✕ @Localizer["Clear"]</a>
+            <a href="/Products@(Model.ShowEmpty ? "?showEmpty=true" : "")" class="btn btn-outline btn-sm">✕ @Localizer["Clear"]</a>
         }
+        <label style="display:inline-flex;align-items:center;gap:8px;margin:0;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">
+            <input type="checkbox" name="showEmpty" value="true" checked="@Model.ShowEmpty" onchange="this.form.submit()" style="width:18px;height:18px" />
+            @Localizer["Show 0 stock"]
+        </label>
     </form>
     <a href="/Products/Create" class="btn btn-primary" style="margin-left:auto">＋ @Localizer["Add Product"]</a>
 </div>
@@ -36,6 +40,7 @@
           <form method="post" asp-page-handler="Deactivate" style="display:inline" onsubmit="return confirm('@Localizer["Deactivate this product?"]')">
             <input type="hidden" name="id" value="@p.Id"/>
             <input type="hidden" name="search" value="@Model.Search"/>
+            <input type="hidden" name="showEmpty" value="@(Model.ShowEmpty ? "true" : "false")"/>
             <button type="submit" class="btn btn-danger btn-sm">@Localizer["Off"]</button>
           </form>
         }
@@ -44,10 +49,17 @@
   }
   @if (!Model.Products.Any()) {
     <tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:28px">
-      @(string.IsNullOrEmpty(Model.Search) ? Localizer["No products yet."] : Localizer["No results for \"{0}\".", Model.Search])
+      @(!string.IsNullOrEmpty(Model.Search) ? Localizer["No results for \"{0}\".", Model.Search]
+        : Model.HiddenEmpty > 0 ? Localizer["No products in stock."] : Localizer["No products yet."])
       <a href="/Products/Create">@Localizer["Add one"] &rarr;</a>
     </td></tr>
   }
   </tbody>
 </table>
+@if (Model.HiddenEmpty > 0) {
+  <div style="font-size:12px;color:#6b7280;margin-top:10px">
+    @Localizer[Model.HiddenEmpty == 1 ? "{0} product with 0 stock hidden." : "{0} products with 0 stock hidden.", Model.HiddenEmpty]
+    <a href="/Products?showEmpty=true@(string.IsNullOrEmpty(Model.Search) ? "" : "&search=" + Uri.EscapeDataString(Model.Search))">@Localizer["Show"]</a>
+  </div>
+}
 </div>
