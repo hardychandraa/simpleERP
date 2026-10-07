@@ -395,12 +395,15 @@ function addItem() {
 
 function removeItem(idx) { items.splice(idx, 1); render(); }
 
+// Kept from page load: clearing the table detaches this row, so looking it up again by id on
+// the next empty render found nothing and render() threw (remove the last line → stale totals).
+const EMPTY_ROW = document.getElementById('emptyRow');
 function render() {
     const body = document.getElementById('tblBody');
 
     if (items.length === 0) {
         body.innerHTML = '';
-        body.appendChild(document.getElementById('emptyRow'));
+        body.appendChild(EMPTY_ROW);
         syncSummary(0, 0);
         document.getElementById('ItemsJson').value = '[]';
         return;
@@ -511,6 +514,27 @@ document.getElementById('purchaseForm').addEventListener('submit', function(e) {
 });
 
 function fmt(n)    { return Math.round(n).toLocaleString(); }
+// A refused save: load the posted lines back into the table as if they had just been added.
+(function prefill() {
+    const lines = @Html.Raw(Model.PrefillItemsJson);
+    if (@(Model.InvoiceDiscountIsPercent ? "true" : "false")) {
+        document.getElementById('invDiscMode').value  = 'pct';
+        document.getElementById('invDiscIsPct').value = 'true';
+    }
+    for (const l of lines) {
+        const id   = String(l.productId).toLowerCase();
+        const prod = PRODUCTS.find(p => p.id === id);
+        const disc = l.discountAmount || 0;
+        items.push({
+            productId: id, name: prod ? prod.name : '?',
+            qty: l.qty, cost: l.unitCost,
+            disc: disc, discPct: l.discountPercent ?? null,
+            notes: l.notes || null,
+            total: (l.unitCost - disc) * l.qty
+        });
+    }
+    if (lines.length) render();
+})();
 function esc(s)    { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block'; }
 function hideErr(id)      { document.getElementById(id).style.display = 'none'; }

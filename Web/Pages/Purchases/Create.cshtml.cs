@@ -51,6 +51,8 @@ public class CreateModel : PageModel
     /// <summary>PPN rate as a fraction, so the summary previews tax exactly as the server computes it.</summary>
     public decimal VatRate { get; set; }
     public string? Error { get; set; }
+    /// <summary>The posted lines, put back into the table when a save is refused (as Sales/Create does).</summary>
+    public string PrefillItemsJson { get; set; } = "[]";
 
     public async Task OnGetAsync()
     {
@@ -75,6 +77,12 @@ public class CreateModel : PageModel
             _log.LogError(ex, "Purchase line items failed to deserialize. Raw payload: {ItemsJson}", ItemsJson);
             Error = _loc["Invalid item data."]; return Page();
         }
+
+        // If this post is refused, the page re-opens with the lines that were typed rather than
+        // an empty table (it used to lose them all: a whole supplier invoice to retype, found
+        // 2026-10-07). Re-serialized from the parsed items, never echoed raw: it is written
+        // into a <script>, and the serializer escapes < > & and quotes.
+        PrefillItemsJson = JsonSerializer.Serialize(items ?? new(), new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
         if (items == null || items.Count == 0) { Error = _loc["Add at least one item."]; return Page(); }
         if (items.Count > 200) { Error = _loc["Too many items in one purchase."]; return Page(); }

@@ -467,12 +467,15 @@ function removeItem(idx) {
     render();
 }
 
+// Kept from page load: clearing the table detaches this row, so looking it up again by id on
+// the next empty render found nothing and render() threw (remove the last line → stale totals).
+const EMPTY_ROW = document.getElementById('emptyRow');
 function render() {
     const body = document.getElementById('tblBody');
 
     if (items.length === 0) {
         body.innerHTML = '';
-        body.appendChild(document.getElementById('emptyRow'));
+        body.appendChild(EMPTY_ROW);
         syncSummary(0, 0);
         document.getElementById('ItemsJson').value = '[]';
         return;
