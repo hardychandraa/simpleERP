@@ -483,6 +483,10 @@ public class CreditNoteService : ICreditNoteService
         => (await _applications.GetByPurchaseAsync(purchaseId))
             .Select(a => MapApplicationDto(a, canReverse: !a.IsReversed)).ToList();
 
+    public async Task<CreditNoteApplicationDto?> GetApplicationAsync(Guid applicationId)
+        => await _applications.GetByIdAsync(applicationId) is { } a
+            ? MapApplicationDto(a, canReverse: !a.IsReversed) : null;
+
     public async Task<ServiceResult> CancelAsync(Guid id, string user)
     {
         var note = await _notes.GetByIdAsync(id);

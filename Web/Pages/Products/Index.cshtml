@@ -1,6 +1,7 @@
 @page
 @model SimpleERP.Web.Pages.Products.IndexModel
-@{ ViewData["Title"] = Localizer["Products"].Value; }
+@{ ViewData["Title"] = Localizer["Products"].Value;
+   var seesCost = User.SeesCost(); var maintains = User.MaintainsMasterData(); }
 @if (Model.Msg != null) {
     <div class="alert @(Model.IsErr?"alert-danger":"alert-success")">@Model.Msg</div>
 }
@@ -16,11 +17,13 @@
             @Localizer["Show 0 stock"]
         </label>
     </form>
+    @if (maintains) {
     <a href="/Products/Create" class="btn btn-primary" style="margin-left:auto">＋ @Localizer["Add Product"]</a>
+    }
 </div>
 <div class="card">
 <table>
-  <thead><tr><th>@Localizer["Name"]</th><th>@Localizer["SKU"]</th><th>@Localizer["Category"]</th><th>@Localizer["Price"]</th><th>@Localizer["Unit"]</th><th>@Localizer["Stock"]</th><th>@Localizer["Low Alert"]</th><th>@Localizer["Avg Cost"]</th><th>@Localizer["Warranty"]</th><th>@Localizer["Status"]</th><th></th></tr></thead>
+  <thead><tr><th>@Localizer["Name"]</th><th>@Localizer["SKU"]</th><th>@Localizer["Category"]</th><th>@Localizer["Price"]</th><th>@Localizer["Unit"]</th><th>@Localizer["Stock"]</th><th>@Localizer["Low Alert"]</th>@if (seesCost) {<th>@Localizer["Avg Cost"]</th>}<th>@Localizer["Warranty"]</th><th>@Localizer["Status"]</th>@if (maintains) {<th></th>}</tr></thead>
   <tbody>
   @foreach (var p in Model.Products) {
     <tr>
@@ -31,9 +34,10 @@
       <td style="font-size:12px">@p.Unit</td>
       <td><span class="badge @(p.CurrentStock<=0?"err":p.IsLow?"warn":"ok")">@p.CurrentStock.ToString("N0")</span></td>
       <td style="color:#9ca3af;font-size:12px">≤ @p.LowStockThreshold</td>
-      <td>@p.AvgCost.ToString("N0")</td>
+      @if (seesCost) { <td>@p.AvgCost.ToString("N0")</td> }
       <td>@(p.DefaultWarrantyMonths.HasValue ? Localizer["{0} mo", p.DefaultWarrantyMonths].Value : "—")</td>
       <td><span class="badge @(p.IsActive?"ok":"gray")">@(p.IsActive?Localizer["Active"]:Localizer["Inactive"])</span></td>
+      @if (maintains) {
       <td style="white-space:nowrap">
         <a href="/Products/Edit/@p.Id" class="btn btn-outline btn-sm">@Localizer["Edit"]</a>
         @if (p.IsActive) {
@@ -45,13 +49,14 @@
           </form>
         }
       </td>
+      }
     </tr>
   }
   @if (!Model.Products.Any()) {
-    <tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:28px">
+    <tr><td colspan="11" style="text-align:center;color:#9ca3af;padding:28px">
       @(!string.IsNullOrEmpty(Model.Search) ? Localizer["No results for \"{0}\".", Model.Search]
         : Model.HiddenEmpty > 0 ? Localizer["No products in stock."] : Localizer["No products yet."])
-      <a href="/Products/Create">@Localizer["Add one"] &rarr;</a>
+      @if (maintains) { <a href="/Products/Create">@Localizer["Add one"] &rarr;</a> }
     </td></tr>
   }
   </tbody>

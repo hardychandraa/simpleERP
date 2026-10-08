@@ -313,7 +313,7 @@
   }
 
   <!-- Commission -->
-  @if (Model.Commissions.Any()) {
+  @if (User.SeesCommission() && Model.Commissions.Any()) {
     <div class="card">
       <div class="card-title">🧾 @Localizer["Commission Accrued"]</div>
       <table>

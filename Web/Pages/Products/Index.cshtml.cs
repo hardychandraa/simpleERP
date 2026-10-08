@@ -2,6 +2,7 @@ using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 namespace SimpleERP.Web.Pages.Products;
 public class IndexModel : PageModel {
     private readonly IProductService _svc;
@@ -27,9 +28,13 @@ public class IndexModel : PageModel {
             HiddenEmpty = all.Count(p => p.CurrentStock == 0);
             all = all.Where(p => p.CurrentStock != 0).ToList();
         }
+        // Staff see harga jual and stock, never cost (HC, 2026-10-08).
+        if (!User.SeesCost())
+            foreach (var p in all) { p.AvgCost = 0; p.PurchasePrice = 0; }
         Products = all;
     }
     public async Task<IActionResult> OnPostDeactivateAsync(Guid id, string? search, bool showEmpty = false) {
+        if (!User.MaintainsMasterData()) return this.Refuse("product master is Admin-only");
         var r = await _svc.DeactivateAsync(id);
         return RedirectToPage(new { search, showEmpty, msg = r.Success ? "Product deactivated." : r.Error, err = !r.Success });
     }

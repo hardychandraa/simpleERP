@@ -1,24 +1,31 @@
 @page "/CreditNotes"
 @model SimpleERP.Web.Pages.CreditNotes.IndexModel
 @using SimpleERP.Domain.Enums
-@{ ViewData["Title"] = Localizer["Credit & Debit Notes"].Value; }
+@{
+    ViewData["Title"] = Localizer["Credit & Debit Notes"].Value;
+    // Staff see customer credit notes only; debit notes are supplier-side (HC, 2026-10-08).
+    var supplierSide = User.SeesSupplierSide();
+}
 
 @if (Model.Msg != null)
 {
     <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
 }
 
-<div class="stats" style="grid-template-columns:repeat(2,1fr)">
+<div class="stats" style="grid-template-columns:repeat(@(supplierSide ? 2 : 1),1fr)">
     <div class="stat orange">
         <div class="stat-lbl">@Localizer["Open credit — owed to customers"]</div>
         <div class="stat-val">@Model.OpenCredit.ToString("N0")</div>
         <div style="font-size:11px;color:#9ca3af;margin-top:2px">@Localizer["Not yet applied to any invoice"]</div>
     </div>
+    @if (supplierSide)
+    {
     <div class="stat teal">
         <div class="stat-lbl">@Localizer["Open debit — owed by suppliers"]</div>
         <div class="stat-val">@Model.OpenDebit.ToString("N0")</div>
         <div style="font-size:11px;color:#9ca3af;margin-top:2px">@Localizer["Not yet applied to any purchase"]</div>
     </div>
+    }
 </div>
 
 <!-- ── Raise a standalone note ───────────────────────────────────────────────── -->
@@ -35,7 +42,7 @@
                 <label>@Localizer["Direction"]</label>
                 <select asp-for="NewNote.Type" id="note-type">
                     <option value="@((int)CreditDebitType.Credit)">@Localizer["Credit note — we owe a customer"]</option>
-                    <option value="@((int)CreditDebitType.Debit)">@Localizer["Debit note — a supplier owes us"]</option>
+                    @if (supplierSide) { <option value="@((int)CreditDebitType.Debit)">@Localizer["Debit note — a supplier owes us"]</option> }
                 </select>
             </div>
             <div class="fg" id="fg-customer">
@@ -48,6 +55,8 @@
                     }
                 </select>
             </div>
+            @if (supplierSide)
+            {
             <div class="fg" id="fg-supplier" style="display:none">
                 <label>@Localizer["Supplier"]</label>
                 <select data-searchable asp-for="NewNote.SupplierId">
@@ -58,6 +67,7 @@
                     }
                 </select>
             </div>
+            }
         </div>
         <div class="frow frow3">
             <div class="fg">
@@ -66,7 +76,7 @@
                 <select asp-for="NewNote.Category">
                     <option value="@((int)CreditNoteCategory.PriceDispute)">@Localizer[EnumDisplay.Key(CreditNoteCategory.PriceDispute)]</option>
                     <option value="@((int)CreditNoteCategory.BillingError)">@Localizer[EnumDisplay.Key(CreditNoteCategory.BillingError)]</option>
-                    <option value="@((int)CreditNoteCategory.RebateSettlement)">@Localizer[EnumDisplay.Key(CreditNoteCategory.RebateSettlement)]</option>
+                    @if (supplierSide) { <option value="@((int)CreditNoteCategory.RebateSettlement)">@Localizer[EnumDisplay.Key(CreditNoteCategory.RebateSettlement)]</option> }
                     <option value="@((int)CreditNoteCategory.Return)">@Localizer[EnumDisplay.Key(CreditNoteCategory.Return)]</option>
                     <option value="@((int)CreditNoteCategory.Other)">@Localizer[EnumDisplay.Key(CreditNoteCategory.Other)]</option>
                 </select>
@@ -105,11 +115,14 @@
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div class="card-title" style="margin:0">@Localizer["Register"] (@Model.Notes.Count)</div>
         <form method="get" style="display:flex;gap:8px;align-items:center">
+            @if (supplierSide)
+            {
             <select name="type" style="width:auto">
                 <option value="">@Localizer["All directions"]</option>
                 <option value="@((int)CreditDebitType.Credit)" selected="@(Model.FilterType == CreditDebitType.Credit)">@Localizer["Credit only"]</option>
                 <option value="@((int)CreditDebitType.Debit)"  selected="@(Model.FilterType == CreditDebitType.Debit)">@Localizer["Debit only"]</option>
             </select>
+            }
             <select name="status" style="width:auto">
                 <option value="">@Localizer["All statuses"]</option>
                 <option value="@((int)CreditNoteStatus.Open)"      selected="@(Model.FilterStatus == CreditNoteStatus.Open)">@Localizer[EnumDisplay.Key(CreditNoteStatus.Open)]</option>
@@ -285,7 +298,8 @@ const typeSel = document.getElementById('note-type');
 function syncCounterparty() {
     const isCredit = typeSel.value === '@((int)CreditDebitType.Credit)';
     document.getElementById('fg-customer').style.display = isCredit ? '' : 'none';
-    document.getElementById('fg-supplier').style.display = isCredit ? 'none' : '';
+    const sup = document.getElementById('fg-supplier');   // Admin only
+    if (sup) sup.style.display = isCredit ? 'none' : '';
 }
 typeSel.addEventListener('change', syncCounterparty);
 syncCounterparty();

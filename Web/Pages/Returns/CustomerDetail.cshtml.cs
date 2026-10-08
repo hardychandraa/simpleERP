@@ -20,6 +20,12 @@ public class CustomerDetailModel : PageModel
         var ret = await _returns.GetCustomerReturnAsync(id);
         if (ret == null) return RedirectToPage("/Returns/Index");
 
+        // Restocking happens at the cost the goods were sold at (HPP): Admin only (HC, 2026-10-08).
+        if (!User.SeesCost())
+        {
+            ret.CostRestocked = 0;
+            foreach (var i in ret.Items) i.CostAtSale = 0;
+        }
         Return = ret;
         ViewData["Title"] = $"Sales Return {ret.ReturnNumber}";
         Msg = msg; IsErr = err;

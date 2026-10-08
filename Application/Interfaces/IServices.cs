@@ -271,6 +271,8 @@ public interface ICreditNoteService {
     /// <summary>Notes applied against one invoice — its detail page's "credit notes applied" card.</summary>
     Task<List<CreditNoteApplicationDto>> GetApplicationsForSaleAsync(Guid saleId);
     Task<List<CreditNoteApplicationDto>> GetApplicationsForPurchaseAsync(Guid purchaseId);
+    /// <summary>One application by id, or null. Lets a page check which document it belongs to before reversing it.</summary>
+    Task<CreditNoteApplicationDto?> GetApplicationAsync(Guid applicationId);
     /// <summary>Remaining value of still-Open notes, by direction — the slice not yet tied to any document.</summary>
     Task<decimal> GetOpenTotalAsync(CreditDebitType type);
     /// <summary>

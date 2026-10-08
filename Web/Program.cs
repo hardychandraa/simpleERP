@@ -136,6 +136,18 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             return Task.CompletedTask;
         };
 
+        // A signed-in user refused a page: Staff never see links to Admin pages, so this
+        // is someone typing a URL or posting directly. Worth a line in Settings → Logs.
+        options.Events.OnRedirectToAccessDenied = ctx => {
+            ctx.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>()
+               .LogWarning("Access denied: {User} ({Role}) {Method} {Path}{Query}",
+                   ctx.HttpContext.User.Identity?.Name,
+                   ctx.HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value,
+                   ctx.Request.Method, ctx.Request.Path, ctx.Request.QueryString);
+            ctx.Response.Redirect(ctx.RedirectUri);
+            return Task.CompletedTask;
+        };
+
         // Re-check the account on every request.
         //
         // An auth cookie is self-contained and signed: without this, deactivating someone
@@ -199,10 +211,13 @@ builder.Services.AddRazorPages(options => {
     // necessity — there is nobody to authenticate as until it has been used once.
     options.Conventions.AllowAnonymousToPage("/Account/Setup");
 
-    // Admin-only: what the business earns, what it spends, and what anyone is paid.
-    // Staff run the day-to-day operation (sales, purchases, payments, returns, stock)
-    // and deliberately cannot see commission, rebate income, expenses or the financial
-    // reports. HC's call, 2026-08-07.
+    // Admin-only: what the business earns, what it spends, what it pays for its goods and
+    // what anyone is paid. Staff run the sales side only (sell, collect, deliver, customer
+    // returns and credit notes) and cannot see harga beli / average cost / HPP / stock value,
+    // anything supplier-side, commission, rebates, expenses or the financial reports.
+    // HC's calls, 2026-08-07 and 2026-10-08. Pages Staff share with Admin but see without
+    // cost or commission (Products, Inventory, Kartu Stok, Returns, CreditNotes, Sales
+    // detail, SalesPersons) scrub those fields in their page models; see AccessExtensions.
     options.Conventions.AuthorizeFolder("/Settings",        "AdminOnly");
     options.Conventions.AuthorizeFolder("/Commissions",     "AdminOnly");
     options.Conventions.AuthorizeFolder("/CommissionRules", "AdminOnly");
@@ -214,6 +229,18 @@ builder.Services.AddRazorPages(options => {
     // lookups staff need, while these two are the income picture.
     options.Conventions.AuthorizePage("/Reports/ProfitLoss", "AdminOnly");
     options.Conventions.AuthorizePage("/Reports/Position",   "AdminOnly");
+    // The supplier side is built on harga beli, so it is Admin's alone (2026-10-08).
+    options.Conventions.AuthorizeFolder("/Purchases",              "AdminOnly");
+    options.Conventions.AuthorizeFolder("/Suppliers",              "AdminOnly");
+    options.Conventions.AuthorizePage("/Inventory/StockIn",        "AdminOnly");
+    options.Conventions.AuthorizePage("/Returns/CreateSupplier",   "AdminOnly");
+    options.Conventions.AuthorizePage("/Returns/SupplierDetail",   "AdminOnly");
+    // Control actions: a stock adjustment books value on or off at average cost; product
+    // master holds harga beli and sets harga jual; salespeople decide who earns commission.
+    options.Conventions.AuthorizePage("/Inventory/Adjust",         "AdminOnly");
+    options.Conventions.AuthorizePage("/Products/Create",          "AdminOnly");
+    options.Conventions.AuthorizePage("/Products/Edit",            "AdminOnly");
+    options.Conventions.AuthorizePage("/SalesPersons/Edit",        "AdminOnly");
 })
 .AddMvcOptions(o => {
     // <input type="number"> always posts an invariant floating-point number, but the

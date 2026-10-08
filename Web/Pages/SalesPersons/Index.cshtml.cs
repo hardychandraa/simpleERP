@@ -35,6 +35,7 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostCreateAsync()
     {
+        if (!User.MaintainsMasterData()) return this.Refuse("salesperson master is Admin-only");
         var result = await _svc.CreateAsync(Input, User_);
         return Redirect(result.Success
             ? $"/SalesPersons?msg={Uri.EscapeDataString(_loc["'{0}' added.", Input.Name].Value)}"
@@ -43,6 +44,7 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
+        if (!User.MaintainsMasterData()) return this.Refuse("salesperson master is Admin-only");
         var result = await _svc.DeleteAsync(id, User_);
         return Redirect(result.Success
             ? $"/SalesPersons?msg={Uri.EscapeDataString(_loc["Sales person deleted."].Value)}"

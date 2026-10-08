@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = Localizer["Sales Return {0}", Model.Return.ReturnNumber].Value;
     var isActive = Model.Return.Status == "Active";
+    var seesCost = User.SeesCost();
 }
 
 @if (Model.Msg != null)
@@ -60,7 +61,7 @@
                 <th style="text-align:center">@Localizer["Qty"]</th>
                 <th style="text-align:right">@Localizer["Sold at"]</th>
                 <th style="text-align:right">@Localizer["Credit"]</th>
-                <th style="text-align:right">@Localizer["Restocked at"]</th>
+                @if (seesCost) { <th style="text-align:right">@Localizer["Restocked at"]</th> }
             </tr>
         </thead>
         <tbody>
@@ -78,7 +79,7 @@
                 <td style="text-align:center">@item.Qty.ToString("N0")</td>
                 <td style="text-align:right;color:#6b7280">@item.UnitPrice.ToString("N0")</td>
                 <td style="text-align:right;font-weight:600">@item.CreditAmount.ToString("N0")</td>
-                <td style="text-align:right;color:#6b7280">@item.CostAtSale.ToString("N0")</td>
+                @if (seesCost) { <td style="text-align:right;color:#6b7280">@item.CostAtSale.ToString("N0")</td> }
             </tr>
         }
         </tbody>
@@ -105,10 +106,13 @@
         <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1a1a2e;font-size:16px;font-weight:700">
             <span>@Localizer["Total Credited"]</span><span>@Model.Return.GrandTotal.ToString("N0")</span>
         </div>
+        @if (seesCost)
+        {
         <div style="display:flex;justify-content:space-between;padding:4px 0">
             <span style="color:#6b7280">@Localizer["Cost restocked"]</span>
             <span style="color:#6b7280">@Model.Return.CostRestocked.ToString("N0")</span>
         </div>
+        }
     </div>
 
     @if (!string.IsNullOrEmpty(Model.Return.Notes))
@@ -167,7 +171,11 @@
         @{ var unitsBack = Model.Return.Items.Sum(i => i.Qty); }
         <ul style="font-size:12px;color:#6b7280;line-height:1.8;padding-left:18px">
             <li>
-                @(unitsBack == 1
+                @(!seesCost
+                    ? (unitsBack == 1
+                        ? Localizer["Put {0} unit back into stock.",  unitsBack.ToString("N0")]
+                        : Localizer["Put {0} units back into stock.", unitsBack.ToString("N0")])
+                    : unitsBack == 1
                     ? Localizer["Put {0} unit back into stock, valued at the cost it was sold at ({1}).",  unitsBack.ToString("N0"), Model.Return.CostRestocked.ToString("N0")]
                     : Localizer["Put {0} units back into stock, valued at the cost they were sold at ({1}).", unitsBack.ToString("N0"), Model.Return.CostRestocked.ToString("N0")])
             </li>

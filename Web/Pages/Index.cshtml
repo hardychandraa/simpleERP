@@ -73,7 +73,7 @@
       </table>
     }
     <div style="margin-top:10px;display:flex;gap:8px">
-      <a href="/Inventory/StockIn" class="btn btn-success btn-sm">📥 @Localizer["Stock In"] &rarr;</a>
+      @if (User.SeesSupplierSide()) { <a href="/Inventory/StockIn" class="btn btn-success btn-sm">📥 @Localizer["Stock In"] &rarr;</a> }
       <a href="/Inventory" class="btn btn-outline btn-sm">@Localizer["View All"] &rarr;</a>
     </div>
   </div>

@@ -37,12 +37,13 @@
         <a href="/Commissions"  class="@(page.StartsWith("/Commissions")?"active":"")">🧾 @Localizer["Commissions"]</a>
     }
 
+    @if (isAdmin)
+    {
+    @* The supplier side is Admin's alone (HC, 2026-10-08). *@
     <div class="sb-sec">@Localizer["Purchasing"]</div>
     <a href="/Purchases/Create" class="@(page=="/Purchases/Create"?"active":"")">📥 @Localizer["New Purchase"]</a>
     <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Create"&&page!="/Purchases/Due"&&page!="/Purchases/Statement"?"active":"")">📦 @Localizer["Purchases"]</a>
     <a href="/Purchases/Due"    class="@(page=="/Purchases/Due"||page=="/Purchases/Statement"?"active":"")">💰 @Localizer["Payables"]</a>
-    @if (isAdmin)
-    {
         <a href="/Rebates"      class="@(page.StartsWith("/Rebates")?"active":"")">💰 @Localizer["Rebates"]</a>
     }
 
@@ -51,8 +52,11 @@
     <a href="/CreditNotes" class="@(page.StartsWith("/CreditNotes")?"active":"")">📄 @Localizer["Credit / Debit Notes"]</a>
 
     <div class="sb-sec">@Localizer["Inventory"]</div>
-    <a href="/Inventory/StockIn"  class="@(page=="/Inventory/StockIn" ?"active":"")">📥 @Localizer["Stock In"]</a>
-    <a href="/Inventory/Adjust"   class="@(page=="/Inventory/Adjust"  ?"active":"")">⚖️ @Localizer["Adjust Stock"]</a>
+    @if (isAdmin)
+    {
+        <a href="/Inventory/StockIn"  class="@(page=="/Inventory/StockIn" ?"active":"")">📥 @Localizer["Stock In"]</a>
+        <a href="/Inventory/Adjust"   class="@(page=="/Inventory/Adjust"  ?"active":"")">⚖️ @Localizer["Adjust Stock"]</a>
+    }
     <a href="/Inventory"          class="@(page=="/Inventory/Index"   ?"active":"")">📊 @Localizer["Stock Levels"]</a>
     <a href="/Inventory/Ledger"   class="@(page=="/Inventory/Ledger"  ?"active":"")">📒 @Localizer["Ledger"]</a>
 
@@ -71,9 +75,9 @@
     }
 
     <div class="sb-sec">@Localizer["Master Data"]</div>
-    <a href="/Suppliers"         class="@(page.StartsWith("/Suppliers")   ?"active":"")">🏭 @Localizer["Suppliers"]</a>
     @if (isAdmin)
     {
+        <a href="/Suppliers"     class="@(page.StartsWith("/Suppliers")   ?"active":"")">🏭 @Localizer["Suppliers"]</a>
         <a href="/RebateRules"   class="@(page.StartsWith("/RebateRules") ?"active":"")">🎁 @Localizer["Rebate Rules"]</a>
     }
     <a href="/PaymentTerms"      class="@(page.StartsWith("/PaymentTerms")?"active":"")">📆 @Localizer["Payment Terms"]</a>

@@ -1,12 +1,18 @@
 @page "/SalesPersons"
 @model SimpleERP.Web.Pages.SalesPersons.IndexModel
-@{ ViewData["Title"] = Localizer["Sales People"].Value; }
+@{
+    ViewData["Title"] = Localizer["Sales People"].Value;
+    // Staff see the list; adding, editing and deleting is Admin's (HC, 2026-10-08).
+    var maintains = User.MaintainsMasterData();
+}
 
 @if (Model.Msg != null)
 {
     <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
 }
 
+@if (maintains)
+{
 <div class="card">
     <div class="card-title">➕ @Localizer["Add Sales Person"]</div>
     <p style="font-size:12px;color:#6b7280;margin-bottom:14px;line-height:1.6">
@@ -34,6 +40,7 @@
         </div>
     </form>
 </div>
+}
 
 <div class="card">
     <div class="card-title">@Localizer["Sales People"] (@Model.People.Count)</div>
@@ -50,7 +57,7 @@
                     <th>@Localizer["Name"]</th>
                     <th style="width:180px">@Localizer["Phone"]</th>
                     <th style="width:110px;text-align:center">@Localizer["Status"]</th>
-                    <th style="width:150px"></th>
+                    @if (maintains) { <th style="width:150px"></th> }
                 </tr>
             </thead>
             <tbody>
@@ -72,6 +79,8 @@
                             <span style="color:#9ca3af;font-size:12px">@Localizer["Inactive"]</span>
                         }
                     </td>
+                    @if (maintains)
+                    {
                     <td style="white-space:nowrap">
                         <a href="/SalesPersons/Edit?id=@p.Id" class="btn btn-outline btn-sm">@Localizer["Edit"]</a>
                         @if (p.InUse)
@@ -87,6 +96,7 @@
                             </form>
                         }
                     </td>
+                    }
                 </tr>
             }
             </tbody>

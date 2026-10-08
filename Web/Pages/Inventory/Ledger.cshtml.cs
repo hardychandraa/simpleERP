@@ -1,6 +1,7 @@
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 namespace SimpleERP.Web.Pages.Inventory;
 
 /// <summary>
@@ -35,5 +36,19 @@ public class LedgerModel : PageModel
         // Newest first (HC, 2026-10-07). The running balance is worked out oldest-first by the
         // service, so each row still shows the stock right after that movement.
         Card.Rows.Reverse();
+
+        // Staff see the movements and balances but not what anything cost: on a sale row
+        // the unit cost is the HPP (HC, 2026-10-08). Purchase and supplier-return rows keep
+        // their number and supplier but lose the link, since those pages are Admin's.
+        if (!User.SeesCost())
+        {
+            foreach (var p in Products) { p.AvgCost = 0; p.PurchasePrice = 0; }
+            foreach (var r in Card.Rows)
+            {
+                r.UnitCost = 0; r.TotalCost = 0;
+                if (r.Link != null && !r.Link.StartsWith("/Sales/") && !r.Link.StartsWith("/Returns/Customer/"))
+                    r.Link = null;
+            }
+        }
     }
 }

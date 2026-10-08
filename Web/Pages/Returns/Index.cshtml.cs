@@ -1,6 +1,7 @@
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Returns;
 
@@ -38,6 +39,8 @@ public class IndexModel : PageModel
         Msg  = msg;  IsErr = err;
 
         CustomerReturns = await _returns.GetCustomerReturnsAsync(from, to, search);
-        SupplierReturns = await _returns.GetSupplierReturnsAsync(from, to, search);
+        // Purchase returns carry purchase cost: Admin only (HC, 2026-10-08).
+        if (User.SeesSupplierSide())
+            SupplierReturns = await _returns.GetSupplierReturnsAsync(from, to, search);
     }
 }

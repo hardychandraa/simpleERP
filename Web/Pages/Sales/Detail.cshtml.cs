@@ -46,7 +46,9 @@ public class DetailModel : PageModel
         Sale        = sale;
         AppSettings = await _settings.GetAsync();
         Payments    = sale.PaymentHistory;
-        Commissions = await _commissions.GetAccrualsForSaleAsync(id);
+        // Commission is Admin's (HC, 2026-10-08): not even loaded for Staff.
+        if (User.SeesCommission())
+            Commissions = await _commissions.GetAccrualsForSaleAsync(id);
         Returns     = await _returns.GetReturnsForSaleAsync(id);
         NoteApplications = await _notes.GetApplicationsForSaleAsync(id);
         TotalCollected = Payments.Sum(p => p.Amount);
@@ -85,6 +87,12 @@ public class DetailModel : PageModel
 
     public async Task<IActionResult> OnPostReverseApplicationAsync(Guid id, Guid applicationId)
     {
+        // Only an application on THIS invoice. The service takes any application id, so
+        // without this a post here could reverse a debit note's application on a purchase.
+        var application = await _notes.GetApplicationAsync(applicationId);
+        if (application == null || application.SaleId != id)
+            return this.Refuse("application does not belong to this invoice");
+
         var user   = this.CurrentUserName();
         var result = await _notes.ReverseApplicationAsync(applicationId, user);
         return RedirectToPage(new {

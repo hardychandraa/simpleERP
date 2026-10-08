@@ -53,18 +53,34 @@ public class IndexModel : PageModel
     private async Task LoadAsync()
     {
         ViewData["Title"] = "Credit & Debit Notes";
+        // Debit notes are supplier-side: their amounts, the open purchases they apply to and
+        // the supplier list are Admin's (HC, 2026-10-08). Staff get credit notes only.
+        var supplierSide = User.SeesSupplierSide();
+        if (!supplierSide) FilterType = CreditDebitType.Credit;
         Notes           = await _notes.GetAllAsync(FilterType, FilterStatus);
         CustomerOptions = await _customers.GetAllActiveAsync();
-        SupplierOptions = await _suppliers.GetAllAsync(activeOnly: true);
         OpenCredit      = await _notes.GetOpenTotalAsync(CreditDebitType.Credit);
-        OpenDebit       = await _notes.GetOpenTotalAsync(CreditDebitType.Debit);
+        if (supplierSide)
+        {
+            SupplierOptions = await _suppliers.GetAllAsync(activeOnly: true);
+            OpenDebit       = await _notes.GetOpenTotalAsync(CreditDebitType.Debit);
+        }
         NewNote.NoteDate ??= DateTime.Now.Date;
     }
+
+    /// <summary>
+    /// Staff may act on credit notes only. Every handler checks the note itself, not just
+    /// what the form offered, since a direct post can name any note id.
+    /// </summary>
+    private async Task<bool> IsCreditNoteAsync(Guid noteId)
+        => (await _notes.GetByIdAsync(noteId))?.IsCredit == true;
 
     private string User_ => this.CurrentUserName();
 
     public async Task<IActionResult> OnPostCreateAsync()
     {
+        if (!User.SeesSupplierSide() && (NewNote.Type != CreditDebitType.Credit || NewNote.SupplierId != null))
+            return this.Refuse("debit notes are Admin-only");
         var result = await _notes.CreateAsync(NewNote, User_);
         return Redirect(result.Success
             ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["{0} note created.", _loc["CreditDebitType_" + NewNote.Type].Value].Value)}"
@@ -73,6 +89,8 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostSettleAsync()
     {
+        if (!User.SeesSupplierSide() && !await IsCreditNoteAsync(Settle.Id))
+            return this.Refuse("debit notes are Admin-only");
         var result = await _notes.SettleAsync(Settle, User_);
         return Redirect(result.Success
             ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Note settled."].Value)}"
@@ -81,6 +99,8 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostCancelAsync(Guid id)
     {
+        if (!User.SeesSupplierSide() && !await IsCreditNoteAsync(id))
+            return this.Refuse("debit notes are Admin-only");
         var result = await _notes.CancelAsync(id, User_);
         return Redirect(result.Success
             ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Note cancelled."].Value)}"
@@ -89,6 +109,8 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostApplyAsync()
     {
+        if (!User.SeesSupplierSide() && (Apply.PurchaseId != null || !await IsCreditNoteAsync(Apply.CreditNoteId)))
+            return this.Refuse("debit notes are Admin-only");
         var result = await _notes.ApplyAsync(Apply, User_);
         return Redirect(result.Success
             ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Note applied."].Value)}"
@@ -97,6 +119,8 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostReverseApplicationAsync(Guid applicationId)
     {
+        if (!User.SeesSupplierSide() && (await _notes.GetApplicationAsync(applicationId))?.IsCredit != true)
+            return this.Refuse("debit notes are Admin-only");
         var result = await _notes.ReverseApplicationAsync(applicationId, User_);
         return Redirect(result.Success
             ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Application reversed."].Value)}"

@@ -1,13 +1,13 @@
 @page "/Returns"
 @model SimpleERP.Web.Pages.Returns.IndexModel
-@{ ViewData["Title"] = Localizer["Returns"].Value; }
+@{ ViewData["Title"] = Localizer["Returns"].Value; var supplierSide = User.SeesSupplierSide(); }
 
 @if (Model.Msg != null)
 {
     <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
 }
 
-<div class="stats" style="grid-template-columns:repeat(2,1fr)">
+<div class="stats" style="grid-template-columns:repeat(@(supplierSide ? 2 : 1),1fr)">
     <div class="stat orange">
         <div class="stat-lbl">@Localizer["Credited to customers"]</div>
         <div class="stat-val">@Model.CustomerCreditTotal.ToString("N0")</div>
@@ -18,6 +18,7 @@
                 : Localizer["{0} active sales returns", activeCustomerReturns])
         </div>
     </div>
+    @if (supplierSide) {
     <div class="stat teal">
         <div class="stat-lbl">@Localizer["Debited to suppliers"]</div>
         <div class="stat-val">@Model.SupplierDebitTotal.ToString("N0")</div>
@@ -28,6 +29,7 @@
                 : Localizer["{0} active purchase returns", activeSupplierReturns])
         </div>
     </div>
+    }
 </div>
 
 <div class="card" style="margin-bottom:14px">
@@ -50,7 +52,7 @@
     </form>
     <p style="font-size:12px;color:#6b7280;margin-top:12px;line-height:1.6">
         @Localizer["A return always starts from the document it reverses: open the"]
-        <a href="/Sales">@Localizer["Invoice"]</a> @Localizer["or the"] <a href="/Purchases">@Localizer["Purchase"]</a> @Localizer["and use"]
+        <a href="/Sales">@Localizer["Invoice"]</a> @if (supplierSide) {<text>@Localizer["or the"] <a href="/Purchases">@Localizer["Purchase"]</a></text>} @Localizer["and use"]
         <strong>@Localizer["Return items"]</strong>
         @Localizer["there. Posting a return restocks (or issues) the goods and raises a credit or debit note — the original document is never edited."]
     </p>
@@ -101,7 +103,8 @@
     }
 </div>
 
-<!-- ── Purchase returns ──────────────────────────────────────────────────────── -->
+<!-- ── Purchase returns (Admin only) ─────────────────────────────────────────── -->
+@if (supplierSide) {
 <div class="card">
     <div class="card-title">↪ @Localizer["Purchase Returns"] (@Model.SupplierReturns.Count)</div>
     @if (Model.SupplierReturns.Count == 0)
@@ -145,3 +148,4 @@
         </table>
     }
 </div>
+}
