@@ -21,6 +21,11 @@ public static class AccessExtensions
     public static bool SeesCommission(this ClaimsPrincipal user) => user.IsInRole(nameof(UserRole.Admin));
     /// <summary>Supplier-side documents and master data (purchases, debit notes, suppliers).</summary>
     public static bool SeesSupplierSide(this ClaimsPrincipal user) => user.IsInRole(nameof(UserRole.Admin));
+    /// <summary>
+    /// The business's totals: dashboard figures (revenue, cash in, outstanding), receivables,
+    /// overdue alerts and End of Day (HC, 2026-10-09).
+    /// </summary>
+    public static bool SeesBusinessTotals(this ClaimsPrincipal user) => user.IsInRole(nameof(UserRole.Admin));
     /// <summary>Creating or changing master data that is Admin's (products, salespeople).</summary>
     public static bool MaintainsMasterData(this ClaimsPrincipal user) => user.IsInRole(nameof(UserRole.Admin));
 

@@ -51,7 +51,7 @@
               @(Model.Report.ProductsInStock == 1
                   ? Localizer["{0} product in stock",  Model.Report.ProductsInStock]
                   : Localizer["{0} products in stock", Model.Report.ProductsInStock])
-              &middot; <a href="/Inventory" class="no-print">@Localizer["Stock Levels"] &rarr;</a>
+              &middot; <a href="/Products?showEmpty=true" class="no-print">@Localizer["Products"] &rarr;</a>
             </div>
           </td>
           <td style="text-align:right;font-weight:600;vertical-align:top">@Model.Report.InventoryValue.ToString("N0")</td>

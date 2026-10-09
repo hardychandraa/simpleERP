@@ -75,6 +75,8 @@ public class PrintController : ControllerBase
     /// POST /api/print/invoice-receipt?customerId=…&amp;from=yyyy-MM-dd&amp;to=yyyy-MM-dd
     /// Tanda terima faktur for one customer and period, on A4-length forms.
     [HttpPost("invoice-receipt")]
+    // Tanda Terima is Admin's (HC, 2026-10-09), like its page.
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> PrintInvoiceReceipt(Guid customerId, DateTime from, DateTime to)
     {
         try { await _antiforgery.ValidateRequestAsync(HttpContext); }

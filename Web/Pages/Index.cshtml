@@ -2,12 +2,14 @@
 @model IndexModel
 @{ ViewData["Title"] = Localizer["Dashboard"].Value; }
 
+@if (Model.ShowTotals) {
 <div class="stats">
   <div class="stat blue"><div class="stat-lbl">@Localizer["Active Products"]</div><div class="stat-val">@Model.TotalProducts</div></div>
   <div class="stat green"><div class="stat-lbl">@Localizer["Today Revenue"]</div><div class="stat-val" style="font-size:17px">@Model.TodayRevenue.ToString("N0")</div></div>
   <div class="stat teal"><div class="stat-lbl">@Localizer["Today Cash In"]</div><div class="stat-val" style="font-size:17px">@Model.TodayCashIn.ToString("N0")</div></div>
   <div class="stat red"><div class="stat-lbl">@Localizer["Outstanding Due"]</div><div class="stat-val" style="font-size:17px">@Model.TotalOutstanding.ToString("N0")</div></div>
 </div>
+}
 
 <partial name="_PendingChecks" model="Model.PendingChecks" />
 
@@ -53,7 +55,9 @@
     }
     <div style="margin-top:10px;display:flex;gap:8px">
       <a href="/Sales" class="btn btn-outline btn-sm">@Localizer["All Sales"] &rarr;</a>
+      @if (Model.ShowTotals) {
       <a href="/Reports/EndOfDay" class="btn btn-outline btn-sm">📅 @Localizer["End of Day"] &rarr;</a>
+      }
     </div>
   </div>
 
@@ -75,8 +79,7 @@
       </table>
     }
     <div style="margin-top:10px;display:flex;gap:8px">
-      @if (User.SeesSupplierSide()) { <a href="/Inventory/StockIn" class="btn btn-success btn-sm">📥 @Localizer["Stock In"] &rarr;</a> }
-      <a href="/Inventory" class="btn btn-outline btn-sm">@Localizer["View All"] &rarr;</a>
+      <a href="/Products?showEmpty=true" class="btn btn-outline btn-sm">@Localizer["View All"] &rarr;</a>
     </div>
   </div>
 </div>

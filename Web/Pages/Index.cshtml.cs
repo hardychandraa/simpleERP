@@ -29,6 +29,9 @@ public class IndexModel : PageModel
     public int     OutstandingCount  { get; set; }
     public int     OverdueCount      { get; set; }
 
+    /// <summary>False for Staff: the stats, overdue/outstanding alerts and End of Day link are not loaded.</summary>
+    public bool ShowTotals { get; set; }
+
     public List<Application.DTOs.SaleListDto>   RecentSales { get; set; } = new();
     public List<Application.DTOs.StockLevelDto> LowStock    { get; set; } = new();
 
@@ -36,6 +39,18 @@ public class IndexModel : PageModel
     {
         ViewData["Title"] = "Dashboard";
         if (User.SeesSupplierSide()) PendingChecks = (await _purchases.GetNeedingReviewAsync()).Count;
+        RecentSales = (await _s.GetAllAsync()).Take(8).ToList();
+        LowStock = (await _inv.GetAllStockLevelsAsync())
+                    .Where(s => s.IsLow && s.IsActive)
+                    .OrderBy(s => s.CurrentStock)
+                    .Take(8)
+                    .ToList();
+
+        // Staff see recent sales and low stock only; the figures are not even computed
+        // for them (HC, 2026-10-09).
+        ShowTotals = User.SeesBusinessTotals();
+        if (!ShowTotals) return;
+
         TotalProducts  = (await _p.GetAllActiveAsync()).Count;
         TotalCustomers = (await _c.GetAllActiveAsync()).Count;
 
@@ -60,13 +75,5 @@ public class IndexModel : PageModel
         OutstandingCount = outstanding.Count;
         TotalOutstanding = outstanding.Sum(s => s.NetBalanceDue);
         OverdueCount     = outstanding.Count(s => s.IsOverdue);
-
-        RecentSales = (await _s.GetAllAsync()).Take(8).ToList();
-
-        LowStock = (await _inv.GetAllStockLevelsAsync())
-                    .Where(s => s.IsLow && s.IsActive)
-                    .OrderBy(s => s.CurrentStock)
-                    .Take(8)
-                    .ToList();
     }
 }

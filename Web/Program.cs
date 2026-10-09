@@ -230,10 +230,17 @@ builder.Services.AddRazorPages(options => {
     options.Conventions.AuthorizeFolder("/RebateRules",     "AdminOnly");
     options.Conventions.AuthorizeFolder("/Expenses",        "AdminOnly");
     options.Conventions.AuthorizeFolder("/Audit",           "AdminOnly");
-    // /Reports is split, not gated wholesale: End of Day and Warranty are operational
-    // lookups staff need, while these two are the income picture.
+    // /Reports is split, not gated wholesale: Warranty is an operational lookup Staff need;
+    // the others are the business's figures. End of Day joined them (HC, 2026-10-09).
     options.Conventions.AuthorizePage("/Reports/ProfitLoss", "AdminOnly");
     options.Conventions.AuthorizePage("/Reports/Position",   "AdminOnly");
+    options.Conventions.AuthorizePage("/Reports/EndOfDay",   "AdminOnly");
+    // Receivables are Admin's (HC, 2026-10-09): Due Payments, due by customer, the customer
+    // statement / multi-invoice settlement, and Tanda Terima. Staff still record a payment
+    // on the invoice itself.
+    options.Conventions.AuthorizeFolder("/Payments",         "AdminOnly");
+    options.Conventions.AuthorizePage("/Sales/Due",          "AdminOnly");
+    options.Conventions.AuthorizePage("/Sales/TandaTerima",  "AdminOnly");
     // The supplier side is built on harga beli, so it is Admin's alone (2026-10-08).
     options.Conventions.AuthorizeFolder("/Purchases",              "AdminOnly");
     options.Conventions.AuthorizeFolder("/Suppliers",              "AdminOnly");

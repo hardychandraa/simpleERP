@@ -170,6 +170,23 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 2p
   [style*="color:#9ca3af"],[style*="color:#d1d5db"],[style*="color:#4a5568"]{color:var(--c-muted)!important}
 }
 
+/* Sidebar groups fold open and closed (HC, 2026-10-09). Screen only: print hides the sidebar. */
+@media screen{
+  .sb-grp>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;min-height:36px}
+  .sb-grp>summary::-webkit-details-marker{display:none}
+  .sb-grp>summary::after{content:"\25B8";font-size:12px;transition:transform .15s;margin-left:8px}
+  .sb-grp[open]>summary::after{transform:rotate(90deg)}
+  .sb-grp>summary:hover,.sb-grp>summary:focus-visible{color:#fff}
+  .sb-nav>a+.sb-grp,.sb-grp+.sb-grp{border-top:1px solid #2d3a52}
+}
+/* Desktop: ☰ hides or shows the sidebar (HC, 2026-10-09) */
+@media screen and (min-width:1024px){
+  .nav-toggle{display:inline-flex}
+  .topbar-left{display:flex;align-items:center;gap:12px;min-width:0}
+  body.nav-collapsed .sb{display:none}
+  body.nav-collapsed .main{margin-left:0}
+}
+
 /* Tablet and phone: sidebar becomes a slide-in menu */
 @media screen and (max-width:1023px){
   .sb{transform:translateX(-100%);transition:transform .2s ease;width:280px}
