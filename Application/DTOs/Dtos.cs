@@ -48,6 +48,10 @@ public class CustomerDto {
     public string  Name     { get; set; } = "";
     public string? Phone    { get; set; }
     public string? Address  { get; set; }
+    /// <summary>NPWP (optional).</summary>
+    public string? TaxId      { get; set; }
+    /// <summary>NIK from the KTP (optional); serves as the NPWP for individuals.</summary>
+    public string? NationalId { get; set; }
     public bool    IsActive { get; set; }
     public decimal TotalDue { get; set; }
     /// <summary>Defaults pre-filled on a new sale (see Customer). All optional.</summary>
@@ -59,6 +63,10 @@ public class CreateCustomerDto {
     public string  Name    { get; set; } = "";
     public string? Phone   { get; set; }
     public string? Address { get; set; }
+    /// <summary>NPWP (optional).</summary>
+    public string? TaxId      { get; set; }
+    /// <summary>NIK from the KTP (optional); serves as the NPWP for individuals.</summary>
+    public string? NationalId { get; set; }
     /// <summary>Defaults pre-filled on a new sale (see Customer). All optional.</summary>
     public Guid?   SalesPersonId { get; set; }
     public Guid?   PaymentTermId { get; set; }
@@ -69,6 +77,10 @@ public class UpdateCustomerDto {
     public string  Name     { get; set; } = "";
     public string? Phone    { get; set; }
     public string? Address  { get; set; }
+    /// <summary>NPWP (optional).</summary>
+    public string? TaxId      { get; set; }
+    /// <summary>NIK from the KTP (optional); serves as the NPWP for individuals.</summary>
+    public string? NationalId { get; set; }
     public bool    IsActive { get; set; }
     /// <summary>Defaults pre-filled on a new sale (see Customer). All optional.</summary>
     public Guid?   SalesPersonId { get; set; }
@@ -209,6 +221,8 @@ public class CreatePurchaseDto {
     public List<CreatePurchaseItemDto> Items { get; set; } = new();
 }
 public class CreatePurchaseItemDto {
+    /// <summary>On a revision: which existing line this is (keeps its id, which returns and rebate accruals reference). Null = a new line.</summary>
+    public Guid?    PurchaseItemId { get; set; }
     public Guid    ProductId      { get; set; }
     public decimal Qty            { get; set; }
     public decimal UnitCost       { get; set; }
@@ -219,6 +233,15 @@ public class CreatePurchaseItemDto {
     public string? Notes          { get; set; }
 }
 public class PurchaseDto {
+    public Guid?     PaymentTermId { get; set; }
+    public DateTime  CreatedAt     { get; set; }
+    /// <summary>Perlu dicek: still to be compared with the supplier invoice by Admin.</summary>
+    public bool      NeedsReview   { get; set; }
+    public string?   ReviewedBy    { get; set; }
+    public DateTime? ReviewedAt    { get; set; }
+    public bool      EnteredWithoutPrice { get; set; }
+    public string?   LastStaffEditBy { get; set; }
+    public DateTime? LastStaffEditAt { get; set; }
     public Guid      Id             { get; set; }
     public string    PurchaseNumber { get; set; } = "";
     public string?   SupplierDocumentNumber { get; set; }
@@ -268,7 +291,67 @@ public class PurchaseItemDto {
     public decimal  NetLineTotal   => LineTotal - AllocatedInvoiceDiscount;
     public string?  Notes          { get; set; }
 }
+/// <summary>Barang Masuk entry by Staff: no price, cost, discount, PPN or term — those come from the master and the supplier.</summary>
+public class CreateUnpricedPurchaseDto {
+    public Guid      SupplierId             { get; set; }
+    public string?   SupplierDocumentNumber { get; set; }
+    public DateTime? PurchaseDate           { get; set; }
+    public string?   Notes                  { get; set; }
+    public List<UnpricedPurchaseLineDto> Items { get; set; } = new();
+}
+public class UnpricedPurchaseLineDto {
+    /// <summary>On an edit: the existing line (it keeps its price). Null = a new line.</summary>
+    public Guid?   PurchaseItemId { get; set; }
+    public Guid    ProductId      { get; set; }
+    public decimal Qty            { get; set; }
+    public string? Notes          { get; set; }
+}
+/// <summary>A purchase as Staff may see it: quantities only. Deliberately has no amount fields.</summary>
+public class PurchaseQtyListDto {
+    public Guid      Id                     { get; set; }
+    public string    PurchaseNumber         { get; set; } = "";
+    public string?   SupplierDocumentNumber { get; set; }
+    public DateTime  PurchaseDate           { get; set; }
+    public string    SupplierName           { get; set; } = "";
+    public string    Status                 { get; set; } = "";
+    public bool      NeedsReview            { get; set; }
+    public bool      EnteredWithoutPrice    { get; set; }
+    public string    CreatedBy              { get; set; } = "";
+    public int       LineCount              { get; set; }
+    public decimal   TotalQty               { get; set; }
+    public string    Summary                { get; set; } = "";
+}
+public class PurchaseQtyDto {
+    public Guid      Id                     { get; set; }
+    public string    PurchaseNumber         { get; set; } = "";
+    public string?   SupplierDocumentNumber { get; set; }
+    public DateTime  PurchaseDate           { get; set; }
+    public Guid      SupplierId             { get; set; }
+    public string    SupplierName           { get; set; } = "";
+    public string    Status                 { get; set; } = "";
+    public string?   Notes                  { get; set; }
+    public string    CreatedBy              { get; set; } = "";
+    public DateTime  CreatedAt              { get; set; }
+    public bool      NeedsReview            { get; set; }
+    public bool      EnteredWithoutPrice    { get; set; }
+    public string?   ReviewedBy             { get; set; }
+    public DateTime? ReviewedAt             { get; set; }
+    public string?   LastStaffEditBy        { get; set; }
+    public DateTime? LastStaffEditAt        { get; set; }
+    public List<PurchaseQtyLineDto> Lines   { get; set; } = new();
+}
+public class PurchaseQtyLineDto {
+    public Guid    PurchaseItemId { get; set; }
+    public Guid    ProductId      { get; set; }
+    public string  ProductName    { get; set; } = "";
+    public string  SKU            { get; set; } = "";
+    public decimal Qty            { get; set; }
+    public string? Notes          { get; set; }
+}
 public class PurchaseListDto {
+    public Guid      SupplierId    { get; set; }
+    public bool      NeedsReview   { get; set; }
+    public bool      EnteredWithoutPrice { get; set; }
     public Guid     Id             { get; set; }
     public string   PurchaseNumber { get; set; } = "";
     public string?  SupplierDocumentNumber { get; set; }
@@ -765,6 +848,8 @@ public class AuthenticatedUserDto {
     public string   Username    { get; set; } = "";
     public string   DisplayName { get; set; } = "";
     public UserRole Role        { get; set; } = UserRole.Staff;
+    /// <summary>Goes into the login cookie; see User.SecurityStamp.</summary>
+    public string   SecurityStamp { get; set; } = "";
 }
 
 // ── Sales ─────────────────────────────────────────────────────────────────────
@@ -809,6 +894,9 @@ public class SaleDto {
     public string    CustomerName  { get; set; } = "";
     public string?   CustomerPhone { get; set; }
     public string?   CustomerAddress { get; set; }
+    /// <summary>Customer NPWP / NIK, for the invoice screen only (not printed; HC 2026-10-09).</summary>
+    public string?   CustomerTaxId { get; set; }
+    public string?   CustomerNationalId { get; set; }
     /// <summary>Warehouse code of the branch the goods left from. Empty when not set.</summary>
     public string    BranchCode    { get; set; } = "";
     /// <summary>Credit term in days, e.g. 30. Null for Cash or open credit.</summary>
@@ -1360,6 +1448,8 @@ public class AppSettingsDto {
     public decimal VatRatePercent{ get; set; } = 10m;
     /// <summary>Rebate withholding rate as a percentage (15 = 15%). Stored as a fraction on the entity.</summary>
     public decimal RebateWithholdingPercent { get; set; } = 15m;
+    /// <summary>Month lock, read only here: SaveAsync never writes it (see SetBooksClosedThroughAsync).</summary>
+    public DateTime? BooksClosedThrough { get; set; }
 }
 
 // ── Result wrappers ───────────────────────────────────────────────────────────

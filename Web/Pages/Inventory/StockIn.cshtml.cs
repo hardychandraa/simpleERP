@@ -1,3 +1,4 @@
+using SimpleERP.Web.Services;
 using Microsoft.Extensions.Localization;
 using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
@@ -5,6 +6,7 @@ using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 namespace SimpleERP.Web.Pages.Inventory;
+[HandlesBindingErrors]
 public class StockInModel:PageModel{
     private readonly IInventoryService _inv;private readonly IProductService _prod;
     private readonly IStringLocalizer<SharedResource> _loc;

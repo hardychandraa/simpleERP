@@ -28,6 +28,8 @@ public class InventoryService : IInventoryService
     {
         if (dto.Qty <= 0)    return _log.Refuse(_loc["Quantity must be > 0."]);
         if (dto.UnitCost < 0) return _log.Refuse(_loc["Cost cannot be negative."]);
+        if (dto.Qty > Limits.MaxQty) return _log.Refuse(_loc["Quantity is too large (at most {0} per line).", Limits.MaxQty.ToString("N0")]);
+        if (dto.UnitCost > Limits.MaxUnitAmount) return _log.Refuse(_loc["Amount is too large (at most {0}).", Limits.MaxUnitAmount.ToString("N0")]);
         if (await _products.GetByIdAsync(dto.ProductId) == null) return _log.Refuse(_loc["Product not found."]);
         var branch = await _branches.GetDefaultAsync();
         if (branch == null) return _log.Refuse(_loc["Default branch not found."]);
@@ -209,6 +211,7 @@ public class InventoryService : IInventoryService
     {
         if (string.IsNullOrWhiteSpace(dto.Reason)) return _log.Refuse(_loc["Reason is required."]);
         if (dto.QtyActual < 0) return _log.Refuse(_loc["Actual quantity cannot be negative."]);
+        if (dto.QtyActual > Limits.MaxQty) return _log.Refuse(_loc["Quantity is too large (at most {0} per line).", Limits.MaxQty.ToString("N0")]);
 
         var product = await _products.GetByIdAsync(dto.ProductId);
         if (product == null) return _log.Refuse(_loc["Product not found."]);

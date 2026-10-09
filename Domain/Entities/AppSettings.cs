@@ -31,4 +31,11 @@ public class AppSettings {
     /// rate must stay editable and could legitimately differ by reward type later.
     /// </summary>
     public decimal RebateWithholdingRate { get; set; } = 0.15m;
+    /// <summary>
+    /// Month lock (tutup buku): the last day of the last closed month, as a local date. Nothing
+    /// dated on or before it may be created, changed or cancelled (see PeriodLock). Null = no
+    /// month closed. Set only through AppSettingsService.SetBooksClosedThroughAsync, which
+    /// audits it; the main settings form never touches it.
+    /// </summary>
+    public DateTime? BooksClosedThrough { get; set; }
 }

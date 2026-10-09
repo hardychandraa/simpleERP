@@ -111,6 +111,10 @@ public class UserService : IUserService
             return _log.Refuse(_loc["'{0}' is the only active administrator. Give another user the Admin role first.", account.Username]);
 
         var before = $"{account.DisplayName} ({account.Role}, active={account.IsActive})";
+        // A role change or deactivation already ends the session at the next click (the
+        // cookie's role is compared each request); a new stamp makes that explicit.
+        if (account.Role != dto.Role || account.IsActive != dto.IsActive)
+            account.SecurityStamp = Guid.NewGuid().ToString("N");
         account.DisplayName = dto.DisplayName.Trim();
         account.Role        = dto.Role;
         account.IsActive    = dto.IsActive;
@@ -139,6 +143,9 @@ public class UserService : IUserService
         account.PasswordHash     = _hasher.Hash(newPassword);
         account.LockedUntil      = null;
         account.FailedLoginCount = 0;
+        // Every open session of this user ends: a reset is usually because someone else
+        // may know the old password (security review R4).
+        account.SecurityStamp    = Guid.NewGuid().ToString("N");
         _users.Update(account);
         // The password itself is never written to the audit trail, only that it changed.
         await _audit.LogAsync(user, "User.ResetPassword", account.Username);
@@ -146,25 +153,28 @@ public class UserService : IUserService
         return ServiceResult.Ok();
     }
 
-    public async Task<ServiceResult> ChangeOwnPasswordAsync(string username, string currentPassword, string newPassword)
+    public async Task<ServiceResult<string>> ChangeOwnPasswordAsync(string username, string currentPassword, string newPassword)
     {
         var account = await _users.GetByUsernameAsync(username);
-        if (account == null) return _log.Refuse(_loc["User not found."]);
+        if (account == null) return _log.Refuse<string>(_loc["User not found."]);
 
         if (!_hasher.Verify(account.PasswordHash, currentPassword))
-            return _log.Refuse(_loc["Current password is incorrect."]);
+            return _log.Refuse<string>(_loc["Current password is incorrect."]);
 
         var bad = ValidatePassword(newPassword);
-        if (bad != null) return bad;
+        if (bad != null) return ServiceResult<string>.Fail(bad.Error!);
 
         if (_hasher.Verify(account.PasswordHash, newPassword))
-            return _log.Refuse(_loc["The new password must be different from the current one."]);
+            return _log.Refuse<string>(_loc["The new password must be different from the current one."]);
 
-        account.PasswordHash = _hasher.Hash(newPassword);
+        account.PasswordHash  = _hasher.Hash(newPassword);
+        // Ends the user's other sessions (another browser, a copied cookie); the page re-issues
+        // this browser's cookie with the new stamp (security review R4).
+        account.SecurityStamp = Guid.NewGuid().ToString("N");
         _users.Update(account);
         await _audit.LogAsync(account.Username, "User.ChangePassword", account.Username);
         await _uow.SaveChangesAsync();
-        return ServiceResult.Ok();
+        return ServiceResult<string>.Ok(account.SecurityStamp);
     }
 
     private ServiceResult? ValidatePassword(string password)

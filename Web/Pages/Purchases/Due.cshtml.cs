@@ -17,11 +17,13 @@ public class DueModel : PageModel
     public decimal TotalOutstanding { get; set; }
     public string? Msg { get; set; }
 
+    public int PendingChecks { get; set; }
     public async Task OnGetAsync(string? msg)
     {
         ViewData["Title"] = "Payables by Supplier";
         Msg = msg;
         Summary = await _svc.GetDueSummaryAsync();
+        PendingChecks = (await _svc.GetNeedingReviewAsync()).Count;
         TotalOutstanding = Summary.Sum(d => d.TotalDue);
     }
 }

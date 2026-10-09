@@ -73,8 +73,23 @@ public class DetailModel : PageModel
         });
     }
 
+    /// <summary>Perlu dicek → checked: the purchase matches the supplier invoice as it stands.</summary>
+    public async Task<IActionResult> OnPostReviewAsync(Guid id)
+    {
+        var result = await _purchases.MarkReviewedAsync(id, this.CurrentUserName());
+        return RedirectToPage(new {
+            id,
+            msg = result.Success ? "Marked as checked." : result.Error,
+            err = !result.Success
+        });
+    }
+
     public async Task<IActionResult> OnPostReverseApplicationAsync(Guid id, Guid applicationId)
     {
+        // Only an application on THIS purchase (same guard as Sales/Detail).
+        var application = await _notes.GetApplicationAsync(applicationId);
+        if (application == null || application.PurchaseId != id)
+            return this.Refuse("application does not belong to this purchase");
         var result = await _notes.ReverseApplicationAsync(applicationId, this.CurrentUserName());
         return RedirectToPage(new {
             id,

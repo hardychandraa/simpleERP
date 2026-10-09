@@ -1,4 +1,5 @@
 @using System.Globalization
+@inject SimpleERP.Application.Interfaces.IPurchaseService PurchaseService
 <!DOCTYPE html>
 <html lang="@CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
@@ -19,6 +20,8 @@
         // Hides what Staff cannot reach anyway — the folder conventions in Program.cs are
         // the actual gate. A link they can see but not open is just a dead end.
         var isAdmin = User.IsInRole("Admin");
+        // Purchases waiting for Admin's check, shown as a count on the purchases link.
+        var pendingChecks = isAdmin ? (await PurchaseService.GetNeedingReviewAsync()).Count : 0;
     }
     <div class="sb-sec">@Localizer["Main"]</div>
     <a href="/" class="@(page=="/Index"?"active":"")">🏠 @Localizer["Dashboard"]</a>
@@ -37,12 +40,14 @@
         <a href="/Commissions"  class="@(page.StartsWith("/Commissions")?"active":"")">🧾 @Localizer["Commissions"]</a>
     }
 
+    <div class="sb-sec">@Localizer["Purchasing"]</div>
+    @* Goods In: Staff record deliveries without prices (HC, 2026-10-08); everyone can use it. *@
+    <a href="/GoodsIn" class="@(page.StartsWith("/GoodsIn")?"active":"")">🚚 @Localizer["Goods In"]</a>
     @if (isAdmin)
     {
-    @* The supplier side is Admin's alone (HC, 2026-10-08). *@
-    <div class="sb-sec">@Localizer["Purchasing"]</div>
+    @* The rest of the supplier side is Admin's alone (HC, 2026-10-08). *@
     <a href="/Purchases/Create" class="@(page=="/Purchases/Create"?"active":"")">📥 @Localizer["New Purchase"]</a>
-    <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Create"&&page!="/Purchases/Due"&&page!="/Purchases/Statement"?"active":"")">📦 @Localizer["Purchases"]</a>
+    <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Create"&&page!="/Purchases/Due"&&page!="/Purchases/Statement"?"active":"")">📦 @Localizer["Purchases"]@if (pendingChecks > 0) { <span class="badge warn" style="margin-left:6px;font-size:10px" title="@Localizer["Needs checking"]">@pendingChecks</span> }</a>
     <a href="/Purchases/Due"    class="@(page=="/Purchases/Due"||page=="/Purchases/Statement"?"active":"")">💰 @Localizer["Payables"]</a>
         <a href="/Rebates"      class="@(page.StartsWith("/Rebates")?"active":"")">💰 @Localizer["Rebates"]</a>
     }
@@ -90,6 +95,7 @@
         <a href="/Settings" class="@(page=="/Settings/Index"?"active":"")">⚙️ @Localizer["Settings"]</a>
         <a href="/Settings/Users" class="@(page.StartsWith("/Settings/Users")?"active":"")">🔑 @Localizer["Users"]</a>
         <a href="/Settings/Backup" class="@(page=="/Settings/Backup"?"active":"")">💾 @Localizer["Backup"]</a>
+        <a href="/Settings/Period" class="@(page=="/Settings/Period"?"active":"")">🔒 @Localizer["Close the Books"]</a>
         <a href="/Settings/Logs" class="@(page=="/Settings/Logs"?"active":"")">🩺 @Localizer["Diagnostic Log"]</a>
     }
   </div>

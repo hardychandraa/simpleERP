@@ -8,6 +8,10 @@
   <div class="fg"><label>@Localizer["Full Name"] *</label><input type="text" class="upper" asp-for="Input.Name" required placeholder="@Localizer["e.g. John Doe"]"/></div>
   <div class="fg"><label>@Localizer["Phone"]</label><input type="text" asp-for="Input.Phone" placeholder="@Localizer["e.g. 08123456789"]"/></div>
   <div class="fg"><label>@Localizer["Address"]</label><textarea asp-for="Input.Address" rows="2" placeholder="@Localizer["Street address..."]"></textarea></div>
+  <div class="frow frow2">
+    <div class="fg"><label>NPWP</label><input type="text" asp-for="Input.TaxId" maxlength="50" placeholder="@Localizer["Optional"]"/></div>
+    <div class="fg"><label>@Localizer["NIK (KTP)"]</label><input type="text" asp-for="Input.NationalId" maxlength="20" inputmode="numeric" placeholder="@Localizer["Optional, 16 digits"]"/></div>
+  </div>
   <partial name="_SaleDefaults" model="Model.Defaults" />
   <div style="display:flex;gap:10px;margin-top:6px">
     <button type="submit" class="btn btn-primary">@Localizer["Save"]</button>

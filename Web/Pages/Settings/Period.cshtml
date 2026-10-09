@@ -1,0 +1,68 @@
+@page "/Settings/Period"
+@model SimpleERP.Web.Pages.Settings.PeriodModel
+@{ ViewData["Title"] = Localizer["Close the Books"].Value; }
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div style="max-width:640px">
+<div class="card">
+    <div class="card-title">🔒 @Localizer["Close the Books"]</div>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:14px;line-height:1.6">
+        @Localizer["Once a month is closed, nothing dated in it can be created, changed or cancelled, so reported figures (P&L, PPN) stay as they were. New events dated today stay allowed even for old documents: a payment on a September invoice, a credit note applied today, a return dated today."]
+    </p>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f9fafb;border-radius:6px;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div>
+            <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">@Localizer["Books closed through"]</div>
+            <div style="font-size:18px;font-weight:700">@(Model.ClosedThrough?.ToString("dd MMM yyyy") ?? Localizer["Nothing closed yet"].Value)</div>
+        </div>
+        @if (Model.ClosedThrough != null)
+        {
+            <form method="post" asp-page-handler="Reopen"
+                  onsubmit="return confirm('@Localizer["Reopen {0}? Documents dated in it can be changed again.", Model.ClosedThrough.Value.ToString("MMMM yyyy")]')">
+                <button type="submit" class="btn btn-outline btn-sm">🔓 @Localizer["Reopen {0}", Model.ClosedThrough.Value.ToString("MMMM yyyy")]</button>
+            </form>
+        }
+    </div>
+
+    @if (Model.Pending.Count > 0)
+    {
+        <div class="alert alert-warning" style="font-size:12px">
+            @Localizer["These purchases still need checking (Perlu dicek). A month with one of them cannot be closed:"]
+            <ul style="margin:6px 0 0 18px">
+            @foreach (var p in Model.Pending)
+            {
+                <li><a href="/Purchases/@p.Id">@p.PurchaseNumber</a> · @p.PurchaseDate.ToString("dd MMM yyyy") · @p.SupplierName</li>
+            }
+            </ul>
+        </div>
+    }
+
+    @if (Model.Closable.Count == 0)
+    {
+        <p style="font-size:13px;color:#6b7280">@Localizer["Every ended month is already closed. The current month can be closed once it has ended."]</p>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Close" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"
+              onsubmit="return confirm('@Localizer["Close the books? Documents dated up to the chosen date can no longer be changed."]')">
+            <div class="fg" style="margin:0;min-width:220px">
+                <label>@Localizer["Close through the end of"]</label>
+                <select name="monthEnd">
+                    @foreach (var m in Model.Closable)
+                    {
+                        <option value="@m.ToString("yyyy-MM-dd")">@m.ToString("MMMM yyyy")</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">🔒 @Localizer["Close the Books"]</button>
+        </form>
+    }
+    <p style="font-size:11px;color:#9ca3af;margin-top:12px;line-height:1.5">
+        @Localizer["Every close and reopen is recorded in the audit log. Only a month that has already ended can be closed."]
+    </p>
+</div>
+</div>

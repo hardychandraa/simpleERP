@@ -1,3 +1,4 @@
+using SimpleERP.Web.Services;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -10,10 +11,14 @@ public class IndexModel : PageModel
     private readonly ISaleService      _s;
     private readonly IInventoryService _inv;
     private readonly IReportService    _reports;
+    private readonly IPurchaseService  _purchases;
 
     public IndexModel(IProductService p, ICustomerService c, ISaleService s, IInventoryService inv,
-                      IReportService reports)
-    { _p = p; _c = c; _s = s; _inv = inv; _reports = reports; }
+                      IReportService reports, IPurchaseService purchases)
+    { _p = p; _c = c; _s = s; _inv = inv; _reports = reports; _purchases = purchases; }
+
+    /// <summary>Purchases waiting for Admin's check (Admin only; Staff never see this).</summary>
+    public int PendingChecks { get; set; }
 
     public int     TotalProducts     { get; set; }
     public int     TotalCustomers    { get; set; }
@@ -30,6 +35,7 @@ public class IndexModel : PageModel
     public async Task OnGetAsync()
     {
         ViewData["Title"] = "Dashboard";
+        if (User.SeesSupplierSide()) PendingChecks = (await _purchases.GetNeedingReviewAsync()).Count;
         TotalProducts  = (await _p.GetAllActiveAsync()).Count;
         TotalCustomers = (await _c.GetAllActiveAsync()).Count;
 

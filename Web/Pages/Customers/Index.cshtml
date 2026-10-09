@@ -14,13 +14,14 @@
 </div>
 <div class="card">
 <table>
-  <thead><tr><th>@Localizer["Name"]</th><th>@Localizer["Phone"]</th><th>@Localizer["Address"]</th><th>@Localizer["Outstanding Due"]</th><th>@Localizer["Status"]</th><th></th></tr></thead>
+  <thead><tr><th>@Localizer["Name"]</th><th>@Localizer["Phone"]</th><th>@Localizer["Address"]</th><th>NPWP / NIK</th><th>@Localizer["Outstanding Due"]</th><th>@Localizer["Status"]</th><th></th></tr></thead>
   <tbody>
   @foreach (var c in Model.Customers) {
     <tr>
       <td><strong>@c.Name</strong></td>
       <td>@(c.Phone ?? "—")</td>
       <td style="color:#6b7280;font-size:12px">@(c.Address ?? "—")</td>
+      <td style="font-size:12px;white-space:nowrap">@(c.TaxId ?? c.NationalId ?? "—")@if (c.TaxId != null && c.NationalId != null) {<br/><span style="color:#6b7280">@c.NationalId</span>}</td>
       <td>
         @if (c.TotalDue > 0) {
           <span style="color:#dc2626;font-weight:700">@c.TotalDue.ToString("N0")</span>
@@ -34,7 +35,7 @@
   }
   @if (!Model.Customers.Any()) {
   <tr>
-    <td colspan="6" style="text-align:center;color:#9ca3af;padding:28px">
+    <td colspan="7" style="text-align:center;color:#9ca3af;padding:28px">
       @(string.IsNullOrEmpty(Model.Search)
           ? Localizer["No customers yet."]
           : Localizer["No results for \"{0}\".", Model.Search])

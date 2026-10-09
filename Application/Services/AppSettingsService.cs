@@ -11,11 +11,14 @@ public class AppSettingsService : IAppSettingsService
 {
     private readonly IAppSettingsRepository _repo;
     private readonly IBranchRepository _branches;
+    private readonly IPurchaseRepository _purchases;
+    private readonly IAuditLogRepository _audit;
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<AppSettingsService> _log;
     public AppSettingsService(IAppSettingsRepository repo, IBranchRepository branches,
+        IPurchaseRepository purchases, IAuditLogRepository audit,
         IStringLocalizer<SharedResource> loc, ILogger<AppSettingsService> log)
-    { _repo = repo; _branches = branches; _loc = loc; _log = log; }
+    { _repo = repo; _branches = branches; _purchases = purchases; _audit = audit; _loc = loc; _log = log; }
 
     // 80 = 10 cpi on 8-inch paper, 96 = 12 cpi on the 9.5-inch (half-A4) form,
     // 132 = 10 cpi on a wide-carriage printer. Anything else falls back to 96.
@@ -33,7 +36,46 @@ public class AppSettingsService : IAppSettingsService
             WarehouseCode = (await _branches.GetDefaultAsync())?.Code,
             // Stored as a fraction, surfaced to the UI as a percentage.
             VatRatePercent = s.VatRate * 100m,
-            RebateWithholdingPercent = s.RebateWithholdingRate * 100m };
+            RebateWithholdingPercent = s.RebateWithholdingRate * 100m,
+            BooksClosedThrough = s.BooksClosedThrough?.Date };
+    }
+
+    public async Task<ServiceResult> SetBooksClosedThroughAsync(DateTime? monthEnd, string user)
+    {
+        var target = monthEnd?.Date;
+        if (target is { } t)
+        {
+            // Always a month-end, and only a month that has fully ended: the current month stays
+            // open, so anything dated "now" (payments, stock in, adjustments) can always be posted.
+            if (t.AddDays(1).Day != 1)
+                return _log.Refuse(_loc["Pick the last day of a month."]);
+            var firstOfThisMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            if (t >= firstOfThisMonth)
+                return _log.Refuse(_loc["Only a month that has already ended can be closed."]);
+        }
+
+        var s = await _repo.GetAsync();
+        var current = s.BooksClosedThrough?.Date;
+        if (current == target) return _log.Refuse(_loc["Nothing to change."]);
+
+        var closing = target != null && (current == null || target > current);
+        if (closing)
+        {
+            // A purchase still waiting for Admin's check could not be revised once its month is
+            // closed, so its cost and HPP would be frozen at the master price.
+            var pending = await _purchases.GetNeedingReviewAsync(target);
+            if (pending.Count > 0)
+                return _log.Refuse(_loc["{0} purchase(s) dated in this period still need checking (Perlu dicek), e.g. {1}. Check them before closing the books.",
+                                        pending.Count, pending[0].PurchaseNumber]);
+        }
+
+        s.BooksClosedThrough = target;
+        await _audit.LogAsync(user, closing ? "Period.Close" : "Period.Reopen",
+            $"books closed through {(target?.ToString("yyyy-MM-dd") ?? "none")} (was {(current?.ToString("yyyy-MM-dd") ?? "none")})");
+        _log.LogInformation("Books closed through {Target} (was {Current}), by {User}",
+            target?.ToString("yyyy-MM-dd") ?? "none", current?.ToString("yyyy-MM-dd") ?? "none", user);
+        await _repo.SaveAsync(s);
+        return ServiceResult.Ok();
     }
 
     public async Task<ServiceResult> SaveAsync(AppSettingsDto dto)

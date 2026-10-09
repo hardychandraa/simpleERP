@@ -45,25 +45,30 @@ public class AuthService : IAuthService
         if (user.LockedUntil != null && user.LockedUntil > DateTime.UtcNow)
             return Deny($"'{user.Username}' is locked out until {user.LockedUntil:u}");
 
+        // The attempt is counted BEFORE the password is checked, in one SQL statement.
+        // Counting after the check, on the loaded entity, let 20 guesses sent at once all
+        // read 0, all be checked and all write 1: the account never locked (security review
+        // R3, 2026-10-09). Now at most LockoutThreshold checks can be in flight per window.
+        var attempt = await _users.ReserveLoginAttemptAsync(user.Id, LockoutThreshold, DateTime.UtcNow);
+        if (attempt == null)
+            return Deny($"'{user.Username}' is locked out (or {LockoutThreshold} attempts already in progress)");
+
         if (!_hasher.Verify(user.PasswordHash, password))
         {
-            user.FailedLoginCount++;
-            var locked = user.FailedLoginCount >= LockoutThreshold;
-            if (locked) {
-                user.LockedUntil      = DateTime.UtcNow.Add(LockoutDuration);
-                user.FailedLoginCount = 0;
-            }
-            _users.Update(user);
-            // Audited, not just logged: repeated failures against a real account are a
-            // business-relevant event, not only a diagnostic one.
+            var locked = attempt >= LockoutThreshold;
             if (locked)
+            {
+                var until = DateTime.UtcNow.Add(LockoutDuration);
+                await _users.LockOutAsync(user.Id, until);
+                // Audited, not just logged: repeated failures against a real account are a
+                // business-relevant event, not only a diagnostic one.
                 await _audit.LogAsync(user.Username, "Auth.Lockout",
-                    $"Locked until {user.LockedUntil:u} after {LockoutThreshold} failed attempts");
-            await _uow.SaveChangesAsync();
-
+                    $"Locked until {until:u} after {LockoutThreshold} failed attempts");
+                await _uow.SaveChangesAsync();
+            }
             return Deny(locked
                 ? $"'{user.Username}' wrong password, now locked out"
-                : $"'{user.Username}' wrong password, attempt {user.FailedLoginCount}");
+                : $"'{user.Username}' wrong password, attempt {attempt}");
         }
 
         user.FailedLoginCount = 0;
@@ -75,13 +80,17 @@ public class AuthService : IAuthService
 
         return ServiceResult<AuthenticatedUserDto>.Ok(new AuthenticatedUserDto {
             Id = user.Id, Username = user.Username,
-            DisplayName = user.DisplayName, Role = user.Role
+            DisplayName = user.DisplayName, Role = user.Role, SecurityStamp = user.SecurityStamp
         });
     }
 
     public async Task LogoutAsync(string user)
     {
+        // A new stamp ends every session of this user, a copy of the cookie included:
+        // signing out only told this browser to drop it (security review R4).
+        await _users.RotateSecurityStampAsync(user);
         await _audit.LogAsync(user, "Auth.Logout");
+        await _uow.SaveChangesAsync();
     }
 
     /// <summary>

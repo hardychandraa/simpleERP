@@ -77,6 +77,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<DateTime?>("BooksClosedThrough")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<int>("PaperColumns")
                         .HasColumnType("integer");
 
@@ -525,6 +528,10 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<string>("NationalId")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<Guid?>("PaymentTermId")
                         .HasColumnType("uuid");
 
@@ -534,6 +541,10 @@ namespace SimpleERP.Infrastructure.Data.Migrations
 
                     b.Property<Guid?>("SalesPersonId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("TaxId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
 
@@ -1103,6 +1114,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<bool>("EnteredWithoutPrice")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("GrandTotal")
                         .HasColumnType("decimal(18,4)");
 
@@ -1113,6 +1127,16 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .HasColumnType("decimal(18,4)");
 
                     b.Property<bool>("IsTaxInclusive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastStaffEditAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("LastStaffEditBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("NeedsReview")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Notes")
@@ -1132,6 +1156,13 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -1160,6 +1191,8 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.HasIndex("BranchId");
 
                     b.HasIndex("DueDate");
+
+                    b.HasIndex("NeedsReview");
 
                     b.HasIndex("PaymentTermId");
 
@@ -1848,6 +1881,11 @@ namespace SimpleERP.Infrastructure.Data.Migrations
 
                     b.Property<int>("Role")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Username")
                         .IsRequired()

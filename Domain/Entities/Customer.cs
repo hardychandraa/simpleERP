@@ -4,6 +4,13 @@ public class Customer {
     public string Name { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public string? Address { get; set; }
+    /// <summary>NPWP, as printed on the customer's tax card. Optional; same field name as Supplier.TaxId.</summary>
+    public string? TaxId { get; set; }
+    /// <summary>
+    /// NIK from the KTP. Since 2024 an individual's NIK serves as their NPWP, so a customer may
+    /// have a company NPWP, a NIK, or both (HC, 2026-10-09). Optional.
+    /// </summary>
+    public string? NationalId { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

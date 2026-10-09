@@ -1,8 +1,12 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Application.Resources;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Account;
 
@@ -43,6 +47,13 @@ public class ChangePasswordModel : PageModel
             IsErr = true;
             return Page();
         }
+
+        // The new stamp ended every session of this user, this one too: re-issue this
+        // browser's cookie with it so the person who just changed it stays signed in.
+        var claims = User.Claims.Where(c => c.Type != SessionStamp.ClaimType)
+                         .Append(new Claim(SessionStamp.ClaimType, result.Data!));
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)));
 
         Msg = _loc["Password changed."].Value;
         return Page();

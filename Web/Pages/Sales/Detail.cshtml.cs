@@ -108,7 +108,8 @@ public class DetailModel : PageModel
         // file is what lands on the form. Sheets are separated by a form feed, so printing
         // the file to the LX through a text driver still breaks at each perforation.
         var sale = await _sales.GetByIdAsync(id);
-        if (sale == null) return NotFound();
+        // A cancelled invoice is not printed (HC, 2026-10-09); the page hides the button.
+        if (sale == null || sale.Status != "Active") return NotFound();
         var cfg   = await _settingsRepo.GetAsync();
         var pages = EscpBuilder.RenderPages(sale, cfg, this.CurrentUserName(), DateTime.Now);
         var txt   = string.Join("\f\r\n", pages.Select(p => string.Join("\r\n", p.Select(l => l.Text.TrimEnd())) + "\r\n"));

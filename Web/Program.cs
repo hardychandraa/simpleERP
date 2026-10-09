@@ -176,8 +176,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
                 return;
             }
 
+            // The stamp ends a session that logout, a password change or reset left behind:
+            // the cookie is self-contained, so without it a copy kept working for 12 hours
+            // after the user signed out (security review R4, 2026-10-09). A cookie from
+            // before the stamp existed has none and signs in again once.
             if (account == null || !account.IsActive
-                || !ctx.Principal!.IsInRole(account.Role.ToString()))
+                || !ctx.Principal!.IsInRole(account.Role.ToString())
+                || ctx.Principal.FindFirst(SimpleERP.Web.Services.SessionStamp.ClaimType)?.Value != account.SecurityStamp)
             {
                 ctx.RejectPrincipal();
                 await ctx.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -249,6 +254,8 @@ builder.Services.AddRazorPages(options => {
     o.ModelBinderProviders.Insert(0, new SimpleERP.Web.Services.InvariantDecimalModelBinderProvider());
     // Every posted string is trimmed (passwords excluded); see TrimmingModelBinder.
     o.ModelBinderProviders.Insert(0, new SimpleERP.Web.Services.TrimmingModelBinderProvider());
+    // A POST whose values can't be read is refused rather than run with defaults (security review R7).
+    o.Filters.Add<SimpleERP.Web.Services.BindingFailureFilter>();
 });
 builder.Services.AddControllers();
 
@@ -336,6 +343,9 @@ app.Use(async (ctx, next) => {
     await next();
 });
 
+// ?msg= is shown only when the app itself put it there (signed on redirect; security review R10).
+app.UseMiddleware<SimpleERP.Web.Services.FlashMessageSigning>();
+
 // ── Language (EN/ID) ──────────────────────────────────────────────────────────
 // Must run before anything renders, so every page sees the right CurrentUICulture.
 //
@@ -413,7 +423,11 @@ app.MapGet("/set-language", (string culture, string? returnUrl, HttpContext ctx)
             HttpOnly   = false           // harmless to read client-side; no secret in it
         });
 
-    return Results.LocalRedirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+    // LocalRedirect throws on anything off-site, which turned a crafted link into a 500 and
+    // an error-log entry each time (security review R5): fall back to the home page instead.
+    var local = !string.IsNullOrWhiteSpace(returnUrl) && returnUrl[0] == '/'
+             && (returnUrl.Length == 1 || (returnUrl[1] != '/' && returnUrl[1] != '\\'));
+    return Results.LocalRedirect(local ? returnUrl! : "/");
 })
 // Anonymous on purpose: the login page has the language toggle too.
 .AllowAnonymous();

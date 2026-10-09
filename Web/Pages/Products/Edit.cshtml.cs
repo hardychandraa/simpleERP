@@ -1,3 +1,4 @@
+using SimpleERP.Web.Services;
 using Microsoft.Extensions.Localization;
 using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
@@ -5,6 +6,7 @@ using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace SimpleERP.Web.Pages.Products;
+[HandlesBindingErrors]
 public class EditModel : PageModel {
     private readonly IProductService _svc;
     private readonly IStringLocalizer<SharedResource> _loc;

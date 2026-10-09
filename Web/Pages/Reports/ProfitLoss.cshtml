@@ -9,6 +9,12 @@
    tax consultant and the printed paperwork already use. Only the English chrome and the
    explanatory prose switch. *@
 
+<partial name="_PendingChecks" model="Model.PendingChecks" />
+@if (Model.ClosedThrough is { } closedThrough)
+{
+    <div class="alert alert-info no-print">🔒 @Localizer["Books are closed through {0}: the figures for this period are final.", closedThrough.ToString("dd MMM yyyy")]</div>
+}
+
 <div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:18px" class="no-print">
   <form method="get" style="display:flex;gap:10px;align-items:flex-end">
     <div class="fg" style="margin:0">

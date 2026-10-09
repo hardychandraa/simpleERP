@@ -1,0 +1,190 @@
+@page
+@model SimpleERP.Web.Pages.GoodsIn.CreateModel
+@using System.Text.Json
+@{
+    var editing = Model.Edit.HasValue;
+    ViewData["Title"] = editing ? Localizer["Edit {0}", Model.EditingNumber ?? ""].Value : Localizer["Goods In"].Value;
+}
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+@if (editing)
+{
+    <div class="alert alert-info" style="line-height:1.6">
+        ✏️ @Localizer["Editing {0}. After saving, an administrator checks it again.", Model.EditingNumber ?? ""]
+        <a href="/GoodsIn/Detail/@Model.Edit">@Localizer["Leave without changes"]</a>
+    </div>
+}
+
+<form method="post" id="goodsForm" class="doc-form">
+    <div class="doc-top" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+        <div class="card" style="margin-bottom:0">
+            <div class="card-title">📥 @Localizer["Goods received from the supplier"]</div>
+            <div class="fg">
+                <label>@Localizer["Supplier"] *</label>
+                @if (editing)
+                {
+                    <input type="hidden" name="SupplierId" value="@Model.SupplierId" />
+                    <input type="text" value="@Model.EditingSupplier" disabled />
+                }
+                else
+                {
+                    <select data-searchable asp-for="SupplierId" id="supplierSelect" required>
+                        <option value="">— @Localizer["Select supplier"] —</option>
+                        @foreach (var s in Model.SupplierOptions)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </select>
+                }
+            </div>
+            <div style="display:flex;gap:12px">
+                <div class="fg" style="flex:1.3">
+                    <label>@Localizer["Supplier Doc No."]</label>
+                    <input type="text" asp-for="SupplierDocumentNumber" maxlength="100" placeholder="@Localizer["Optional"]" />
+                </div>
+                <div class="fg" style="flex:1">
+                    <label>@Localizer["Date received"] *</label>
+                    <input type="date" asp-for="PurchaseDate" required value="@(Model.PurchaseDate?.ToString("yyyy-MM-dd"))" />
+                </div>
+            </div>
+            <div class="fg">
+                <label>@Localizer["Notes"]</label>
+                <input type="text" asp-for="Notes" maxlength="500" placeholder="@Localizer["Optional remarks..."]" />
+            </div>
+        </div>
+
+        <div class="card doc-summary" style="margin-bottom:0">
+            <div class="card-title">@Localizer["Summary"]</div>
+            <table style="font-size:14px;width:100%">
+                <tr><td style="padding:6px 0;color:#6b7280">@Localizer["Lines"]</td><td style="text-align:right;font-weight:600" id="sumLines">0</td></tr>
+                <tr><td style="padding:6px 0;color:#6b7280">@Localizer["Total qty"]</td><td style="text-align:right;font-weight:600" id="sumQty">0</td></tr>
+            </table>
+            <input type="hidden" name="ItemsJson" id="ItemsJson" value="[]" />
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;margin-top:14px">
+                @if (editing) { <text>💾 @Localizer["Save"]</text> } else { <text>📥 @Localizer["Receive into stock"]</text> }
+            </button>
+            <div style="font-size:11px;color:#6b7280;margin-top:8px;line-height:1.5">
+                @Localizer["Stock is updated right away. Prices are taken from the product list and checked later by an administrator against the supplier's invoice."]
+            </div>
+            <div id="submitErr" class="alert alert-danger" style="display:none;margin-top:10px"></div>
+        </div>
+    </div>
+
+    <div class="card doc-items">
+        <div class="card-title">@Localizer["Add Items"]</div>
+        <div class="item-row" style="display:grid;grid-template-columns:3fr 0.8fr auto;gap:10px;align-items:flex-end;margin-bottom:8px">
+            <div>
+                <label>@Localizer["Product"]</label>
+                <select data-searchable id="inProd">
+                    <option value="">— @Localizer["Select"] —</option>
+                    @foreach (var p in Model.ProductOptions)
+                    {
+                        <option value="@p.Id">@p.Name (@p.Sku) — @Localizer["Qty:"] @p.Stock.ToString("N0")</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label>@Localizer["Qty"]</label>
+                <input type="number" id="inQty" min="0.01" step="0.01" value="1" />
+            </div>
+            <div class="item-add">
+                <label>&nbsp;</label>
+                <button type="button" class="btn btn-success" onclick="addItem()">@Localizer["Add"]</button>
+            </div>
+        </div>
+        <div style="margin-bottom:14px">
+            <label>@Localizer["Line Notes"]</label>
+            <input type="text" id="inNotes" maxlength="500" placeholder="@Localizer["Optional..."]" />
+        </div>
+        <div id="addErr" class="alert alert-danger" style="display:none;margin-bottom:10px"></div>
+        <table>
+            <thead><tr><th>@Localizer["Product"]</th><th style="text-align:center">@Localizer["Qty"]</th><th></th></tr></thead>
+            <tbody id="tblBody">
+                <tr id="emptyRow"><td colspan="3" style="text-align:center;color:#9ca3af;padding:24px">@Localizer["No items yet — select a product above and click Add."]</td></tr>
+            </tbody>
+        </table>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+const T = {
+    selectProduct: @Html.Raw(Json.Serialize(Localizer["Please select a product."].Value)),
+    qtyPositive:   @Html.Raw(Json.Serialize(Localizer["Quantity must be greater than zero."].Value)),
+    needItem:      @Html.Raw(Json.Serialize(Localizer["Please add at least one item before posting."].Value)),
+    needSupplier:  @Html.Raw(Json.Serialize(Localizer["Please select a supplier."].Value)),
+    remove:        @Html.Raw(Json.Serialize(Localizer["Remove"].Value)),
+    edit:          @Html.Raw(Json.Serialize(Localizer["Edit"].Value))
+};
+// Id and name only: no price or cost is ever sent to this page.
+const PRODUCTS = @Html.Raw(JsonSerializer.Serialize(Model.ProductOptions.Select(p => new { id = p.Id.ToString(), name = p.Name })));
+let items = [];   // { productId, name, qty, notes, purchaseItemId (edit: the existing line) }
+let editing = null;
+const EMPTY_ROW = document.getElementById('emptyRow');
+
+function addItem() {
+    hideErr('addErr');
+    const sel = document.getElementById('inProd');
+    const prodId = sel.value;
+    const qty = parseFloat(document.getElementById('inQty').value) || 0;
+    const notes = document.getElementById('inNotes').value.trim();
+    if (!prodId) return showErr('addErr', T.selectProduct);
+    if (qty <= 0) return showErr('addErr', T.qtyPositive);
+    const prod = PRODUCTS.find(p => p.id === prodId);
+    const keepId = editing && editing.productId === prodId ? editing.purchaseItemId : null;
+    editing = null;
+    items.push({ productId: prodId, name: prod ? prod.name : '?', qty, notes: notes || null, purchaseItemId: keepId });
+    render();
+    sel.value = ''; sel.dispatchEvent(new Event('change'));
+    document.getElementById('inQty').value = '1';
+    document.getElementById('inNotes').value = '';
+}
+function removeItem(i) { items.splice(i, 1); render(); }
+function editItem(i) {
+    const it = items[i];
+    editing = { productId: it.productId, purchaseItemId: it.purchaseItemId || null };
+    items.splice(i, 1); render();
+    const sel = document.getElementById('inProd');
+    sel.value = it.productId; sel.dispatchEvent(new Event('change'));
+    document.getElementById('inQty').value = it.qty;
+    document.getElementById('inNotes').value = it.notes || '';
+    document.getElementById('inQty').focus();
+}
+function render() {
+    const body = document.getElementById('tblBody');
+    document.getElementById('sumLines').textContent = items.length;
+    document.getElementById('sumQty').textContent = items.reduce((a, i) => a + i.qty, 0).toLocaleString();
+    document.getElementById('ItemsJson').value = JSON.stringify(items.map(i => ({
+        purchaseItemId: i.purchaseItemId || null, productId: i.productId, qty: i.qty, notes: i.notes || null })));
+    if (items.length === 0) { body.innerHTML = ''; body.appendChild(EMPTY_ROW); return; }
+    body.innerHTML = items.map((it, i) => `<tr>
+        <td><strong>${esc(it.name)}</strong>${it.notes ? `<br><small style="color:#6b7280">📝 ${esc(it.notes)}</small>` : ''}</td>
+        <td style="text-align:center">${it.qty}</td>
+        <td style="white-space:nowrap;text-align:right">
+          <button type="button" class="btn btn-outline btn-sm" onclick="editItem(${i})" title="${T.edit}" aria-label="${T.edit}">✎</button>
+          <button type="button" class="btn btn-danger-outline btn-sm" onclick="removeItem(${i})" title="${T.remove}" aria-label="${T.remove}">✕</button></td>
+      </tr>`).join('');
+}
+document.getElementById('goodsForm').addEventListener('submit', function (e) {
+    hideErr('submitErr');
+    const sup = document.getElementById('supplierSelect');
+    if (sup && !sup.value) { e.preventDefault(); return showErr('submitErr', T.needSupplier); }
+    if (items.length === 0) { e.preventDefault(); return showErr('submitErr', T.needItem); }
+});
+(function prefill() {
+    const lines = @Html.Raw(Model.PrefillItemsJson);
+    for (const l of lines) {
+        const id = String(l.productId).toLowerCase();
+        const prod = PRODUCTS.find(p => p.id === id);
+        items.push({ productId: id, name: prod ? prod.name : '?', qty: l.qty, notes: l.notes || null, purchaseItemId: l.purchaseItemId || null });
+    }
+    if (lines.length) render();
+})();
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block'; }
+function hideErr(id) { document.getElementById(id).style.display = 'none'; }
+</script>
+}

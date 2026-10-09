@@ -49,6 +49,8 @@ public class PrintController : ControllerBase
 
         var sale = await _sales.GetByIdAsync(id);
         if (sale == null) return NotFound(new { error = "Sale not found." });
+        // A cancelled invoice is not printed (HC, 2026-10-09); the page hides the button.
+        if (sale.Status != "Active") return BadRequest(new { error = "This invoice is cancelled and cannot be printed." });
 
         // "Dicetak" shows the login ID, not the display name (HC, 2026-10-05).
         // Never null here: the fallback policy in Program.cs requires a login for /api.

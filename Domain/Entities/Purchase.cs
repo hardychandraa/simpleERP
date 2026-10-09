@@ -59,6 +59,21 @@ public class Purchase
     public string      CreatedBy      { get; set; } = string.Empty;
     public DateTime    CreatedAt      { get; set; } = DateTime.UtcNow;
 
+    // ── Staff entry without prices + Admin check (HC, 2026-10-08/09) ─────────────
+    /// <summary>
+    /// "Perlu dicek": Admin still has to compare this purchase with the supplier invoice.
+    /// Set when Staff enter it through Barang Masuk (lines costed at the master harga beli)
+    /// and again whenever Staff edit it. A flag only: it never blocks payment. Closing a month
+    /// is refused while one dated in it is still flagged.
+    /// </summary>
+    public bool        NeedsReview    { get; set; }
+    public string?     ReviewedBy     { get; set; }
+    public DateTime?   ReviewedAt     { get; set; }
+    /// <summary>Entered through Barang Masuk (no prices seen). Only these can be edited by Staff.</summary>
+    public bool        EnteredWithoutPrice { get; set; }
+    public string?     LastStaffEditBy { get; set; }
+    public DateTime?   LastStaffEditAt { get; set; }
+
     public Supplier?                    Supplier         { get; set; }
     public Branch?                      Branch           { get; set; }
     public PaymentTerm?                 PaymentTerm      { get; set; }

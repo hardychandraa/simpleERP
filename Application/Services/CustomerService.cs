@@ -30,11 +30,14 @@ public class CustomerService : ICustomerService
     public async Task<ServiceResult> CreateAsync(CreateCustomerDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Customer name is required."]);
-        var invalid = await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent);
+        var invalid = ValidateTaxIds(dto.TaxId, dto.NationalId)
+                      ?? await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent);
         if (invalid != null) return invalid;
         await _customers.AddAsync(new Customer {
-            Id = Guid.NewGuid(), Name = dto.Name.Trim().ToUpperInvariant(),
-            Phone = dto.Phone?.Trim(), Address = dto.Address?.Trim(),
+            // Control characters stripped: the name and address are printed on the LX (R9).
+            Id = Guid.NewGuid(), Name = TextClean.StripControl(dto.Name)!.Trim().ToUpperInvariant(),
+            Phone = TextClean.StripControl(dto.Phone)?.Trim(), Address = TextClean.StripControl(dto.Address)?.Trim(),
+            TaxId = Blank(dto.TaxId), NationalId = Blank(dto.NationalId),
             SalesPersonId = dto.SalesPersonId, PaymentTermId = dto.PaymentTermId,
             DefaultDiscountPercent = NormaliseDiscount(dto.DefaultDiscountPercent),
             IsActive = true, CreatedAt = DateTime.UtcNow });
@@ -47,11 +50,13 @@ public class CustomerService : ICustomerService
         var c = await _customers.GetByIdAsync(dto.Id);
         if (c == null) return _log.Refuse(_loc["Customer not found."]);
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Name is required."]);
-        var invalid = await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent,
-                                                  c.SalesPersonId, c.PaymentTermId);
+        var invalid = ValidateTaxIds(dto.TaxId, dto.NationalId)
+                      ?? await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent,
+                                                     c.SalesPersonId, c.PaymentTermId);
         if (invalid != null) return invalid;
-        c.Name = dto.Name.Trim().ToUpperInvariant(); c.Phone = dto.Phone?.Trim();
-        c.Address = dto.Address?.Trim(); c.IsActive = dto.IsActive;
+        c.Name = TextClean.StripControl(dto.Name)!.Trim().ToUpperInvariant(); c.Phone = TextClean.StripControl(dto.Phone)?.Trim();
+        c.Address = TextClean.StripControl(dto.Address)?.Trim(); c.IsActive = dto.IsActive;
+        c.TaxId = Blank(dto.TaxId); c.NationalId = Blank(dto.NationalId);
         c.SalesPersonId = dto.SalesPersonId; c.PaymentTermId = dto.PaymentTermId;
         c.DefaultDiscountPercent = NormaliseDiscount(dto.DefaultDiscountPercent);
         _customers.Update(c); await _uow.SaveChangesAsync();
@@ -62,7 +67,9 @@ public class CustomerService : ICustomerService
     {
         var q = string.IsNullOrWhiteSpace(search) ? list
             : list.Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
-                           || (c.Phone ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+                           || (c.Phone ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+                           || (c.TaxId ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+                           || (c.NationalId ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
         return q.Select(Map).ToList();
     }
 
@@ -83,11 +90,32 @@ public class CustomerService : ICustomerService
         return null;
     }
 
+    /// <summary>
+    /// Light format checks only, both fields optional: a NIK is exactly 16 digits; an NPWP is
+    /// 15 digits (old format) or 16 (new format, 2024) once its dots and dashes are removed.
+    /// Stored as typed so it reads the way it is printed on the card.
+    /// </summary>
+    private ServiceResult? ValidateTaxIds(string? npwp, string? nik)
+    {
+        if (Blank(nik) is { } n && !(n.Length == 16 && n.All(char.IsAsciiDigit)))
+            return _log.Refuse(_loc["NIK must be exactly 16 digits."]);
+        if (Blank(npwp) is { } t)
+        {
+            var digits = new string(t.Where(ch => ch is not ('.' or '-' or ' ')).ToArray());
+            if (!digits.All(char.IsAsciiDigit) || digits.Length is not (15 or 16))
+                return _log.Refuse(_loc["NPWP must have 15 or 16 digits."]);
+        }
+        return null;
+    }
+
+    private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
     /// <summary>0% is the same as no discount; stored as null so "none" has one meaning.</summary>
     private static decimal? NormaliseDiscount(decimal? discount) => discount is > 0 ? discount : null;
 
     private static CustomerDto Map(Domain.Entities.Customer c) => new()
         { Id=c.Id, Name=c.Name, Phone=c.Phone, Address=c.Address, IsActive=c.IsActive,
+          TaxId=c.TaxId, NationalId=c.NationalId,
           SalesPersonId=c.SalesPersonId, PaymentTermId=c.PaymentTermId,
           DefaultDiscountPercent=c.DefaultDiscountPercent };
 }

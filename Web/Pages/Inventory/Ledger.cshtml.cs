@@ -39,14 +39,17 @@ public class LedgerModel : PageModel
 
         // Staff see the movements and balances but not what anything cost: on a sale row
         // the unit cost is the HPP (HC, 2026-10-08). Purchase and supplier-return rows keep
-        // their number and supplier but lose the link, since those pages are Admin's.
+        // their number and supplier; purchases link to Goods In, supplier returns lose the link.
         if (!User.SeesCost())
         {
             foreach (var p in Products) { p.AvgCost = 0; p.PurchasePrice = 0; }
             foreach (var r in Card.Rows)
             {
                 r.UnitCost = 0; r.TotalCost = 0;
-                if (r.Link != null && !r.Link.StartsWith("/Sales/") && !r.Link.StartsWith("/Returns/Customer/"))
+                // A purchase opens as its quantity-only Goods In view (HC, 2026-10-09).
+                if (r.Link != null && r.Link.StartsWith("/Purchases/"))
+                    r.Link = "/GoodsIn/Detail/" + r.Link["/Purchases/".Length..];
+                else if (r.Link != null && !r.Link.StartsWith("/Sales/") && !r.Link.StartsWith("/Returns/Customer/"))
                     r.Link = null;
             }
         }

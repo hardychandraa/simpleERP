@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<IProductRepository,          ProductRepository>();
         services.AddScoped<ICustomerRepository,         CustomerRepository>();
         services.AddScoped<IInventoryLedgerRepository,  InventoryLedgerRepository>();
+        services.AddScoped<ICostSnapshotRepository,     CostSnapshotRepository>();
         services.AddScoped<ISaleRepository,             SaleRepository>();
         services.AddScoped<IPaymentRecordRepository,    PaymentRecordRepository>();
         services.AddScoped<IStockAdjustmentRepository,  StockAdjustmentRepository>();
@@ -56,6 +57,8 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork,                 UnitOfWork>();
 
         // Services
+        services.AddScoped<PeriodLock>();
+        services.AddScoped<PurchaseRecoster>();
         services.AddScoped<InventoryService>();
         services.AddScoped<IInventoryService>(sp => sp.GetRequiredService<InventoryService>());
         services.AddScoped<IProductService,     ProductService>();

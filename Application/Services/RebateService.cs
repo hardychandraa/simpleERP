@@ -101,8 +101,9 @@ public class RebateService : IRebateService
         var qualifyingLines = new List<PurchaseItem>();
         foreach (var line in lines)
         {
+            // Excludes this purchase: new, it isn't saved yet; revised, its old lines must not count twice.
             var prior = await _purchases.GetPurchasedQtyAsync(
-                purchase.SupplierId, line.ProductId, rule.PeriodStart, rule.PeriodEnd);
+                purchase.SupplierId, line.ProductId, rule.PeriodStart, rule.PeriodEnd, excludePurchaseId: purchase.Id);
             var cumulative = prior + thisPurchaseQtyByProduct.GetValueOrDefault(line.ProductId, 0m);
 
             var qtyOk   = !rule.ThresholdQty.HasValue   || cumulative >= rule.ThresholdQty.Value;

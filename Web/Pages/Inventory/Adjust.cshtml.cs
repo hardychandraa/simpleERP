@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using SimpleERP.Web.Services;
 namespace SimpleERP.Web.Pages.Inventory;
+[HandlesBindingErrors]
 public class AdjustModel : PageModel {
     private readonly IInventoryService _inv;
     private readonly IProductService   _prod;

@@ -46,6 +46,7 @@ public class ReturnService : IReturnService
     private readonly RebateService             _rebates;
     private readonly IUnitOfWork               _uow;
 
+    private readonly PeriodLock _period;
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<ReturnService> _log;
     public ReturnService(ICustomerReturnRepository customerReturns,
@@ -53,10 +54,10 @@ public class ReturnService : IReturnService
         ISaleRepository sales, IPurchaseRepository purchases, IBranchRepository branches,
         IAuditLogRepository audit, InventoryService inventory,
         CommissionService commissions, RebateService rebates, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc, ILogger<ReturnService> log)
+        PeriodLock period, IStringLocalizer<SharedResource> loc, ILogger<ReturnService> log)
     { _customerReturns=customerReturns; _supplierReturns=supplierReturns; _notes=notes;
       _sales=sales; _purchases=purchases; _branches=branches; _audit=audit;
-      _inventory=inventory; _commissions=commissions; _rebates=rebates; _uow=uow;  _loc = loc; _log = log; }
+      _inventory=inventory; _commissions=commissions; _rebates=rebates; _uow=uow;  _period = period; _loc = loc; _log = log; }
 
     // ══ Sales returns ══════════════════════════════════════════════════════════
 
@@ -104,6 +105,8 @@ public class ReturnService : IReturnService
         if (reason == null)
             return _log.Refuse<CustomerReturnDto>(_loc["A reason for the return is required."]);
 
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(dto.SaleId);
         var sale = await _sales.GetByIdWithItemsAsync(dto.SaleId);
         if (sale == null) return _log.Refuse<CustomerReturnDto>(_loc["Invoice not found."]);
         if (sale.Status == SaleStatus.Cancelled)
@@ -114,6 +117,8 @@ public class ReturnService : IReturnService
 
         var dateError = ValidateReturnDate(dto.ReturnDate, sale.SaleDate, againstInvoice: true, out var returnDate);
         if (dateError != null) return _log.Refuse<CustomerReturnDto>(dateError);
+        // The return's own date decides: a return dated today of a September sale is allowed.
+        if (await _period.NewDateAsync(returnDate) is { } closed) return _log.Refuse<CustomerReturnDto>(closed);
 
         if (dto.Items.GroupBy(i => i.SourceItemId).Any(g => g.Count() > 1))
             return _log.Refuse<CustomerReturnDto>(_loc["The same invoice line appears twice — combine it into one row."]);
@@ -233,10 +238,14 @@ public class ReturnService : IReturnService
 
     public async Task<ServiceResult> CancelCustomerReturnAsync(Guid id, string user)
     {
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(id);
         var ret = await _customerReturns.GetByIdWithItemsAsync(id);
         if (ret == null) return _log.Refuse(_loc["Return not found."]);
         if (ret.Status == ReturnStatus.Cancelled)
             return _log.Refuse(_loc["This return is already cancelled."]);
+        if (await _period.ExistingAsync(ret.ReturnNumber, ret.ReturnDate.Date) is { } closed)
+            return _log.Refuse(closed);
 
         var note = ret.CreditNotes.FirstOrDefault(n => n.Status != CreditNoteStatus.Cancelled);
         if (note?.Status == CreditNoteStatus.Settled)
@@ -330,6 +339,8 @@ public class ReturnService : IReturnService
         if (reason == null)
             return _log.Refuse<SupplierReturnDto>(_loc["A reason for the return is required."]);
 
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(dto.PurchaseId);
         var purchase = await _purchases.GetByIdWithItemsAsync(dto.PurchaseId);
         if (purchase == null) return _log.Refuse<SupplierReturnDto>(_loc["Purchase not found."]);
         if (purchase.Status == PurchaseStatus.Cancelled)
@@ -340,6 +351,7 @@ public class ReturnService : IReturnService
 
         var dateError = ValidateReturnDate(dto.ReturnDate, purchase.PurchaseDate, againstInvoice: false, out var returnDate);
         if (dateError != null) return _log.Refuse<SupplierReturnDto>(dateError);
+        if (await _period.NewDateAsync(returnDate) is { } closed) return _log.Refuse<SupplierReturnDto>(closed);
 
         if (dto.Items.GroupBy(i => i.SourceItemId).Any(g => g.Count() > 1))
             return _log.Refuse<SupplierReturnDto>(_loc["The same purchase line appears twice — combine it into one row."]);
@@ -454,10 +466,14 @@ public class ReturnService : IReturnService
 
     public async Task<ServiceResult> CancelSupplierReturnAsync(Guid id, string user)
     {
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(id);
         var ret = await _supplierReturns.GetByIdWithItemsAsync(id);
         if (ret == null) return _log.Refuse(_loc["Return not found."]);
         if (ret.Status == ReturnStatus.Cancelled)
             return _log.Refuse(_loc["This return is already cancelled."]);
+        if (await _period.ExistingAsync(ret.ReturnNumber, ret.ReturnDate.Date) is { } closed)
+            return _log.Refuse(closed);
 
         var note = ret.CreditNotes.FirstOrDefault(n => n.Status != CreditNoteStatus.Cancelled);
         if (note?.Status == CreditNoteStatus.Settled)
@@ -556,6 +572,7 @@ public class ReturnService : IReturnService
 
     private static string? SanitiseText(string? s, int maxLen)
     {
+        s = TextClean.StripControl(s);
         if (string.IsNullOrWhiteSpace(s)) return null;
         s = s.Trim();
         return s.Length > maxLen ? s[..maxLen] : s;

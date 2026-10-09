@@ -1,11 +1,21 @@
 @page
 @model SimpleERP.Web.Pages.Purchases.CreateModel
 @using System.Text.Json
-@{ ViewData["Title"] = Localizer["New Purchase"].Value; }
+@{
+    var revising = Model.Revise.HasValue;
+    ViewData["Title"] = revising ? Localizer["Revise {0}", Model.RevisingNumber ?? ""].Value : Localizer["New Purchase"].Value;
+}
 
 @if (Model.Error != null)
 {
     <div class="alert alert-danger">@Model.Error</div>
+}
+@if (revising)
+{
+    <div class="alert alert-info no-print" style="line-height:1.6">
+        ✏️ @Localizer["Revising {0}. It keeps its number. Saving recalculates the cost of everything posted after it for these products (average cost, HPP of later sales) and re-checks its rebates.", Model.RevisingNumber ?? ""]
+        <a href="/Purchases/@Model.Revise">@Localizer["Leave without changes"]</a>
+    </div>
 }
 
 <form method="post" id="purchaseForm" class="doc-form">
@@ -17,7 +27,8 @@
 
             <div class="fg">
                 <label>@Localizer["Supplier"] *</label>
-                <select data-searchable asp-for="SupplierId" id="supplierSelect" required onchange="onSupplierChange()">
+                @if (revising) { <input type="hidden" name="SupplierId" value="@Model.SupplierId" /> }
+                <select data-searchable asp-for="SupplierId" id="supplierSelect" required onchange="onSupplierChange()" disabled="@revising">
                     <option value="">— @Localizer["Select supplier"] —</option>
                     @foreach (var s in Model.SupplierOptions)
                     {
@@ -48,7 +59,8 @@
 
             <div class="fg">
                 <label>@Localizer["Payment Type"]</label>
-                <select asp-for="PaymentType" id="paymentTypeSelect" onchange="onPaymentTypeChange()">
+                @if (revising) { <input type="hidden" name="PaymentType" value="@((int)Model.PaymentType)" /> }
+                <select asp-for="PaymentType" id="paymentTypeSelect" onchange="onPaymentTypeChange()" disabled="@revising">
                     <option value="1">@Localizer["Cash — paid now"]</option>
                     <option value="2">@Localizer["Credit — pay later"]</option>
                 </select>
@@ -145,9 +157,18 @@
                 </tr>
             </table>
             <input type="hidden" name="ItemsJson" id="ItemsJson" value="[]" />
+            @if (revising)
+            {
+                <label style="display:flex;gap:8px;align-items:center;margin-top:12px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500">
+                    @* Checkbox first: the binder takes the first value, so the hidden "false" only counts when unticked. *@
+                    <input type="checkbox" name="MarkReviewed" value="true" checked="@Model.MarkReviewed" style="width:18px;height:18px;margin:0" />
+                    <input type="hidden" name="MarkReviewed" value="false" />
+                    @Localizer["Mark as checked against the supplier invoice"]
+                </label>
+            }
             <button type="submit" id="submitBtn" class="btn btn-primary btn-lg"
                     style="width:100%;margin-top:14px">
-                📥 @Localizer["Post Purchase & Receive Stock"]
+                @if (revising) { <text>💾 @Localizer["Save Revision"]</text> } else { <text>📥 @Localizer["Post Purchase & Receive Stock"]</text> }
             </button>
             <div style="font-size:11px;color:#9ca3af;margin-top:8px;text-align:center">
                 @Localizer["Every line is received into stock in one transaction."]
@@ -258,6 +279,7 @@ const T = {
     offInvoice:     @Html.Raw(Json.Serialize(Localizer["off the invoice"].Value)),
     included:       @Html.Raw(Json.Serialize(Localizer["included"].Value)),
     remove:         @Html.Raw(Json.Serialize(Localizer["Remove"].Value)),
+    edit:           @Html.Raw(Json.Serialize(Localizer["Edit"].Value)),
     zeroTag:        @Html.Raw(Json.Serialize(Localizer["bonus?"].Value)),
     zeroList:       @Html.Raw(Json.Serialize(Localizer["These items have unit cost 0: {0}"].Value)),
     zeroWhy:        @Html.Raw(Json.Serialize(Localizer["Receiving at cost 0 lowers this product's average cost, and the margin on every later sale. Only do this for goods received free."].Value)),
@@ -279,7 +301,7 @@ const SUPPLIER_TERMS = @Html.Raw(JsonSerializer.Serialize(
         s => s.PaymentTermId?.ToString() ?? "")
 ));
 
-let items = [];  // { productId, name, qty, cost, disc, discPct, notes, total }
+let items = [];  // { productId, name, qty, cost, disc, discPct, notes, total, purchaseItemId (revise: the existing line) }
 
 // ── Supplier → default credit term ───────────────────────────────────────────
 // Only a convenience default: the term is stored per purchase, so changing the
@@ -372,7 +394,13 @@ function addItem() {
     const prod = PRODUCTS.find(p => p.id === prodId);
     if (!prod) return showErr('addErr', T.productMissing);
 
+    // A line taken back into the builder with ✎ keeps its identity when re-added for the same
+    // product, so a revision corrects that line instead of removing it and adding a new one.
+    const keepId = editing && editing.productId === prodId ? editing.purchaseItemId : null;
+    editing = null;
+
     items.push({
+        purchaseItemId: keepId,
         productId: prodId,
         name:      prod.name,
         qty, cost,
@@ -394,6 +422,23 @@ function addItem() {
 }
 
 function removeItem(idx) { items.splice(idx, 1); render(); }
+
+// ✎: put a line back into the builder to change its qty, cost or discount.
+let editing = null;
+function editItem(idx) {
+    const it = items[idx];
+    editing = { productId: it.productId, purchaseItemId: it.purchaseItemId || null };
+    items.splice(idx, 1); render();
+    const sel = document.getElementById('inProd');
+    sel.value = it.productId; sel.dispatchEvent(new Event('change'));
+    document.getElementById('inQty').value   = it.qty;
+    document.getElementById('inCost').value  = it.cost;
+    document.getElementById('inDisc').value  = it.discPct ?? it.disc;
+    document.getElementById('inDiscMode').value = it.discPct != null ? 'pct' : 'amt';
+    document.getElementById('inNotes').value = it.notes || '';
+    onDiscountInput();
+    document.getElementById('inQty').focus();
+}
 
 // Kept from page load: clearing the table detaches this row, so looking it up again by id on
 // the next empty render found nothing and render() threw (remove the last line → stale totals).
@@ -424,13 +469,15 @@ function render() {
                 ? '-' + fmt(item.disc) + (item.discPct ? `<br><small style="color:#9ca3af">(${item.discPct}%)</small>` : '')
                 : '—'}</td>
             <td style="text-align:right;font-weight:600">${fmt(item.total)}</td>
-            <td><button type="button" class="btn btn-danger-outline btn-sm" onclick="removeItem(${i})" title="${T.remove}" aria-label="${T.remove}">✕</button></td>
+            <td style="white-space:nowrap"><button type="button" class="btn btn-outline btn-sm" onclick="editItem(${i})" title="${T.edit}" aria-label="${T.edit}">✎</button>
+                <button type="button" class="btn btn-danger-outline btn-sm" onclick="removeItem(${i})" title="${T.remove}" aria-label="${T.remove}">✕</button></td>
         </tr>`;
     });
     body.innerHTML = html;
     syncSummary(subTotal, discTotal);
 
     document.getElementById('ItemsJson').value = JSON.stringify(items.map(i => ({
+        purchaseItemId:  i.purchaseItemId || null,
         productId:       i.productId,
         qty:             i.qty,
         unitCost:        i.cost,
@@ -530,7 +577,8 @@ function fmt(n)    { return Math.round(n).toLocaleString(); }
             qty: l.qty, cost: l.unitCost,
             disc: disc, discPct: l.discountPercent ?? null,
             notes: l.notes || null,
-            total: (l.unitCost - disc) * l.qty
+            total: (l.unitCost - disc) * l.qty,
+            purchaseItemId: l.purchaseItemId || null
         });
     }
     if (lines.length) render();

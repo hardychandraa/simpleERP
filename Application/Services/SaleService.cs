@@ -28,6 +28,7 @@ public class SaleService : ISaleService
     private readonly IUnitOfWork                _uow;
     private readonly ICreditNoteApplicationRepository _noteApplications;
 
+    private readonly PeriodLock _period;
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<SaleService> _log;
     public SaleService(ISaleRepository sales, IProductRepository products,
@@ -39,19 +40,21 @@ public class SaleService : ISaleService
         ICreditNoteRepository notes, ICreditNoteApplicationRepository noteApplications,
         IPaymentBatchRepository batches,
         CommissionService commissions, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc, ILogger<SaleService> log)
+        PeriodLock period, IStringLocalizer<SharedResource> loc, ILogger<SaleService> log)
     { _sales=sales; _products=products; _customers=customers; _branches=branches;
       _payments=payments;
       _audit=audit; _inventory=inventory; _settings=settings; _terms=terms;
       _people=people; _returns=returns; _notes=notes; _noteApplications=noteApplications;
       _batches=batches;
-      _commissions=commissions; _uow=uow;  _loc = loc; _log = log; }
+      _commissions=commissions; _uow=uow;  _period = period; _loc = loc; _log = log; }
 
     public Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user)
         => CreateCoreAsync(dto, user, replacesSaleId: null);
 
     public async Task<ServiceResult<SaleDto>> ReviseAsync(Guid originalId, CreateSaleDto dto, string user)
     {
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(originalId);
         var original = await _sales.GetByIdWithItemsAsync(originalId);
         if (original == null) return _log.Refuse<SaleDto>(_loc["Sale not found."]);
         if (original.Status == SaleStatus.Cancelled)
@@ -132,6 +135,7 @@ public class SaleService : ISaleService
         var pickedLocal = dto.SaleDate?.Date ?? todayLocal;
         if (pickedLocal > todayLocal)
             return _log.Refuse<SaleDto>(_loc["Sale date cannot be in the future."]);
+        if (await _period.NewDateAsync(pickedLocal) is { } closed) return _log.Refuse<SaleDto>(closed);
 
         // Today keeps the real clock time, so same-day ordering and EndOfDay are unchanged.
         // A backdated entry anchors to that day's local midnight, converted to UTC — SaleDate
@@ -146,6 +150,9 @@ public class SaleService : ISaleService
         {
             if (item.Qty <= 0) return _log.Refuse<SaleDto>(_loc["All quantities must be > 0."]);
             if (item.UnitPrice < 0) return _log.Refuse<SaleDto>(_loc["Price cannot be negative."]);
+            if (item.Qty > Limits.MaxQty) return _log.Refuse<SaleDto>(_loc["Quantity is too large (at most {0} per line).", Limits.MaxQty.ToString("N0")]);
+            if (item.UnitPrice > Limits.MaxUnitAmount || item.UnitPrice * item.Qty > Limits.MaxLineAmount)
+                return _log.Refuse<SaleDto>(_loc["Amount is too large (at most {0}).", Limits.MaxUnitAmount.ToString("N0")]);
 
             // A percentage discount is resolved to a per-unit amount here, before any
             // validation runs, so both entry modes go through exactly the same guards
@@ -353,9 +360,14 @@ public class SaleService : ISaleService
 
     public async Task<ServiceResult> CancelAsync(Guid saleId, string user)
     {
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(saleId);
         var sale = await _sales.GetByIdWithItemsAsync(saleId);
         if (sale == null) return _log.Refuse(_loc["Sale not found."]);
         if (sale.Status == SaleStatus.Cancelled) return _log.Refuse(_loc["Sale is already cancelled."]);
+        // Also covers Revise, which cancels the original through here.
+        if (await _period.ExistingAsync(sale.InvoiceNumber, PeriodLock.LocalDay(sale.SaleDate)) is { } closed)
+            return _log.Refuse(closed);
 
         // Money already received belongs to this invoice. Cancelling used to go through and
         // leave the payment attached to a cancelled invoice, still counted as collected, with
@@ -403,6 +415,8 @@ public class SaleService : ISaleService
         if (dto.Amount <= 0)
             return _log.Refuse<PaymentRecordDto>(_loc["Payment amount must be > 0."]);
 
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(dto.SaleId);
         var sale = await _sales.GetByIdWithItemsAsync(dto.SaleId);
         if (sale == null) return _log.Refuse<PaymentRecordDto>(_loc["Sale not found."]);
         if (sale.Status == SaleStatus.Cancelled)
@@ -469,6 +483,9 @@ public class SaleService : ISaleService
 
         if (lines.Count == 0 && noteIds.Count == 0)
             return _log.Refuse<PaymentBatchDto>(_loc["Enter an amount on at least one invoice."]);
+
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(lines.Select(l => l.SaleId).Concat(noteIds).ToArray());
 
         var customer = await _customers.GetByIdAsync(dto.CustomerId);
         if (customer == null) return _log.Refuse<PaymentBatchDto>(_loc["Customer not found."]);
@@ -808,6 +825,7 @@ public class SaleService : ISaleService
 
     private static string? SanitiseText(string? s, int maxLen)
     {
+        s = TextClean.StripControl(s);
         if (string.IsNullOrWhiteSpace(s)) return null;
         s = s.Trim();
         return s.Length > maxLen ? s[..maxLen] : s;
@@ -820,6 +838,8 @@ public class SaleService : ISaleService
         CustomerName  = s.Customer?.Name  ?? "",
         CustomerPhone = s.Customer?.Phone,
         CustomerAddress = s.Customer?.Address,
+        CustomerTaxId = s.Customer?.TaxId,
+        CustomerNationalId = s.Customer?.NationalId,
         CustomerId    = s.CustomerId,
         PaymentTermId = s.PaymentTermId,
         SalesPersonId = s.SalesPersonId,

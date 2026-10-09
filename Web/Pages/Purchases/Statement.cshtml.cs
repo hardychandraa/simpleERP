@@ -31,6 +31,9 @@ public class StatementModel : PageModel
 
     public string? Error { get; set; }
 
+    /// <summary>This supplier's purchases still flagged Perlu dicek.</summary>
+    public int PendingChecks { get; set; }
+
     public async Task<IActionResult> OnGetAsync(Guid supplierId)
     {
         var statement = await _purchases.GetSupplierStatementAsync(supplierId, From, To);
@@ -38,6 +41,7 @@ public class StatementModel : PageModel
 
         Statement = statement;
         ViewData["Title"] = $"Statement — {statement.CounterpartyName}";
+        PendingChecks = (await _purchases.GetNeedingReviewAsync()).Count(p => p.SupplierId == supplierId);
         return Page();
     }
 

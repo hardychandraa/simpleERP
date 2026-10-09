@@ -1,9 +1,11 @@
+using SimpleERP.Web.Services;
 using Microsoft.Extensions.Localization;
 using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace SimpleERP.Web.Pages.Customers;
+[HandlesBindingErrors]
 public class CreateModel:PageModel{
     private readonly ICustomerService _svc;    private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ISalesPersonService _people; private readonly IPaymentTermService _terms;

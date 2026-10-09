@@ -3,6 +3,7 @@
 @{ ViewData["Title"] = Localizer["Payables by Supplier"].Value; }
 
 @if (Model.Msg != null) { <div class="alert alert-success">@Model.Msg</div> }
+<partial name="_PendingChecks" model="Model.PendingChecks" />
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
   <div>

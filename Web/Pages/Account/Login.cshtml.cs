@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 using SimpleERP.Application.Interfaces;
 using SimpleERP.Application.Resources;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.Account;
 
@@ -55,7 +56,8 @@ public class LoginModel : PageModel
             // every CreatedBy and AuditLog row across the app is stamped with.
             new(ClaimTypes.Name,           account.Username),
             new(ClaimTypes.Role,           account.Role.ToString()),
-            new("DisplayName",             account.DisplayName)
+            new("DisplayName",             account.DisplayName),
+            new(SessionStamp.ClaimType,    account.SecurityStamp)
         };
 
         await HttpContext.SignInAsync(

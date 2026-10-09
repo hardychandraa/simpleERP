@@ -1,0 +1,12 @@
+@model int
+@* Purchases still flagged Perlu dicek (Admin only). Their cost, the HPP of sales made since and
+   the payable can still change when Admin checks them against the supplier invoice. *@
+@if (Model > 0)
+{
+    <div class="alert alert-warning no-print" style="line-height:1.6">
+        ⚠ @(Model == 1
+            ? Localizer["{0} purchase still needs checking; cost, HPP and the payable can still change.", Model]
+            : Localizer["{0} purchases still need checking; cost, HPP and payables can still change.", Model])
+        <a href="/Purchases?pending=true" style="font-weight:700;margin-left:6px">@Localizer["Check now"] &rarr;</a>
+    </div>
+}

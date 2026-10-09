@@ -33,16 +33,17 @@ public class CreditNoteService : ICreditNoteService
     private readonly IAuditLogRepository    _audit;
     private readonly IUnitOfWork            _uow;
 
+    private readonly PeriodLock _period;
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<CreditNoteService> _log;
     public CreditNoteService(ICreditNoteRepository notes,
         ICreditNoteApplicationRepository applications, ICustomerRepository customers,
         ISupplierRepository suppliers, ISaleRepository sales, IPurchaseRepository purchases,
         IAppSettingsRepository settings, IAuditLogRepository audit, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc, ILogger<CreditNoteService> log)
+        PeriodLock period, IStringLocalizer<SharedResource> loc, ILogger<CreditNoteService> log)
     { _notes=notes; _applications=applications; _customers=customers; _suppliers=suppliers;
       _sales=sales; _purchases=purchases; _settings=settings; _audit=audit; _uow=uow;
-      _loc = loc; _log = log; }
+      _period = period; _loc = loc; _log = log; }
 
     public async Task<List<CreditNoteDto>> GetAllAsync(CreditDebitType? type = null,
         CreditNoteStatus? status = null, DateTime? from = null, DateTime? to = null)
@@ -179,6 +180,7 @@ public class CreditNoteService : ICreditNoteService
         var reason = Trim(dto.Reason, 500);
         if (reason == null)  return _log.Refuse(_loc["A reason for the note is required."]);
         if (dto.Amount <= 0) return _log.Refuse(_loc["Amount must be greater than zero."]);
+        if (dto.Amount > Limits.MaxLineAmount) return _log.Refuse(_loc["Amount is too large (at most {0}).", Limits.MaxLineAmount.ToString("N0")]);
 
         // Compared local-to-local, matching Sale's stricter guard — see decisions.md,
         // 2026-07-31. No grace day, and the fallback for no date supplied is local
@@ -187,6 +189,7 @@ public class CreditNoteService : ICreditNoteService
         var noteDate   = dto.NoteDate?.Date ?? todayLocal;
         if (noteDate > todayLocal)
             return _log.Refuse(_loc["Note date cannot be in the future."]);
+        if (await _period.NewDateAsync(noteDate) is { } closed) return _log.Refuse(closed);
 
         var isCredit = dto.Type == CreditDebitType.Credit;
 
@@ -276,6 +279,8 @@ public class CreditNoteService : ICreditNoteService
 
     public async Task<ServiceResult> SettleAsync(SettleCreditNoteDto dto, string user)
     {
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(dto.Id);
         var note = await _notes.GetByIdAsync(dto.Id);
         if (note == null) return _log.Refuse(_loc["Note not found."]);
         if (note.Status == CreditNoteStatus.Settled)
@@ -311,6 +316,8 @@ public class CreditNoteService : ICreditNoteService
     {
         if (dto.Amount <= 0) return _log.Refuse(_loc["Amount must be greater than zero."]);
 
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(dto.CreditNoteId, dto.SaleId ?? Guid.Empty, dto.PurchaseId ?? Guid.Empty);
         var note = await _notes.GetByIdAsync(dto.CreditNoteId);
         if (note == null) return _log.Refuse(_loc["Note not found."]);
         if (note.Status == CreditNoteStatus.Cancelled)
@@ -322,6 +329,9 @@ public class CreditNoteService : ICreditNoteService
         var applicationDate = dto.ApplicationDate?.Date ?? todayLocal;
         if (applicationDate > todayLocal)
             return _log.Refuse(_loc["Application date cannot be in the future."]);
+        // Applying today against an invoice from a closed month is allowed: the application is
+        // a new event in the open period, like a payment.
+        if (await _period.NewDateAsync(applicationDate) is { } closed) return _log.Refuse(closed);
 
         var isCredit = note.Type == CreditDebitType.Credit;
 
@@ -418,6 +428,8 @@ public class CreditNoteService : ICreditNoteService
     /// </summary>
     public async Task<ServiceResult> ReverseApplicationAsync(Guid applicationId, string user)
     {
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(applicationId);
         var application = await _applications.GetByIdAsync(applicationId);
         if (application == null) return _log.Refuse(_loc["Application not found."]);
         if (application.IsReversed)
@@ -427,6 +439,8 @@ public class CreditNoteService : ICreditNoteService
         if (note == null) return _log.Refuse(_loc["Note not found."]);
         if (note.Status == CreditNoteStatus.Cancelled)
             return _log.Refuse(_loc["{0} is cancelled.", note.DocumentNumber]);
+        if (await _period.ExistingAsync(_loc["The application of {0}", note.DocumentNumber].Value, application.ApplicationDate.Date) is { } closed)
+            return _log.Refuse(closed);
 
         // The document has to still be live: reversing against a cancelled invoice would
         // hand the amount back to a balance that no longer exists.
@@ -489,10 +503,14 @@ public class CreditNoteService : ICreditNoteService
 
     public async Task<ServiceResult> CancelAsync(Guid id, string user)
     {
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(id);
         var note = await _notes.GetByIdAsync(id);
         if (note == null) return _log.Refuse(_loc["Note not found."]);
         if (note.Status == CreditNoteStatus.Cancelled)
             return _log.Refuse(_loc["{0} is already cancelled.", note.DocumentNumber]);
+        if (await _period.ExistingAsync(note.DocumentNumber, note.NoteDate.Date) is { } closed)
+            return _log.Refuse(closed);
         if (note.Status == CreditNoteStatus.Settled)
             return _log.Refuse(_loc["{0} has already been settled — the money has moved. Raise an opposite note instead of cancelling this one.", note.DocumentNumber]);
 
@@ -522,7 +540,10 @@ public class CreditNoteService : ICreditNoteService
     }
 
     private static string? Trim(string? s, int max)
-        => string.IsNullOrWhiteSpace(s) ? null : (s.Trim().Length > max ? s.Trim()[..max] : s.Trim());
+    {
+        s = TextClean.StripControl(s);
+        return string.IsNullOrWhiteSpace(s) ? null : (s.Trim().Length > max ? s.Trim()[..max] : s.Trim());
+    }
 
     private static CreditNoteApplicationDto MapApplicationDto(CreditNoteApplication a, bool canReverse) => new() {
         Id               = a.Id,

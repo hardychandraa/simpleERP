@@ -9,6 +9,8 @@
   <div class="stat red"><div class="stat-lbl">@Localizer["Outstanding Due"]</div><div class="stat-val" style="font-size:17px">@Model.TotalOutstanding.ToString("N0")</div></div>
 </div>
 
+<partial name="_PendingChecks" model="Model.PendingChecks" />
+
 @if (Model.OverdueCount > 0) {
   @* The count and the emphasised words stay as markup outside the localized fragments, so the
      bolding survives translation. Both languages lead with the number, so splitting here is safe. *@

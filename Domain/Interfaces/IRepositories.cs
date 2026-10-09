@@ -29,6 +29,9 @@ public interface IBranchRepository {
 
 public interface IInventoryLedgerRepository {
     Task AddAsync(InventoryLedger entry);
+    /// <summary>Every ledger row of one product, in posting order (EnteredAt), tracked for update. Used by the re-cost after a purchase revision.</summary>
+    Task<List<InventoryLedger>> GetProductHistoryAsync(Guid productId, Guid branchId);
+    void Remove(InventoryLedger entry);
     Task<decimal> GetCurrentStockAsync(Guid productId, Guid branchId);
     Task<decimal> GetCurrentAvgCostAsync(Guid productId, Guid branchId);
     /// <summary>
@@ -243,7 +246,12 @@ public interface IPurchaseRepository {
     /// check. Excludes the purchase currently being posted (not yet saved), so the
     /// caller adds the current line's qty itself.
     /// </summary>
-    Task<decimal> GetPurchasedQtyAsync(Guid supplierId, Guid productId, DateTime? from, DateTime? to);
+    Task<decimal> GetPurchasedQtyAsync(Guid supplierId, Guid productId, DateTime? from, DateTime? to,
+                                       Guid? excludePurchaseId = null);
+    /// <summary>A line added to an existing purchase by a revision (its id is preset, so it must be added explicitly).</summary>
+    Task AddItemAsync(PurchaseItem item);
+    /// <summary>Active purchases still flagged Perlu dicek, optionally only those dated on/before a day.</summary>
+    Task<List<Purchase>> GetNeedingReviewAsync(DateTime? throughDay = null);
     /// <summary>
     /// Outstanding payables as of now — the AP mirror of
     /// <see cref="ISaleRepository.GetReceivablesTotalAsync"/>, aggregated in SQL.
@@ -589,6 +597,16 @@ public interface IUserRepository {
     Task<bool> IsLastActiveAdminAsync(Guid id);
     Task AddAsync(User user);
     void Update(User user);
+    /// <summary>
+    /// Counts one login attempt atomically, before the password is checked. Returns the
+    /// attempt number, or null when the account is locked or <paramref name="maxAttempts"/>
+    /// attempts are already counted. Runs immediately (no SaveChanges).
+    /// </summary>
+    Task<int?> ReserveLoginAttemptAsync(Guid id, int maxAttempts, DateTime nowUtc);
+    /// <summary>Locks the account until <paramref name="untilUtc"/> and restarts the count. Runs immediately.</summary>
+    Task LockOutAsync(Guid id, DateTime untilUtc);
+    /// <summary>A new security stamp: every existing session of this user ends. Runs immediately.</summary>
+    Task RotateSecurityStampAsync(string username);
 }
 
 public interface IPaymentRecordRepository {
@@ -646,6 +664,30 @@ public interface IUnitOfWork {
     /// tracked changes) when it returns false or throws.
     /// </summary>
     Task<bool> InTransactionAsync(Func<Task<bool>> work);
+    /// <summary>
+    /// Serialises work on the given documents (sales, purchases, notes, returns, users…):
+    /// a second request for the same document waits here until the first has committed
+    /// or rolled back, then reads what it wrote. Call it FIRST in an operation, before the
+    /// document is read. Opens a transaction if none is open; the lock is held until
+    /// SaveChangesAsync commits it, or the request ends. Ids are locked in a fixed order,
+    /// so two operations on overlapping documents can't deadlock.
+    /// </summary>
+    Task LockAsync(params Guid[] ids);
+}
+
+/// <summary>
+/// The documents that snapshot a cost (SaleItem.CostAtSale, CustomerReturnItem.CostAtSale,
+/// SupplierReturnItem.CostAtReturn) and the purchase lines that feed one, looked up by the
+/// ledger's ReferenceId for one product. Tracked, so the re-cost can update them in place.
+/// </summary>
+public interface ICostSnapshotRepository {
+    Task<List<SaleItem>> GetSaleItemsAsync(IEnumerable<Guid> saleIds, Guid productId);
+    Task<List<CustomerReturnItem>> GetCustomerReturnItemsAsync(IEnumerable<Guid> returnIds, Guid productId);
+    Task<List<SupplierReturnItem>> GetSupplierReturnItemsAsync(IEnumerable<Guid> returnIds, Guid productId);
+    /// <summary>Purchase lines of one product, with their purchase header (tax mode and rate).</summary>
+    Task<List<PurchaseItem>> GetPurchaseItemsAsync(IEnumerable<Guid> purchaseIds, Guid productId);
+    /// <summary>Purchase lines referenced by any supplier return, active or cancelled (FK Restrict).</summary>
+    Task<HashSet<Guid>> GetReturnedPurchaseItemIdsAsync(Guid purchaseId);
 }
 
 public interface IAppSettingsRepository {

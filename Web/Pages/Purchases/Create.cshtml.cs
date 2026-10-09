@@ -45,6 +45,16 @@ public class CreateModel : PageModel
     [BindProperty] public decimal InvoiceDiscountInput { get; set; }
     [BindProperty] public bool    InvoiceDiscountIsPercent { get; set; }
 
+    /// <summary>
+    /// Revise mode (HC, 2026-10-08): the purchase being corrected in place, same number. Saving
+    /// re-costs everything posted after it (PurchaseService.ReviseAsync); leaving changes nothing.
+    /// </summary>
+    [BindProperty(SupportsGet = true)] public Guid? Revise { get; set; }
+    /// <summary>Revise mode: also clear "Perlu dicek". On by default, since a revision is the check.</summary>
+    [BindProperty] public bool MarkReviewed { get; set; } = true;
+    public string? RevisingNumber { get; set; }
+    public bool    RevisingNeedsReview { get; set; }
+
     public List<SupplierDto>    SupplierOptions   { get; set; } = new();
     public List<PaymentTermDto> TermOptions       { get; set; } = new();
     public List<ProductDto>     AvailableProducts { get; set; } = new();
@@ -54,17 +64,35 @@ public class CreateModel : PageModel
     /// <summary>The posted lines, put back into the table when a save is refused (as Sales/Create does).</summary>
     public string PrefillItemsJson { get; set; } = "[]";
 
-    public async Task OnGetAsync()
+    public async Task<IActionResult> OnGetAsync()
     {
         ViewData["Title"] = "New Purchase";
         PurchaseDate = DateTime.Now.Date;
+        if (Revise.HasValue)
+        {
+            var p = await _purchases.GetByIdAsync(Revise.Value);
+            if (p == null) return RedirectToPage("/Purchases/Index");
+            if (p.Status == "Cancelled") return RedirectToPage("/Purchases/Detail", new { id = p.Id });
+            RevisingNumber = p.PurchaseNumber; RevisingNeedsReview = p.NeedsReview;
+            SupplierId = p.SupplierId; SupplierDocumentNumber = p.SupplierDocumentNumber;
+            PurchaseDate = p.PurchaseDate; PaymentType = Enum.Parse<PaymentType>(p.PaymentType);
+            PaymentTermId = p.PaymentTermId; Notes = p.Notes; IsTaxInclusive = p.IsTaxInclusive;
+            InvoiceDiscountIsPercent = p.InvoiceDiscountPercent.HasValue;
+            InvoiceDiscountInput = p.InvoiceDiscountPercent ?? p.InvoiceDiscountAmount;
+            PrefillItemsJson = JsonSerializer.Serialize(p.Items.Select(i => new CreatePurchaseItemDto {
+                PurchaseItemId = i.Id, ProductId = i.ProductId, Qty = i.Qty, UnitCost = i.UnitCost,
+                DiscountAmount = i.DiscountAmount, DiscountPercent = i.DiscountPercent, Notes = i.Notes }),
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        }
         await LoadAsync();
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
         ViewData["Title"] = "New Purchase";
         await LoadAsync();
+        if (Revise.HasValue) await LoadRevisingAsync();
 
         List<CreatePurchaseItemDto>? items;
         try { items = JsonSerializer.Deserialize<List<CreatePurchaseItemDto>>(ItemsJson,
@@ -87,7 +115,7 @@ public class CreateModel : PageModel
         if (items == null || items.Count == 0) { Error = _loc["Add at least one item."]; return Page(); }
         if (items.Count > 200) { Error = _loc["Too many items in one purchase."]; return Page(); }
 
-        var result = await _purchases.CreateAsync(new CreatePurchaseDto {
+        var dto = new CreatePurchaseDto {
             SupplierId             = SupplierId,
             SupplierDocumentNumber = SupplierDocumentNumber,
             PurchaseDate           = PurchaseDate,
@@ -100,17 +128,35 @@ public class CreateModel : PageModel
             InvoiceDiscountAmount  = InvoiceDiscountIsPercent ? 0m : InvoiceDiscountInput,
             InvoiceDiscountPercent = InvoiceDiscountIsPercent ? InvoiceDiscountInput : null,
             Items                  = items
-        }, this.CurrentUserName());
+        };
 
+        if (Revise.HasValue)
+        {
+            var revised = await _purchases.ReviseAsync(Revise.Value, dto, MarkReviewed, this.CurrentUserName());
+            if (!revised.Success) { Error = revised.Error; await LoadRevisingAsync(); return Page(); }
+            return RedirectToPage("/Purchases/Detail", new { id = Revise.Value, msg = _loc["Purchase revised."].Value });
+        }
+
+        var result = await _purchases.CreateAsync(dto, this.CurrentUserName());
         if (!result.Success) { Error = result.Error; return Page(); }
         return RedirectToPage("/Purchases/Detail", new { id = result.Data!.Id });
     }
 
+    private async Task LoadRevisingAsync()
+    {
+        var p = await _purchases.GetByIdAsync(Revise!.Value);
+        RevisingNumber = p?.PurchaseNumber; RevisingNeedsReview = p?.NeedsReview ?? false;
+        // The supplier and payment type are fixed on a revision; the posted values are ignored.
+        if (p != null) { SupplierId = p.SupplierId; PaymentType = Enum.Parse<PaymentType>(p.PaymentType); }
+    }
+
     private async Task LoadAsync()
     {
-        SupplierOptions   = await _suppliers.GetAllAsync(activeOnly: true);
+        // Revise mode lists every supplier and product: the one on the purchase may since have
+        // been deactivated, and it still has to show.
+        SupplierOptions   = await _suppliers.GetAllAsync(activeOnly: !Revise.HasValue);
         TermOptions       = await _terms.GetAllAsync(activeOnly: true);
-        AvailableProducts = await _products.GetAllActiveAsync();
+        AvailableProducts = Revise.HasValue ? await _products.GetAllAsync() : await _products.GetAllActiveAsync();
         VatRate           = (await _settings.GetAsync()).VatRatePercent / 100m;
     }
 }

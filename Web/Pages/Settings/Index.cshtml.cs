@@ -1,8 +1,10 @@
+using SimpleERP.Web.Services;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace SimpleERP.Web.Pages.Settings;
+[HandlesBindingErrors]
 public class IndexModel : PageModel {
     private readonly IAppSettingsService _svc;
     public IndexModel(IAppSettingsService svc) => _svc = svc;

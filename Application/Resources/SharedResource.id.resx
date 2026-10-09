@@ -1338,4 +1338,80 @@
   <data name="bonus?" xml:space="preserve"><value>bonus?</value></data>
   <data name="These items have unit cost 0: {0}" xml:space="preserve"><value>Barang berikut harga pokoknya 0: {0}</value></data>
   <data name="Post them as free (bonus) items?" xml:space="preserve"><value>Simpan sebagai barang gratis (bonus)?</value></data>
+  <data name="Pick the last day of a month." xml:space="preserve"><value>Pilih tanggal terakhir suatu bulan.</value></data>
+  <data name="Only a month that has already ended can be closed." xml:space="preserve"><value>Hanya bulan yang sudah berakhir yang dapat ditutup.</value></data>
+  <data name="Nothing to change." xml:space="preserve"><value>Tidak ada yang berubah.</value></data>
+  <data name="{0} purchase(s) dated in this period still need checking (Perlu dicek), e.g. {1}. Check them before closing the books." xml:space="preserve"><value>{0} pembelian dalam periode ini masih perlu dicek, mis. {1}. Cek dulu sebelum tutup buku.</value></data>
+  <data name="The application of {0}" xml:space="preserve"><value>Penerapan {0}</value></data>
+  <data name="NIK must be exactly 16 digits." xml:space="preserve"><value>NIK harus tepat 16 digit.</value></data>
+  <data name="NPWP must have 15 or 16 digits." xml:space="preserve"><value>NPWP harus 15 atau 16 digit.</value></data>
+  <data name="This expense" xml:space="preserve"><value>Biaya ini</value></data>
+  <data name="The date {0} is in a closed period (books closed through {1}). Use a later date, or ask an administrator to reopen the period." xml:space="preserve"><value>Tanggal {0} berada dalam periode yang sudah ditutup (tutup buku s/d {1}). Gunakan tanggal yang lebih baru, atau minta administrator membuka kembali periode itu.</value></data>
+  <data name="{0} is dated {1}, in a closed period (books closed through {2}). It can no longer be changed or cancelled; ask an administrator to reopen the period." xml:space="preserve"><value>{0} bertanggal {1}, dalam periode yang sudah ditutup (tutup buku s/d {2}). Dokumen ini tidak dapat diubah atau dibatalkan lagi; minta administrator membuka kembali periode itu.</value></data>
+  <data name="{0}: this change would leave too little stock for a later movement ({1}, {2} units). Those units have already been sold or issued; correct with a supplier return instead." xml:space="preserve"><value>{0}: perubahan ini membuat stok tidak cukup untuk mutasi sesudahnya ({1}, {2} unit). Unit itu sudah terjual atau keluar; koreksi dengan retur ke pemasok.</value></data>
+  <data name="Only purchases entered through Barang Masuk can be edited here. Ask an administrator." xml:space="preserve"><value>Hanya pembelian yang diinput lewat Barang Masuk yang dapat diubah di sini. Hubungi administrator.</value></data>
+  <data name="{0} is already checked." xml:space="preserve"><value>{0} sudah dicek.</value></data>
+  <data name="The document discount would be larger than the new total. Ask an administrator to correct this purchase." xml:space="preserve"><value>Diskon dokumen akan melebihi total yang baru. Minta administrator mengoreksi pembelian ini.</value></data>
+  <data name="The supplier of a purchase cannot be changed. Cancel it and enter it again." xml:space="preserve"><value>Pemasok pada pembelian tidak dapat diganti. Batalkan lalu input ulang.</value></data>
+  <data name="This purchase has a supplier return against it. Cancel the return first, then revise." xml:space="preserve"><value>Pembelian ini sudah memiliki retur ke pemasok. Batalkan returnya dulu, lalu revisi.</value></data>
+  <data name="A rebate earned on this purchase has already been settled with the supplier, so it can no longer be revised." xml:space="preserve"><value>Rebat dari pembelian ini sudah diselesaikan dengan pemasok, jadi pembelian ini tidak dapat direvisi lagi.</value></data>
+  <data name="The line for {0} has supplier-return history and cannot be removed. Set its quantity instead." xml:space="preserve"><value>Baris {0} memiliki riwayat retur ke pemasok dan tidak dapat dihapus. Ubah jumlahnya saja.</value></data>
+  <data name="After this change the purchase would be worth less than what has already been paid or offset. Ask an administrator." xml:space="preserve"><value>Setelah perubahan ini nilai pembelian lebih kecil dari yang sudah dibayar atau dipotong. Hubungi administrator.</value></data>
+  <data name="The revised total ({0}) is less than what has already been paid or offset ({1}). Reverse a payment or note application first." xml:space="preserve"><value>Total revisi ({0}) lebih kecil dari yang sudah dibayar atau dipotong ({1}). Batalkan pembayaran atau penerapan nota dulu.</value></data>
+  <data name="NIK (KTP)" xml:space="preserve"><value>NIK (KTP)</value></data>
+  <data name="Optional, 16 digits" xml:space="preserve"><value>Opsional, 16 digit</value></data>
+  <data name="Edit {0}" xml:space="preserve"><value>Ubah {0}</value></data>
+  <data name="Editing {0}. After saving, an administrator checks it again." xml:space="preserve"><value>Mengubah {0}. Setelah disimpan, administrator akan mengeceknya lagi.</value></data>
+  <data name="Goods received from the supplier" xml:space="preserve"><value>Barang diterima dari pemasok</value></data>
+  <data name="Date received" xml:space="preserve"><value>Tanggal terima</value></data>
+  <data name="Total qty" xml:space="preserve"><value>Total jumlah</value></data>
+  <data name="Receive into stock" xml:space="preserve"><value>Terima ke stok</value></data>
+  <data name="Stock is updated right away. Prices are taken from the product list and checked later by an administrator against the supplier's invoice." xml:space="preserve"><value>Stok langsung bertambah. Harga diambil dari daftar produk dan nanti dicek administrator dengan faktur pemasok.</value></data>
+  <data name="This purchase cannot be edited here." xml:space="preserve"><value>Pembelian ini tidak dapat diubah di sini.</value></data>
+  <data name="Saved. It is marked for checking again." xml:space="preserve"><value>Tersimpan. Ditandai perlu dicek lagi.</value></data>
+  <data name="Goods received. Stock is updated; an administrator will check the prices." xml:space="preserve"><value>Barang diterima. Stok sudah bertambah; administrator akan mengecek harganya.</value></data>
+  <data name="Open in Purchases" xml:space="preserve"><value>Buka di Pembelian</value></data>
+  <data name="Checked" xml:space="preserve"><value>Sudah dicek</value></data>
+  <data name="Entered by {0} on {1}." xml:space="preserve"><value>Diinput oleh {0} pada {1}.</value></data>
+  <data name="Last edited by {0} on {1}." xml:space="preserve"><value>Terakhir diubah oleh {0} pada {1}.</value></data>
+  <data name="Checked by {0} on {1}." xml:space="preserve"><value>Dicek oleh {0} pada {1}.</value></data>
+  <data name="Needs checking only" xml:space="preserve"><value>Hanya yang perlu dicek</value></data>
+  <data name="New Goods In" xml:space="preserve"><value>Barang Masuk Baru</value></data>
+  <data name="Items" xml:space="preserve"><value>Barang</value></data>
+  <data name="Entered by" xml:space="preserve"><value>Diinput oleh</value></data>
+  <data name="Revising {0}. It keeps its number. Saving recalculates the cost of everything posted after it for these products (average cost, HPP of later sales) and re-checks its rebates." xml:space="preserve"><value>Merevisi {0}. Nomornya tetap. Saat disimpan, biaya semua mutasi sesudahnya untuk produk-produk ini dihitung ulang (harga rata-rata, HPP penjualan berikutnya) dan rebatnya dicek ulang.</value></data>
+  <data name="Leave without changes" xml:space="preserve"><value>Keluar tanpa perubahan</value></data>
+  <data name="Mark as checked against the supplier invoice" xml:space="preserve"><value>Tandai sudah dicek dengan faktur pemasok</value></data>
+  <data name="Save Revision" xml:space="preserve"><value>Simpan Revisi</value></data>
+  <data name="Purchase revised." xml:space="preserve"><value>Pembelian direvisi.</value></data>
+  <data name="Needs checking" xml:space="preserve"><value>Perlu dicek</value></data>
+  <data name="Changed by Staff after it was checked (by {0}, {1}). Compare it with the supplier invoice again." xml:space="preserve"><value>Diubah oleh Staf setelah dicek (oleh {0}, {1}). Cocokkan lagi dengan faktur pemasok.</value></data>
+  <data name="Entered through Goods In by {0} on {1}, priced at the master harga beli. Compare it with the supplier invoice and revise if anything differs." xml:space="preserve"><value>Diinput lewat Barang Masuk oleh {0} pada {1}, dengan harga beli dari data produk. Cocokkan dengan faktur pemasok dan revisi bila ada yang berbeda.</value></data>
+  <data name="Compare it with the supplier invoice and revise if anything differs." xml:space="preserve"><value>Cocokkan dengan faktur pemasok dan revisi bila ada yang berbeda.</value></data>
+  <data name="Mark as checked" xml:space="preserve"><value>Tandai sudah dicek</value></data>
+  <data name="No price: check this line against the supplier invoice" xml:space="preserve"><value>Tanpa harga: cek baris ini dengan faktur pemasok</value></data>
+  <data name="no price" xml:space="preserve"><value>tanpa harga</value></data>
+  <data name="Books are closed through {0}: the figures for this period are final." xml:space="preserve"><value>Buku sudah ditutup s/d {0}: angka periode ini sudah final.</value></data>
+  <data name="Once a month is closed, nothing dated in it can be created, changed or cancelled, so reported figures (P&amp;L, PPN) stay as they were. New events dated today stay allowed even for old documents: a payment on a September invoice, a credit note applied today, a return dated today." xml:space="preserve"><value>Setelah suatu bulan ditutup, tidak ada dokumen bertanggal di bulan itu yang dapat dibuat, diubah, atau dibatalkan, sehingga angka yang sudah dilaporkan (Laba Rugi, PPN) tetap. Kejadian baru bertanggal hari ini tetap boleh walaupun untuk dokumen lama: pembayaran faktur September, nota kredit yang diterapkan hari ini, retur bertanggal hari ini.</value></data>
+  <data name="Books closed through" xml:space="preserve"><value>Tutup buku s/d</value></data>
+  <data name="Nothing closed yet" xml:space="preserve"><value>Belum ada yang ditutup</value></data>
+  <data name="Reopen {0}? Documents dated in it can be changed again." xml:space="preserve"><value>Buka kembali {0}? Dokumen bertanggal di bulan itu dapat diubah lagi.</value></data>
+  <data name="Reopen {0}" xml:space="preserve"><value>Buka kembali {0}</value></data>
+  <data name="These purchases still need checking (Perlu dicek). A month with one of them cannot be closed:" xml:space="preserve"><value>Pembelian berikut masih perlu dicek. Bulan yang memuat salah satunya tidak dapat ditutup:</value></data>
+  <data name="Every ended month is already closed. The current month can be closed once it has ended." xml:space="preserve"><value>Semua bulan yang sudah berakhir sudah ditutup. Bulan berjalan dapat ditutup setelah berakhir.</value></data>
+  <data name="Close the books? Documents dated up to the chosen date can no longer be changed." xml:space="preserve"><value>Tutup buku? Dokumen bertanggal sampai tanggal yang dipilih tidak dapat diubah lagi.</value></data>
+  <data name="Close through the end of" xml:space="preserve"><value>Tutup sampai akhir bulan</value></data>
+  <data name="Every close and reopen is recorded in the audit log. Only a month that has already ended can be closed." xml:space="preserve"><value>Setiap tutup dan buka kembali dicatat di log audit. Hanya bulan yang sudah berakhir yang dapat ditutup.</value></data>
+  <data name="Books closed through {0}." xml:space="preserve"><value>Buku ditutup s/d {0}.</value></data>
+  <data name="Nothing is closed." xml:space="preserve"><value>Belum ada yang ditutup.</value></data>
+  <data name="{0} reopened." xml:space="preserve"><value>{0} dibuka kembali.</value></data>
+  <data name="Goods In" xml:space="preserve"><value>Barang Masuk</value></data>
+  <data name="Close the Books" xml:space="preserve"><value>Tutup Buku</value></data>
+  <data name="{0} purchase still needs checking; cost, HPP and the payable can still change." xml:space="preserve"><value>{0} pembelian masih perlu dicek; biaya, HPP, dan hutangnya masih bisa berubah.</value></data>
+  <data name="{0} purchases still need checking; cost, HPP and payables can still change." xml:space="preserve"><value>{0} pembelian masih perlu dicek; biaya, HPP, dan hutangnya masih bisa berubah.</value></data>
+  <data name="Check now" xml:space="preserve"><value>Cek sekarang</value></data>
+  <data name="Quantity is too large (at most {0} per line)." xml:space="preserve"><value>Jumlah terlalu besar (maksimal {0} per baris).</value></data>
+  <data name="Amount is too large (at most {0})." xml:space="preserve"><value>Nominal terlalu besar (maksimal {0}).</value></data>
+  <data name="Too many lines in one document (at most {0})." xml:space="preserve"><value>Terlalu banyak baris dalam satu dokumen (maksimal {0}).</value></data>
+  <data name="A value on the form could not be read ({0}). Nothing was saved." xml:space="preserve"><value>Ada isian formulir yang tidak dapat dibaca ({0}). Tidak ada yang disimpan.</value></data>
 </root>

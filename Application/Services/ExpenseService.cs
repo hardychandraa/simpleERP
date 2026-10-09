@@ -23,12 +23,13 @@ public class ExpenseService : IExpenseService
     private readonly IAuditLogRepository        _audit;
     private readonly IUnitOfWork                _uow;
 
+    private readonly PeriodLock _period;
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<ExpenseService> _log;
     public ExpenseService(IExpenseRepository expenses, IExpenseCategoryRepository categories,
                           IAuditLogRepository audit, IUnitOfWork uow,
-        IStringLocalizer<SharedResource> loc, ILogger<ExpenseService> log)
-    { _expenses = expenses; _categories = categories; _audit = audit; _uow = uow;  _loc = loc; _log = log; }
+        PeriodLock period, IStringLocalizer<SharedResource> loc, ILogger<ExpenseService> log)
+    { _expenses = expenses; _categories = categories; _audit = audit; _uow = uow;  _period = period; _loc = loc; _log = log; }
 
     // ── Expenses ──────────────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ public class ExpenseService : IExpenseService
     {
         var invalid = await ValidateExpenseAsync(dto);
         if (invalid != null) return invalid;
+        if (await _period.NewDateAsync(dto.ExpenseDate.Date) is { } closed) return _log.Refuse(closed);
 
         var expense = new Expense {
             Id                = Guid.NewGuid(),
@@ -80,6 +82,10 @@ public class ExpenseService : IExpenseService
 
         var invalid = await ValidateExpenseAsync(dto);
         if (invalid != null) return invalid;
+        // Both ends: moving an expense out of a closed month changes that month too.
+        if (await _period.ExistingAsync(_loc["This expense"].Value, expense.ExpenseDate.Date) is { } closedOld)
+            return _log.Refuse(closedOld);
+        if (await _period.NewDateAsync(dto.ExpenseDate.Date) is { } closedNew) return _log.Refuse(closedNew);
 
         var before = $"{expense.Category?.Name} {expense.Amount:N0} on {expense.ExpenseDate:yyyy-MM-dd}";
 
@@ -106,6 +112,8 @@ public class ExpenseService : IExpenseService
     {
         var expense = await _expenses.GetByIdAsync(id);
         if (expense == null) return _log.Refuse(_loc["Expense not found."]);
+        if (await _period.ExistingAsync(_loc["This expense"].Value, expense.ExpenseDate.Date) is { } closed)
+            return _log.Refuse(closed);
 
         _expenses.Remove(expense);
         await _audit.LogAsync(user, "Expense.Delete",
@@ -123,6 +131,7 @@ public class ExpenseService : IExpenseService
     {
         if (dto.CategoryId == Guid.Empty) return _log.Refuse(_loc["Category is required."]);
         if (dto.Amount <= 0)              return _log.Refuse(_loc["Amount must be greater than zero."]);
+        if (dto.Amount > Limits.MaxLineAmount) return _log.Refuse(_loc["Amount is too large (at most {0}).", Limits.MaxLineAmount.ToString("N0")]);
         if (dto.ExpenseDate == default)   return _log.Refuse(_loc["Date is required."]);
         // A future-dated expense is almost always a typo in the year field, and it
         // would silently distort any period report that includes it. Compared

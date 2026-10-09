@@ -134,6 +134,16 @@ public interface ISupplierService {
 public interface IPurchaseService {
     Task<ServiceResult<PurchaseDto>> CreateAsync(CreatePurchaseDto dto, string user);
     Task<ServiceResult> CancelAsync(Guid purchaseId, string user);
+    /// <summary>Barang Masuk (Staff): lines costed at the master harga beli, flagged Perlu dicek. Returns the id only.</summary>
+    Task<ServiceResult<Guid>> CreateUnpricedAsync(CreateUnpricedPurchaseDto dto, string user);
+    /// <summary>Staff edit of a Barang Masuk entry; existing lines keep their price; flags Perlu dicek again.</summary>
+    Task<ServiceResult> EditUnpricedAsync(Guid purchaseId, CreateUnpricedPurchaseDto dto, string user);
+    /// <summary>Admin correction in place, with re-costing of everything posted after it.</summary>
+    Task<ServiceResult> ReviseAsync(Guid purchaseId, CreatePurchaseDto dto, bool markReviewed, string user);
+    Task<ServiceResult> MarkReviewedAsync(Guid purchaseId, string user);
+    Task<List<PurchaseQtyListDto>> GetQtyListAsync(DateTime? from = null, DateTime? to = null, string? search = null);
+    Task<PurchaseQtyDto?> GetQtyDetailAsync(Guid id);
+    Task<List<PurchaseListDto>> GetNeedingReviewAsync();
     Task<ServiceResult<SupplierPaymentDto>> RecordPaymentAsync(RecordSupplierPaymentDto dto, string user);
     /// <summary>
     /// Settles several of one supplier's open purchases in one action — the shape a real
@@ -193,7 +203,8 @@ public interface IUserService {
     Task<ServiceResult> UpdateAsync(UserDto dto, string user);
     /// <summary>Admin-driven reset. There is no email in this app, so there is no self-service link.</summary>
     Task<ServiceResult> ResetPasswordAsync(Guid id, string newPassword, string user);
-    Task<ServiceResult> ChangeOwnPasswordAsync(string username, string currentPassword, string newPassword);
+    /// <summary>Returns the new security stamp, for re-issuing the caller's own cookie.</summary>
+    Task<ServiceResult<string>> ChangeOwnPasswordAsync(string username, string currentPassword, string newPassword);
 }
 
 public interface ICommissionService {
@@ -299,4 +310,10 @@ public interface IFinancialReportService {
 public interface IAppSettingsService {
     Task<AppSettingsDto> GetAsync();
     Task<ServiceResult> SaveAsync(AppSettingsDto dto);
+    /// <summary>
+    /// Month lock: close the books through the end of a fully ended month, or move the lock
+    /// back (reopen). Null = nothing closed. Audited; refuses to close a month that still has
+    /// purchases waiting for Admin's check.
+    /// </summary>
+    Task<ServiceResult> SetBooksClosedThroughAsync(DateTime? monthEnd, string user);
 }

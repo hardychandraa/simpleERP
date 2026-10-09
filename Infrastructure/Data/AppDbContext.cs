@@ -67,6 +67,8 @@ public class AppDbContext : DbContext
             e.Property(c => c.Name).IsRequired().HasMaxLength(300);
             e.Property(c => c.Phone).HasMaxLength(50);
             e.Property(c => c.Address).HasMaxLength(500);
+            e.Property(c => c.TaxId).HasMaxLength(50);
+            e.Property(c => c.NationalId).HasMaxLength(20);
             e.Property(c => c.DefaultDiscountPercent).HasColumnType("decimal(18,4)");
             e.HasOne(c => c.SalesPerson).WithMany()
                 .HasForeignKey(c => c.SalesPersonId).OnDelete(DeleteBehavior.Restrict);
@@ -228,6 +230,9 @@ public class AppDbContext : DbContext
             e.Property(p => p.AmountPaid).HasColumnType("decimal(18,4)");
             e.Property(p => p.CreatedBy).HasMaxLength(100);
             e.Property(p => p.Notes).HasMaxLength(500);
+            e.Property(p => p.ReviewedBy).HasMaxLength(100);
+            e.Property(p => p.LastStaffEditBy).HasMaxLength(100);
+            e.HasIndex(p => p.NeedsReview);
             e.HasOne(p => p.Supplier).WithMany(s => s.Purchases)
                 .HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.Branch).WithMany()
@@ -343,6 +348,7 @@ public class AppDbContext : DbContext
             e.Property(u => u.Username).IsRequired().HasMaxLength(100);
             e.Property(u => u.PasswordHash).IsRequired().HasMaxLength(400);
             e.Property(u => u.DisplayName).IsRequired().HasMaxLength(200);
+            e.Property(u => u.SecurityStamp).IsRequired().HasMaxLength(64);
             e.HasIndex(u => u.Username).IsUnique();
         });
 

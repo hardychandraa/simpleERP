@@ -1,0 +1,58 @@
+@page "/GoodsIn/Detail/{id:guid}"
+@model SimpleERP.Web.Pages.GoodsIn.DetailModel
+@{
+    var p = Model.Purchase;
+    ViewData["Title"] = p.PurchaseNumber;
+    var active = p.Status != "Cancelled";
+}
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div>
+}
+
+<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <a href="/GoodsIn" class="btn btn-outline">← @Localizer["Goods In"]</a>
+    @if (active && p.EnteredWithoutPrice)
+    {
+        <a href="/GoodsIn/Create?edit=@p.Id" class="btn btn-primary">✎ @Localizer["Edit"]</a>
+    }
+    @if (User.SeesSupplierSide())
+    {
+        <a href="/Purchases/@p.Id" class="btn btn-outline" style="margin-left:auto">@Localizer["Open in Purchases"] →</a>
+    }
+</div>
+
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <div>
+            <div style="font-size:20px;font-weight:700">@p.PurchaseNumber</div>
+            <div style="color:#6b7280;font-size:13px">@p.PurchaseDate.ToString("dd MMM yyyy") · @p.SupplierName
+                @if (!string.IsNullOrEmpty(p.SupplierDocumentNumber)) { <text> · @Localizer["Supplier Doc No."] @p.SupplierDocumentNumber</text> }</div>
+        </div>
+        <div>
+            @if (!active) { <span class="badge gray">@Localizer[EnumDisplay.Key("PurchaseStatus", p.Status)]</span> }
+            else if (p.NeedsReview) { <span class="badge warn">@Localizer["Needs checking"]</span> }
+            else { <span class="badge ok">@Localizer["Checked"]</span> }
+        </div>
+    </div>
+    <table>
+        <thead><tr><th>@Localizer["Product"]</th><th>@Localizer["SKU"]</th><th style="text-align:right">@Localizer["Qty"]</th></tr></thead>
+        <tbody>
+        @foreach (var l in p.Lines)
+        {
+            <tr>
+                <td><strong>@l.ProductName</strong>@if (!string.IsNullOrEmpty(l.Notes)) {<br/><small style="color:#6b7280">📝 @l.Notes</small>}</td>
+                <td><code style="font-size:11px">@l.SKU</code></td>
+                <td style="text-align:right">@l.Qty.ToString("N0")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <div style="font-size:12px;color:#6b7280;margin-top:12px;line-height:1.7">
+        @Localizer["Entered by {0} on {1}.", p.CreatedBy, p.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")]
+        @if (p.LastStaffEditBy != null) { <br/>@Localizer["Last edited by {0} on {1}.", p.LastStaffEditBy, p.LastStaffEditAt!.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")] }
+        @if (p.ReviewedBy != null) { <br/>@Localizer["Checked by {0} on {1}.", p.ReviewedBy, p.ReviewedAt!.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")] }
+        @if (!string.IsNullOrEmpty(p.Notes)) { <br/>@Localizer["Notes:"] @p.Notes }
+    </div>
+</div>

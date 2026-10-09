@@ -29,7 +29,21 @@ public static class EscpBuilder
     private const byte ESC = 0x1B;
 
     /// <summary>One printed line. Bold lines are emphasised on paper; text is unaffected.</summary>
-    public readonly record struct PrintLine(string Text, bool Bold = false);
+    public readonly record struct PrintLine
+    {
+        /// <summary>
+        /// Control characters in the text (an ESC, form feed, line break typed into a note or a
+        /// customer name) become spaces: the LX would execute them as commands and break the
+        /// fixed layout (security review R9). The builder adds its own control codes around it.
+        /// </summary>
+        public PrintLine(string Text, bool Bold = false)
+        {
+            this.Text = Text is null ? "" : new string(Text.Select(c => c < ' ' || c == '\u007f' ? ' ' : c).ToArray());
+            this.Bold = Bold;
+        }
+        public string Text { get; }
+        public bool   Bold { get; }
+    }
 
     public static byte[] BuildInvoice(SaleDto sale, AppSettings cfg, string printedBy, DateTime printedAtLocal)
         => Encode(RenderPages(sale, cfg, printedBy, printedAtLocal), cfg.PaperColumns, cfg.PaperLines);

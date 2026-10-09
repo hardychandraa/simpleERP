@@ -27,5 +27,11 @@ public class User {
     /// <summary>Set once the failure threshold is hit; login is refused until it passes.</summary>
     public DateTime? LockedUntil      { get; set; }
     public DateTime? LastLoginAt      { get; set; }
+    /// <summary>
+    /// Copied into the login cookie and compared on every request. A new value ends every
+    /// session of this user at their next click: changed on logout, password change or
+    /// reset, role change and deactivation (security review R4, 2026-10-09).
+    /// </summary>
+    public string    SecurityStamp    { get; set; } = Guid.NewGuid().ToString("N");
     public DateTime  CreatedAt        { get; set; } = DateTime.UtcNow;
 }

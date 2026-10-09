@@ -1,0 +1,49 @@
+@page "/GoodsIn"
+@model SimpleERP.Web.Pages.GoodsIn.IndexModel
+@{ ViewData["Title"] = Localizer["Goods In"].Value; }
+
+<div class="card" style="margin-bottom:14px">
+    <form method="get" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="margin:0;flex:1;min-width:130px"><label>@Localizer["From"]</label><input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" /></div>
+        <div class="fg" style="margin:0;flex:1;min-width:130px"><label>@Localizer["To"]</label><input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" /></div>
+        <div class="fg" style="margin:0;flex:1.5;min-width:160px"><label>@Localizer["Search"]</label><input type="text" name="search" value="@Model.Search" placeholder="@Localizer["PO no., supplier doc, supplier..."]" /></div>
+        <label style="display:inline-flex;align-items:center;gap:8px;margin:0 0 9px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500">
+            <input type="checkbox" name="pending" value="true" checked="@Model.PendingOnly" style="width:18px;height:18px" /> @Localizer["Needs checking only"]
+        </label>
+        <button type="submit" class="btn btn-primary">@Localizer["Filter"]</button>
+        <a href="/GoodsIn/Create" class="btn btn-success" style="margin-left:auto">＋ @Localizer["New Goods In"]</a>
+    </form>
+</div>
+
+<div class="card">
+<table>
+  <thead><tr>
+    <th>@Localizer["Number"]</th><th>@Localizer["Date"]</th><th>@Localizer["Supplier"]</th><th>@Localizer["Supplier Doc"]</th>
+    <th>@Localizer["Items"]</th><th style="text-align:right">@Localizer["Total qty"]</th><th>@Localizer["Entered by"]</th><th>@Localizer["Status"]</th><th></th>
+  </tr></thead>
+  <tbody>
+  @foreach (var r in Model.Rows)
+  {
+    <tr>
+      <td><strong>@r.PurchaseNumber</strong></td>
+      <td style="white-space:nowrap">@r.PurchaseDate.ToString("dd-MMM-yy")</td>
+      <td>@r.SupplierName</td>
+      <td>@(r.SupplierDocumentNumber ?? "—")</td>
+      <td style="font-size:12px;color:#4b5563">@r.Summary</td>
+      <td style="text-align:right">@r.TotalQty.ToString("N0")</td>
+      <td style="font-size:12px">@r.CreatedBy</td>
+      <td>
+        @if (r.Status == "Cancelled") { <span class="badge gray">@Localizer[EnumDisplay.Key("PurchaseStatus", r.Status)]</span> }
+        else if (r.NeedsReview) { <span class="badge warn">@Localizer["Needs checking"]</span> }
+        else { <span class="badge ok">@Localizer["Checked"]</span> }
+      </td>
+      <td><a href="/GoodsIn/Detail/@r.Id" class="btn btn-outline btn-sm">@Localizer["View"]</a></td>
+    </tr>
+  }
+  @if (!Model.Rows.Any())
+  {
+    <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:28px">@Localizer["No entries found."]</td></tr>
+  }
+  </tbody>
+</table>
+</div>

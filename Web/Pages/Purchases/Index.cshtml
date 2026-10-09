@@ -23,6 +23,7 @@
         </div>
         <button type="submit" class="btn btn-primary">@Localizer["Filter"]</button>
         <a href="/Purchases" class="btn btn-outline">@Localizer["Reset"]</a>
+        <a href="/Purchases?pending=true" class="btn @(Model.PendingOnly ? "btn-warn" : "btn-outline")">⚠ @Localizer["Needs checking"] (@Model.PendingCount)</a>
         <a href="/Purchases/Create" class="btn btn-success" style="margin-left:auto">＋ @Localizer["New Purchase"]</a>
     </form>
 </div>
@@ -47,7 +48,8 @@
             @foreach (var p in Model.Purchases)
             {
                 <tr>
-                    <td><strong>@p.PurchaseNumber</strong></td>
+                    <td><strong>@p.PurchaseNumber</strong>
+                        @if (p.NeedsReview && p.Status == "Active") { <br/><span class="badge warn" style="font-size:10px">@Localizer["Needs checking"]</span> }</td>
                     <td style="color:@(string.IsNullOrEmpty(p.SupplierDocumentNumber) ? "#9ca3af" : "inherit")">
                         @(string.IsNullOrEmpty(p.SupplierDocumentNumber) ? "—" : p.SupplierDocumentNumber)
                     </td>

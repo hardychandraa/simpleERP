@@ -80,24 +80,55 @@ public class UnitOfWork : IUnitOfWork
     // True while InTransactionAsync owns the transaction: saves inside it must not commit.
     private bool _outer;
 
+    // Documents locked in the current transaction (advisory locks are re-entrant, but the
+    // stale-entity sweep below must only run when a lock was actually newly taken).
+    private readonly HashSet<Guid> _locked = new();
+
     public async Task<int> SaveChangesAsync()
     {
         var written = await _db.SaveChangesAsync();
-        // Opened by DocumentNumber.NextAsync when this operation reserved a number. An
-        // operation that never reserved one has no transaction and saves exactly as before.
+        // Opened by DocumentNumber.NextAsync when this operation reserved a number, or by
+        // LockAsync. An operation that did neither has no transaction and saves as before.
         if (!_outer && _db.Database.CurrentTransaction is { } tx)
         {
             await tx.CommitAsync();
             await tx.DisposeAsync();
+            _locked.Clear();
         }
         return written;
+    }
+
+    // Two identical requests at the same instant (two tabs, a double-click) both read the
+    // document, both passed the same check and both wrote: a sale cancelled 4 times
+    // restocked 4 times, 4 full payments of one invoice all recorded, one credit note
+    // applied twice its value (security review, 2026-10-09). The second request now waits
+    // here until the first has committed, then reads its result and is refused by the
+    // check that already exists.
+    public async Task LockAsync(params Guid[] ids)
+    {
+        var fresh = ids.Where(i => i != Guid.Empty).Distinct().Where(i => !_locked.Contains(i)).OrderBy(i => i).ToList();
+        if (fresh.Count == 0) return;
+        if (_db.Database.CurrentTransaction == null)
+            await _db.Database.BeginTransactionAsync();
+        foreach (var id in fresh)
+        {
+            await _db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({id.ToString()}, 0))");
+            _locked.Add(id);
+        }
+        // Anything this request read before the lock (a page model loading the statement,
+        // the product list) is still tracked with the values from before the other request
+        // committed, and EF hands back the tracked instance instead of the fresh row. Forget
+        // the unchanged ones so the reads that follow see the database.
+        foreach (var e in _db.ChangeTracker.Entries().Where(e => e.State == EntityState.Unchanged).ToList())
+            e.State = EntityState.Detached;
     }
 
     public async Task<bool> InTransactionAsync(Func<Task<bool>> work)
     {
         if (_outer) return await work();   // already inside one — join it
 
-        await using var tx = await _db.Database.BeginTransactionAsync();
+        // LockAsync may already have opened the transaction this operation runs in: adopt it.
+        await using var tx = _db.Database.CurrentTransaction ?? await _db.Database.BeginTransactionAsync();
         _outer = true;
         try
         {
@@ -115,7 +146,7 @@ public class UnitOfWork : IUnitOfWork
             _db.ChangeTracker.Clear();
             throw;
         }
-        finally { _outer = false; }
+        finally { _outer = false; _locked.Clear(); }
     }
 }
 
@@ -396,12 +427,24 @@ public class PurchaseRepository : IPurchaseRepository
     public async Task AddAsync(Purchase p) => await _db.Purchases.AddAsync(p);
     public void Update(Purchase p) => _db.Purchases.Update(p);
 
-    public async Task<decimal> GetPurchasedQtyAsync(Guid supplierId, Guid productId, DateTime? from, DateTime? to)
+    public async Task AddItemAsync(PurchaseItem item) => await _db.PurchaseItems.AddAsync(item);
+
+    public Task<List<Purchase>> GetNeedingReviewAsync(DateTime? throughDay = null) =>
+        _db.Purchases.Include(p => p.Supplier)
+            .Where(p => p.Status == PurchaseStatus.Active && p.NeedsReview
+                     && (throughDay == null || p.PurchaseDate <= throughDay.Value))
+            .OrderBy(p => p.PurchaseDate).ToListAsync();
+
+    public async Task<decimal> GetPurchasedQtyAsync(Guid supplierId, Guid productId, DateTime? from, DateTime? to,
+                                                    Guid? excludePurchaseId = null)
     {
+        // excludePurchaseId: a revision re-evaluates rebates for a purchase that is already saved,
+        // so its own (old) lines must not count toward the threshold a second time.
         var q = _db.PurchaseItems
             .Where(i => i.ProductId == productId
                      && i.Purchase!.SupplierId == supplierId
-                     && i.Purchase.Status == PurchaseStatus.Active);
+                     && i.Purchase.Status == PurchaseStatus.Active
+                     && (excludePurchaseId == null || i.PurchaseId != excludePurchaseId));
         if (from.HasValue) q = q.Where(i => i.Purchase!.PurchaseDate >= from.Value);
         if (to.HasValue)   q = q.Where(i => i.Purchase!.PurchaseDate <= to.Value);
         var purchased = await q.SumAsync(i => (decimal?)i.Qty) ?? 0m;
@@ -413,7 +456,8 @@ public class PurchaseRepository : IPurchaseRepository
         var returnedQ = _db.SupplierReturnItems
             .Where(i => i.ProductId == productId
                      && i.Return!.Status == ReturnStatus.Active
-                     && i.Return.Purchase!.SupplierId == supplierId);
+                     && i.Return.Purchase!.SupplierId == supplierId
+                     && (excludePurchaseId == null || i.Return.PurchaseId != excludePurchaseId));
         if (from.HasValue) returnedQ = returnedQ.Where(i => i.Return!.Purchase!.PurchaseDate >= from.Value);
         if (to.HasValue)   returnedQ = returnedQ.Where(i => i.Return!.Purchase!.PurchaseDate <= to.Value);
         var returned = await returnedQ.SumAsync(i => (decimal?)i.Qty) ?? 0m;
@@ -1212,6 +1256,23 @@ public class UserRepository : IUserRepository
 
     public async Task AddAsync(User user) => await _db.Users.AddAsync(user);
     public void Update(User user) => _db.Users.Update(user);
+
+    public async Task<int?> ReserveLoginAttemptAsync(Guid id, int maxAttempts, DateTime nowUtc)
+    {
+        var n = await _db.Database.SqlQuery<int>($@"
+            UPDATE ""Users"" SET ""FailedLoginCount"" = ""FailedLoginCount"" + 1
+            WHERE ""Id"" = {id} AND ""FailedLoginCount"" < {maxAttempts}
+              AND (""LockedUntil"" IS NULL OR ""LockedUntil"" <= {nowUtc})
+            RETURNING ""FailedLoginCount"" AS ""Value""").ToListAsync();
+        return n.Count == 0 ? null : n[0];
+    }
+
+    public Task LockOutAsync(Guid id, DateTime untilUtc) =>
+        _db.Database.ExecuteSqlAsync($@"UPDATE ""Users"" SET ""LockedUntil"" = {untilUtc}, ""FailedLoginCount"" = 0 WHERE ""Id"" = {id}");
+
+    public Task RotateSecurityStampAsync(string username) =>
+        _db.Database.ExecuteSqlAsync($@"UPDATE ""Users"" SET ""SecurityStamp"" = {Guid.NewGuid().ToString("N")}
+                                        WHERE lower(""Username"") = lower({username})");
 }
 
 public class ProductRepository : IProductRepository
@@ -1273,6 +1334,13 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
     // product makes the second one wait until the first has saved, then read the new figure.
     // Taken in a fixed order so two documents with the same products can't deadlock; held
     // until commit or rollback, and re-entrant within the same transaction.
+    public Task<List<InventoryLedger>> GetProductHistoryAsync(Guid productId, Guid branchId) =>
+        _db.InventoryLedgers
+            .Where(l => l.ProductId == productId && l.BranchId == branchId)
+            .OrderBy(l => l.EnteredAt).ToListAsync();
+
+    public void Remove(InventoryLedger entry) => _db.InventoryLedgers.Remove(entry);
+
     public async Task LockProductsAsync(IEnumerable<Guid> productIds)
     {
         if (_db.Database.CurrentTransaction == null)
@@ -1289,11 +1357,17 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
 
     public async Task<decimal> GetCurrentAvgCostAsync(Guid productId, Guid branchId)
     {
+        // A projection, never the entity: the New Sale page reads this for its product list
+        // before the sale takes the product lock, and a tracked row would come back from the
+        // change tracker with the cost from before a purchase revision that committed in
+        // between — the sale kept the old HPP and the revision's re-cost never saw it
+        // (security review R2, 2026-10-09).
         var last = await _db.InventoryLedgers
             .Where(l => l.ProductId == productId && l.BranchId == branchId && l.QtyIn > 0)
             .OrderByDescending(l => l.EnteredAt)   // posting order, not document date: see InventoryLedger.EnteredAt
+            .Select(l => (decimal?)l.UnitCost)
             .FirstOrDefaultAsync();
-        return last?.UnitCost ?? 0;
+        return last ?? 0;
     }
 
     public Task<List<InventoryLedger>> GetStockCardAsync(Guid? productId, DateTime? from, DateTime? to)
@@ -1683,6 +1757,42 @@ public class AppLogRepository : IAppLogRepository
 
     public Task<int> PurgeOlderThanAsync(DateTime cutoffUtc) =>
         _db.AppLogs.Where(l => l.Timestamp < cutoffUtc).ExecuteDeleteAsync();
+}
+
+public class CostSnapshotRepository : ICostSnapshotRepository
+{
+    private readonly AppDbContext _db;
+    public CostSnapshotRepository(AppDbContext db) => _db = db;
+
+    public Task<List<SaleItem>> GetSaleItemsAsync(IEnumerable<Guid> saleIds, Guid productId)
+    {
+        var ids = saleIds.Distinct().ToList();
+        return _db.SaleItems.Where(i => ids.Contains(i.SaleId) && i.ProductId == productId).ToListAsync();
+    }
+
+    public Task<List<CustomerReturnItem>> GetCustomerReturnItemsAsync(IEnumerable<Guid> returnIds, Guid productId)
+    {
+        var ids = returnIds.Distinct().ToList();
+        return _db.CustomerReturnItems.Where(i => ids.Contains(i.CustomerReturnId) && i.ProductId == productId).ToListAsync();
+    }
+
+    public Task<List<SupplierReturnItem>> GetSupplierReturnItemsAsync(IEnumerable<Guid> returnIds, Guid productId)
+    {
+        var ids = returnIds.Distinct().ToList();
+        return _db.SupplierReturnItems.Where(i => ids.Contains(i.SupplierReturnId) && i.ProductId == productId).ToListAsync();
+    }
+
+    public Task<List<PurchaseItem>> GetPurchaseItemsAsync(IEnumerable<Guid> purchaseIds, Guid productId)
+    {
+        var ids = purchaseIds.Distinct().ToList();
+        return _db.PurchaseItems.Include(i => i.Purchase)
+            .Where(i => ids.Contains(i.PurchaseId) && i.ProductId == productId).ToListAsync();
+    }
+
+    public async Task<HashSet<Guid>> GetReturnedPurchaseItemIdsAsync(Guid purchaseId) =>
+        (await _db.SupplierReturnItems
+            .Where(i => i.Return!.PurchaseId == purchaseId)
+            .Select(i => i.PurchaseItemId).Distinct().ToListAsync()).ToHashSet();
 }
 
 public class AppSettingsRepository : IAppSettingsRepository
