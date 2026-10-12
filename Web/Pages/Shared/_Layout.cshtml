@@ -56,8 +56,12 @@
 
     <details class="sb-grp" data-grp="purchasing" open="@Open("/GoodsIn", "/Purchases", "/Rebates/")">
       <summary class="sb-sec">@Localizer["Purchasing"]</summary>
-      @* Goods In: Staff record deliveries without prices (HC, 2026-10-08); everyone can use it. *@
-      <a href="/GoodsIn" class="@(page.StartsWith("/GoodsIn")?"active":"")">🚚 @Localizer["Goods In"]</a>
+      @* Goods In: Staff record deliveries without prices (HC, 2026-10-08). Admin enters them on
+         Purchases, so the link is Staff's only (HC, 2026-10-10); the page still opens by URL. *@
+      @if (!isAdmin)
+      {
+          <a href="/GoodsIn" class="@(page.StartsWith("/GoodsIn")?"active":"")">🚚 @Localizer["Goods In"]</a>
+      }
       @if (isAdmin)
       {
           @* The rest of the supplier side is Admin's alone (HC, 2026-10-08). New Purchase is the
