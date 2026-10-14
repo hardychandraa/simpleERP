@@ -17,6 +17,8 @@ obj/
 *.db-shm
 *.db-wal
 backups/
+# Dumps downloaded from the production server (real business data).
+backups-prod/
 
 # ── Secrets ───────────────────────────────────────────────────────────────────
 # Connection strings with credentials belong in user-secrets (dev) or

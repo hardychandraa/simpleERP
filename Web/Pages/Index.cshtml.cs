@@ -12,10 +12,14 @@ public class IndexModel : PageModel
     private readonly IInventoryService _inv;
     private readonly IReportService    _reports;
     private readonly IPurchaseService  _purchases;
+    private readonly IStockCountService _counts;
 
     public IndexModel(IProductService p, ICustomerService c, ISaleService s, IInventoryService inv,
-                      IReportService reports, IPurchaseService purchases)
-    { _p = p; _c = c; _s = s; _inv = inv; _reports = reports; _purchases = purchases; }
+                      IReportService reports, IPurchaseService purchases, IStockCountService counts)
+    { _p = p; _c = c; _s = s; _inv = inv; _reports = reports; _purchases = purchases; _counts = counts; }
+
+    /// <summary>Stock counts with differences waiting for Admin (Admin only).</summary>
+    public int PendingCounts { get; set; }
 
     /// <summary>Purchases waiting for Admin's check (Admin only; Staff never see this).</summary>
     public int PendingChecks { get; set; }
@@ -39,6 +43,7 @@ public class IndexModel : PageModel
     {
         ViewData["Title"] = "Dashboard";
         if (User.SeesSupplierSide()) PendingChecks = (await _purchases.GetNeedingReviewAsync()).Count;
+        if (User.ReviewsStockCounts()) PendingCounts = await _counts.CountAwaitingReviewAsync();
         RecentSales = (await _s.GetAllAsync()).Take(8).ToList();
         LowStock = (await _inv.GetAllStockLevelsAsync())
                     .Where(s => s.IsLow && s.IsActive)

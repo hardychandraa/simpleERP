@@ -68,6 +68,25 @@ public interface IInventoryService {
     /// <summary>Stock card for one product (or all), movements in [fromUtc, toUtc) by document date.</summary>
     Task<StockCardDto> GetStockCardAsync(Guid? productId, DateTime? fromUtc, DateTime? toUtc);
 }
+/// <summary>End-of-day stock check: the daily stock sheet and stock counts (HC, 2026-10-14).</summary>
+public interface IStockCountService {
+    /// <summary>Opening, in, out and closing per product for one local calendar day.</summary>
+    Task<DailyStockSheetDto> GetDailySheetAsync(DateTime localDay);
+    /// <summary>Counts whose count moment (submit, or creation for a draft) falls in the local days given.</summary>
+    Task<List<StockCountListDto>> GetListAsync(DateTime? fromLocal, DateTime? toLocal, StockCountStatus? status);
+    Task<int> CountAwaitingReviewAsync();
+    /// <param name="withReview">Also work out, for lines waiting for Admin, the difference as the ledger says it now and the documents entered after the count.</param>
+    Task<StockCountDto?> GetAsync(Guid id, bool withReview);
+    Task<ServiceResult<Guid>> CreateAsync(StockCountScope scope, IEnumerable<Guid>? productIds, string user);
+    Task<ServiceResult> SaveDraftAsync(Guid id, IEnumerable<StockCountLineInput> inputs, string? notes, bool isAdmin, string user);
+    Task<ServiceResult> AddProductsAsync(Guid id, IEnumerable<Guid> productIds, bool isAdmin, string user);
+    Task<ServiceResult> RemoveLineAsync(Guid id, Guid lineId, bool isAdmin, string user);
+    /// <param name="openedAtUtc">When the counting form was loaded: products that moved since are sent back to be checked.</param>
+    Task<StockCountSubmitResult> SubmitAsync(Guid id, IEnumerable<StockCountLineInput> inputs, string? notes, DateTime openedAtUtc, bool isAdmin, string user);
+    /// <summary>Admin settles one difference: post it as an adjustment, or explain it without changing stock.</summary>
+    Task<ServiceResult> DecideAsync(Guid id, Guid lineId, bool postAdjustment, string? note, bool isAdmin, string user);
+    Task<ServiceResult> CancelAsync(Guid id, string? reason, bool isAdmin, string user);
+}
 public interface ISaleService {
     Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user);
     /// <summary>

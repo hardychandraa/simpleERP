@@ -1652,6 +1652,115 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.ToTable("StockAdjustments");
                 });
 
+            modelBuilder.Entity("SimpleERP.Domain.Entities.StockCount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ClosedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("CountNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("SubmittedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CountNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SubmittedAt");
+
+                    b.ToTable("StockCounts");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.StockCountLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AdjustedQty")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int?>("CountedQty")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("DecidedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Decision")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StockAdjustmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("StockCountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("SystemQty")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("StockCountId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("StockCountLines");
+                });
+
             modelBuilder.Entity("SimpleERP.Domain.Entities.Supplier", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2378,6 +2487,25 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("SimpleERP.Domain.Entities.StockCountLine", b =>
+                {
+                    b.HasOne("SimpleERP.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.StockCount", "StockCount")
+                        .WithMany("Lines")
+                        .HasForeignKey("StockCountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("StockCount");
+                });
+
             modelBuilder.Entity("SimpleERP.Domain.Entities.Supplier", b =>
                 {
                     b.HasOne("SimpleERP.Domain.Entities.PaymentTerm", "PaymentTerm")
@@ -2500,6 +2628,11 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Navigation("PaymentRecords");
 
                     b.Navigation("SaleItems");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.StockCount", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("SimpleERP.Domain.Entities.Supplier", b =>

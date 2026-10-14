@@ -1,0 +1,113 @@
+@page "/StockCounts/Count/{id:guid}"
+@model SimpleERP.Web.Pages.StockCounts.CountModel
+@using SimpleERP.Domain.Enums
+@{
+    ViewData["Title"] = Localizer["Stock count"].Value;
+    var c = Model.Count;
+    var counted = c.Lines.Count(l => l.CountedQty.HasValue);
+}
+<style>
+  .print-only{display:none}
+  tr.moved td{background:#fef3c7}
+  @@media print{
+    .print-only{display:block}
+    td.print-only{display:table-cell}
+    .screen-only{display:none!important}
+    table{font-size:10pt}
+    th,td{padding:4px 6px!important;border:1px solid #999!important}
+  }
+</style>
+
+@if (Model.Msg != null) { <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success") no-print">@Model.Msg</div> }
+
+<div class="no-print" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+  <a href="/StockCounts" class="btn btn-outline">← @Localizer["Stock counts"]</a>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">🖨 @Localizer["Print counting sheet"]</button>
+</div>
+
+<div class="print-only" style="margin-bottom:8px">
+  <div style="font-size:14pt;font-weight:700">@Localizer["Stock count"] — @DateTime.Now.ToString("dddd, dd MMM yyyy")</div>
+  <div>@Localizer["Started by {0}", c.CreatedBy] · @c.Lines.Count @Localizer["Products"]</div>
+</div>
+
+<form method="post" id="countForm">
+<input type="hidden" name="openedAt" value="@Model.OpenedAt"/>
+<div class="card">
+  <div class="screen-only" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+    <div class="card-title" style="margin:0">📝 @Localizer["Stock count"] · <span class="badge gray">@Localizer["Draft"]</span></div>
+    <div style="font-size:12px;color:#6b7280">@Localizer["Started by {0}", c.CreatedBy], @c.CreatedAt.ToLocalTime().ToString("dd-MMM-yy HH:mm") · <span id="progress">@counted</span> / @c.Lines.Count @Localizer["counted so far"]</div>
+  </div>
+  <div class="alert alert-info screen-only" style="font-size:12px">
+    @Localizer["Count what is physically there, in whole units; enter 0 if there is none. Submit as soon as you finish: a sale or delivery posted while you count sends that product back to be counted again."]
+  </div>
+<table>
+  <thead><tr>
+    <th style="width:36px">#</th><th>@Localizer["Product"]</th><th>@Localizer["SKU"]</th>
+    <th style="width:120px;text-align:right">@Localizer["Counted"]</th>
+    <th>@Localizer["Note"]</th><th class="screen-only"></th>
+  </tr></thead>
+  <tbody>
+  @for (var i = 0; i < c.Lines.Count; i++)
+  {
+    var l = c.Lines[i];
+    var moved = Model.Moved.Contains(l.ProductId);
+    <tr class="@(moved ? "moved" : "")">
+      <td style="color:#9ca3af">@(i + 1)</td>
+      <td>@l.ProductName
+        @if (moved) { <div class="screen-only" style="font-size:11px;color:#b45309">⚠ @Localizer["Stock changed while counting: count again"]</div> }</td>
+      <td style="font-size:12px;color:#6b7280">@l.SKU</td>
+      <td style="text-align:right">
+        <input type="hidden" name="Lines[@i].LineId" value="@l.Id"/>
+        <input type="number" name="Lines[@i].Qty" value="@l.CountedQty" min="0" step="1" inputmode="numeric"
+               class="screen-only qty" style="width:100px;text-align:right;font-size:15px;font-weight:600"/>
+      </td>
+      <td><input type="text" name="Lines[@i].Note" value="@l.Note" maxlength="300" class="screen-only" placeholder="@Localizer["e.g. 1 on display, box damaged"]"/></td>
+      <td class="screen-only">
+        <button type="submit" asp-page-handler="Remove" name="lineId" value="@l.Id" class="btn btn-outline btn-sm" formnovalidate
+                title="@Localizer["Remove from this count"]" onclick="return confirm('@Localizer["Remove this product from the count?"]')">✕</button>
+      </td>
+    </tr>
+  }
+  </tbody>
+</table>
+
+  <div class="screen-only" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
+    <div class="fg" style="margin:0;flex:1;min-width:260px"><label>@Localizer["Add a product"]</label>
+      <select data-searchable name="productId">
+        <option value="">— @Localizer["Select product"] —</option>
+        @foreach (var p in Model.Addable) { <option value="@p.Id">@p.Name (@p.SKU)</option> }
+      </select></div>
+    <button type="submit" asp-page-handler="Add" class="btn btn-outline" formnovalidate>＋ @Localizer["Add"]</button>
+  </div>
+
+  <div class="fg screen-only" style="margin-top:12px"><label>@Localizer["Notes"]</label>
+    <input type="text" name="Notes" value="@c.Notes" maxlength="500"/></div>
+
+  <div class="screen-only" style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+    <button type="submit" asp-page-handler="Submit" class="btn btn-success"
+            onclick="return confirm('@Localizer["Submit this count? The counts can no longer be changed afterwards."]')">✔ @Localizer["Submit count"]</button>
+    <button type="submit" asp-page-handler="Save" class="btn btn-primary" formnovalidate>💾 @Localizer["Save draft"]</button>
+    <button type="submit" asp-page-handler="Cancel" class="btn btn-outline" formnovalidate style="margin-left:auto"
+            onclick="return confirm('@Localizer["Cancel this count? What was entered is discarded."]')">@Localizer["Cancel count"]</button>
+  </div>
+</div>
+</form>
+
+<div class="print-only" style="margin-top:28px">
+  <table style="width:100%;border:none"><tr>
+    <td style="border:none!important;width:50%">@Localizer["Counted by"]:<br/><br/><br/>(______________________)</td>
+    <td style="border:none!important;width:50%">@Localizer["Checked by"]:<br/><br/><br/>(______________________)</td>
+  </tr></table>
+</div>
+
+@section Scripts {
+<script>
+// Counted-so-far tally, and Enter moves to the next count instead of submitting the form.
+const qtys = Array.from(document.querySelectorAll('input.qty'));
+function tally() { document.getElementById('progress').textContent = qtys.filter(q => q.value !== '').length; }
+qtys.forEach((q, i) => {
+    q.addEventListener('input', tally);
+    q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); (qtys[i + 1] || q).focus(); } });
+});
+</script>
+}

@@ -28,6 +28,11 @@ public static class AccessExtensions
     public static bool SeesBusinessTotals(this ClaimsPrincipal user) => user.IsInRole(nameof(UserRole.Admin));
     /// <summary>Creating or changing master data that is Admin's (products, salespeople).</summary>
     public static bool MaintainsMasterData(this ClaimsPrincipal user) => user.IsInRole(nameof(UserRole.Admin));
+    /// <summary>
+    /// Sees the system figure on a stock count and settles its differences (HC, 2026-10-14):
+    /// Staff count blind and never change stock.
+    /// </summary>
+    public static bool ReviewsStockCounts(this ClaimsPrincipal user) => user.IsInRole(nameof(UserRole.Admin));
 
     /// <summary>
     /// Refuse a handler on a shared page. Razor Pages ignore [Authorize] on handler methods,

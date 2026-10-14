@@ -44,6 +44,16 @@ public interface IInventoryLedgerRepository {
     /// <summary>Stock per product from every movement dated before <paramref name="before"/>.</summary>
     Task<Dictionary<Guid, decimal>> GetBalancesBeforeAsync(Guid? productId, DateTime before);
     /// <summary>
+    /// Movements of <paramref name="productIds"/> dated before <paramref name="before"/> but
+    /// written after <paramref name="enteredAfter"/>: documents backdated past a stock count.
+    /// </summary>
+    Task<List<InventoryLedger>> GetEnteredLateAsync(IEnumerable<Guid> productIds, DateTime before, DateTime enteredAfter);
+    /// <summary>
+    /// Which products (all, or only <paramref name="productIds"/>) have a movement dated or
+    /// written in [<paramref name="fromUtc"/>, <paramref name="toUtc"/>); no end when toUtc is null.
+    /// </summary>
+    Task<List<Guid>> GetProductsMovedAsync(IEnumerable<Guid>? productIds, DateTime fromUtc, DateTime? toUtc);
+    /// <summary>
     /// The document number and customer/supplier behind each ledger ReferenceId (sales,
     /// purchases, returns, rebates). Ids with no document behind them are left out.
     /// </summary>
@@ -620,6 +630,22 @@ public interface IPaymentRecordRepository {
 public interface IStockAdjustmentRepository {
     Task AddAsync(StockAdjustment adj);
     Task<List<StockAdjustment>> GetAllAsync(DateTime? from = null, DateTime? to = null);
+}
+
+/// <summary>Stock counts (stock opname). Reads return lines with their products.</summary>
+public interface IStockCountRepository {
+    Task AddAsync(StockCount count);
+    /// <summary>One count with its lines and products, tracked for update.</summary>
+    Task<StockCount?> GetByIdAsync(Guid id);
+    /// <summary>Newest first; drafts by their creation time, the rest by submit time.</summary>
+    Task<List<StockCount>> GetListAsync(DateTime? fromUtc, DateTime? toUtc, StockCountStatus? status);
+    Task<int> CountAwaitingReviewAsync();
+    /// <summary>Numbers of submitted counts still waiting for Admin whose count moment is before <paramref name="beforeUtc"/>.</summary>
+    Task<List<string>> AwaitingReviewBeforeAsync(DateTime beforeUtc);
+    /// <summary>Lines of counts submitted in [from, to) that were not cancelled, with their count.</summary>
+    Task<List<StockCountLine>> GetSubmittedLinesAsync(DateTime fromUtc, DateTime toUtc);
+    void RemoveLine(StockCountLine line);
+    Task<string> NextNumberAsync();
 }
 
 public interface IAuditLogRepository {

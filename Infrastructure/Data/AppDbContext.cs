@@ -38,6 +38,8 @@ public class AppDbContext : DbContext
     public DbSet<CreditNote>         CreditNotes         => Set<CreditNote>();
     public DbSet<CreditNoteApplication> CreditNoteApplications => Set<CreditNoteApplication>();
     public DbSet<PaymentBatch>       PaymentBatches      => Set<PaymentBatch>();
+    public DbSet<StockCount>         StockCounts         => Set<StockCount>();
+    public DbSet<StockCountLine>     StockCountLines     => Set<StockCountLine>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense>         Expenses          => Set<Expense>();
     public DbSet<DocumentSequence> DocumentSequences => Set<DocumentSequence>();
@@ -168,6 +170,33 @@ public class AppDbContext : DbContext
             e.HasOne(a => a.Product).WithMany()
                 .HasForeignKey(a => a.ProductId).OnDelete(DeleteBehavior.Restrict);
             e.Ignore(a => a.QtyDelta);
+        });
+
+        m.Entity<StockCount>(e => {
+            e.HasKey(c => c.Id);
+            e.Property(c => c.CountNumber).HasMaxLength(50);
+            e.Property(c => c.Notes).HasMaxLength(500);
+            e.Property(c => c.CreatedBy).HasMaxLength(100);
+            e.Property(c => c.SubmittedBy).HasMaxLength(100);
+            e.Property(c => c.ClosedBy).HasMaxLength(100);
+            e.HasIndex(c => c.CountNumber).IsUnique();   // NULLs (drafts) don't collide in PostgreSQL
+            e.HasIndex(c => c.Status);
+            e.HasIndex(c => c.SubmittedAt);
+            e.HasMany(c => c.Lines).WithOne(l => l.StockCount)
+                .HasForeignKey(l => l.StockCountId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        m.Entity<StockCountLine>(e => {
+            e.HasKey(l => l.Id);
+            e.Property(l => l.SystemQty).HasColumnType("decimal(18,4)");
+            e.Property(l => l.AdjustedQty).HasColumnType("decimal(18,4)");
+            e.Property(l => l.Note).HasMaxLength(300);
+            e.Property(l => l.DecisionNote).HasMaxLength(500);
+            e.Property(l => l.DecidedBy).HasMaxLength(100);
+            e.HasOne(l => l.Product).WithMany()
+                .HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(l => new { l.StockCountId, l.ProductId }).IsUnique();
+            e.HasIndex(l => l.ProductId);
         });
 
         m.Entity<AuditLog>(e => {

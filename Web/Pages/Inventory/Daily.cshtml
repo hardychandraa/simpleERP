@@ -1,0 +1,117 @@
+@page
+@model SimpleERP.Web.Pages.Inventory.DailyModel
+@{
+    ViewData["Title"] = Localizer["Daily Stock Check"].Value;
+}
+<style>
+  .print-only{display:none}
+  .moved-row td{background:#fffbeb}
+  @@media print{
+    .print-only{display:table-cell}
+    div.print-only{display:block}
+    .screen-only{display:none!important}
+    table{font-size:9pt}
+    th,td{padding:3px 5px!important;border:1px solid #999!important}
+  }
+</style>
+
+@if (Model.Error != null) { <div class="alert alert-danger">@Model.Error</div> }
+
+<div class="card no-print" style="margin-bottom:14px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+<form method="get" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;flex:1">
+  <div class="fg" style="margin:0;min-width:150px"><label>@Localizer["Date"]</label>
+    <input type="date" name="date" value="@Model.Day.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")"/></div>
+  <div class="fg" style="margin:0;min-width:190px"><label>@Localizer["Show"]</label>
+    <select name="show">
+      <option value="moved" selected="@(Model.Show == "moved")">@Localizer["Products that moved that day"]</option>
+      <option value="all" selected="@(Model.Show == "all")">@Localizer["All products"]</option>
+    </select></div>
+  @if (Model.Categories.Any())
+  {
+    <div class="fg" style="margin:0;min-width:150px"><label>@Localizer["Category"]</label>
+      <select name="category">
+        <option value="">— @Localizer["All"] —</option>
+        @foreach (var c in Model.Categories) { <option value="@c" selected="@(c == Model.Category)">@c</option> }
+      </select></div>
+  }
+  <button type="submit" class="btn btn-primary">@Localizer["Filter"]</button>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">🖨 @Localizer["Print sheet"]</button>
+</form>
+@if (Model.IsToday)
+{
+  @* Its own POST form: the filter form above is a GET and carries no antiforgery token. *@
+  <form method="post" asp-page-handler="Start" style="margin-left:auto">
+    <button type="submit" class="btn btn-success" title="@Localizer["Starts a count of every product that moved today."]">📝 @Localizer["Count today's stock"]</button>
+  </form>
+}
+</div>
+
+<div class="print-only" style="margin-bottom:8px">
+  <div style="font-size:14pt;font-weight:700">@Localizer["Daily Stock Check"] — @Model.Day.ToString("dddd, dd MMM yyyy")</div>
+  <div>@(Model.Show == "all" ? Localizer["All products"] : Localizer["Products that moved that day"])@(Model.Category != null ? " · " + Model.Category : "")</div>
+</div>
+
+<div class="card">
+  <div class="screen-only" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div class="card-title" style="margin:0">📋 @Model.Day.ToString("dddd, dd MMM yyyy")</div>
+    <div style="font-size:12px;color:#6b7280">@Localizer["{0} product(s)", Model.Rows.Count] · <a href="/StockCounts">@Localizer["Stock counts"] →</a></div>
+  </div>
+<table>
+  <thead><tr>
+    <th>@Localizer["Product"]</th><th>@Localizer["SKU"]</th>
+    <th style="text-align:right">@Localizer["Opening"]</th>
+    <th style="text-align:right">@Localizer["In"]</th>
+    <th style="text-align:right">@Localizer["Out"]</th>
+    <th style="text-align:right">@Localizer["Closing"]</th>
+    <th class="screen-only">@Localizer["Count"]</th>
+    <th class="print-only" style="width:70px">@Localizer["Physical"]</th>
+    <th class="print-only" style="width:160px">@Localizer["Remarks"]</th>
+  </tr></thead>
+  <tbody>
+  @foreach (var r in Model.Rows)
+  {
+    var inTip  = $"{Localizer["Purchases"].Value} {r.InPurchase:N0} · {Localizer["Sales Returns"].Value} {r.InReturn:N0} · {Localizer["Other"].Value} {r.InOther:N0}";
+    var outTip = $"{Localizer["Sales"].Value} {r.OutSale:N0} · {Localizer["Supplier returns"].Value} {r.OutReturn:N0} · {Localizer["Other"].Value} {r.OutOther:N0}";
+    <tr class="@(r.Moved && Model.Show == "all" ? "moved-row" : "")">
+      <td><a href="/Inventory/Ledger?productId=@r.ProductId&from=@Model.Day.ToString("yyyy-MM-dd")&to=@Model.Day.ToString("yyyy-MM-dd")">@r.ProductName</a>
+        @if (!r.IsActive) { <span class="badge gray screen-only" style="font-size:10px">@Localizer["Inactive"]</span> }</td>
+      <td style="font-size:12px;color:#6b7280">@r.SKU</td>
+      <td style="text-align:right">@r.Opening.ToString("N0")</td>
+      <td style="text-align:right;color:@(r.In > 0 ? "#059669" : "#9ca3af")" title="@inTip">@(r.In > 0 ? "+" + r.In.ToString("N0") : "—")</td>
+      <td style="text-align:right;color:@(r.Out > 0 ? "#dc2626" : "#9ca3af")" title="@outTip">@(r.Out > 0 ? "-" + r.Out.ToString("N0") : "—")</td>
+      <td style="text-align:right;font-weight:700">@r.Closing.ToString("N0")</td>
+      <td class="screen-only" style="white-space:nowrap">
+        @if (r.CountId != null)
+        {
+          <a href="/StockCounts/Detail/@r.CountId" style="font-size:12px">@r.CountNumber</a>
+          <partial name="_CountDecisionBadge" model="r.CountDecision" />
+        }
+        else { <span style="color:#9ca3af">—</span> }
+        @if (r.EnteredAfterCount.Any())
+        {
+          <div style="font-size:11px;color:#b45309" title="@Localizer["Dated before the count but entered after it: the count did not see these."]">
+            ⚠ @Localizer["Entered after the count"]: @string.Join(", ", r.EnteredAfterCount)</div>
+        }
+      </td>
+      <td class="print-only"></td>
+      <td class="print-only"></td>
+    </tr>
+  }
+  @if (!Model.Rows.Any())
+  {
+    <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:28px">
+      @(Model.Show == "moved" ? Localizer["No product moved on this day."] : Localizer["No entries found."])</td></tr>
+  }
+  </tbody>
+</table>
+  <div class="screen-only" style="font-size:12px;color:#6b7280;margin-top:10px">
+    @Localizer["Closing = opening + in − out, from the stock ledger by document date. Hover over In / Out for the breakdown."]
+  </div>
+</div>
+
+<div class="print-only" style="margin-top:28px">
+  <table style="width:100%;border:none"><tr>
+    <td style="border:none!important;width:50%">@Localizer["Counted by"]:<br/><br/><br/>(______________________)</td>
+    <td style="border:none!important;width:50%">@Localizer["Checked by"]:<br/><br/><br/>(______________________)</td>
+  </tr></table>
+</div>

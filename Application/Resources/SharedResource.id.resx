@@ -1414,4 +1414,104 @@
   <data name="Amount is too large (at most {0})." xml:space="preserve"><value>Nominal terlalu besar (maksimal {0}).</value></data>
   <data name="Too many lines in one document (at most {0})." xml:space="preserve"><value>Terlalu banyak baris dalam satu dokumen (maksimal {0}).</value></data>
   <data name="A value on the form could not be read ({0}). Nothing was saved." xml:space="preserve"><value>Ada isian formulir yang tidak dapat dibaca ({0}). Tidak ada yang disimpan.</value></data>
+  <!-- Stock check: daily sheet and stock counts (2026-10-14) -->
+  <data name="No product has moved today. Count all products, or pick the products to count." xml:space="preserve"><value>Belum ada produk yang bergerak hari ini. Hitung semua produk, atau pilih produk yang akan dihitung.</value></data>
+  <data name="Pick at least one product to count." xml:space="preserve"><value>Pilih minimal satu produk untuk dihitung.</value></data>
+  <data name="Stock count not found." xml:space="preserve"><value>Hitungan stok tidak ditemukan.</value></data>
+  <data name="{0} is already submitted and can no longer be changed." xml:space="preserve"><value>{0} sudah diserahkan dan tidak dapat diubah lagi.</value></data>
+  <data name="{0}: the count cannot be negative." xml:space="preserve"><value>{0}: hasil hitung tidak boleh negatif.</value></data>
+  <data name="Those products are already on this count." xml:space="preserve"><value>Produk tersebut sudah ada di hitungan ini.</value></data>
+  <data name="Line not found." xml:space="preserve"><value>Baris tidak ditemukan.</value></data>
+  <data name="A count needs at least one product. Cancel the count instead." xml:space="preserve"><value>Hitungan harus berisi minimal satu produk. Batalkan hitungan bila tidak diperlukan.</value></data>
+  <data name="Enter a count for every product before submitting ({0} still empty, e.g. {1}). Count 0 if there is none; remove a product that isn&#x27;t part of this count." xml:space="preserve"><value>Isi hasil hitung untuk setiap produk sebelum menyerahkan ({0} masih kosong, mis. {1}). Isi 0 bila tidak ada; hapus produk yang tidak termasuk hitungan ini.</value></data>
+  <data name="Stock of {0} product(s) changed while you were counting (e.g. {1}): a sale or delivery was posted meanwhile. Check those products again, then submit." xml:space="preserve"><value>Stok {0} produk berubah saat Anda menghitung (mis. {1}): ada penjualan atau barang masuk yang diposting. Hitung ulang produk tersebut, lalu serahkan.</value></data>
+  <data name="Only an administrator can settle a count difference." xml:space="preserve"><value>Hanya administrator yang dapat menyelesaikan selisih hitungan.</value></data>
+  <data name="{0} has no differences waiting for a decision." xml:space="preserve"><value>{0} tidak memiliki selisih yang menunggu keputusan.</value></data>
+  <data name="{0} on {1} is already settled." xml:space="preserve"><value>{0} pada {1} sudah diselesaikan.</value></data>
+  <data name="{0}: documents entered since the count already account for the difference. Nothing to post; settle it as &quot;No adjustment&quot;." xml:space="preserve"><value>{0}: dokumen yang diinput setelah hitungan sudah menjelaskan selisihnya. Tidak ada yang perlu diposting; selesaikan dengan "Tanpa koreksi".</value></data>
+  <data name="{0}: only {1} in stock now, the count would take out {2}. Count this product again." xml:space="preserve"><value>{0}: stok sekarang hanya {1}, koreksi akan mengeluarkan {2}. Hitung ulang produk ini.</value></data>
+  <data name="Explain why this difference needs no adjustment." xml:space="preserve"><value>Jelaskan mengapa selisih ini tidak perlu dikoreksi.</value></data>
+  <data name="Only the person who started this count, or an administrator, can cancel it." xml:space="preserve"><value>Hanya orang yang memulai hitungan ini, atau administrator, yang dapat membatalkannya.</value></data>
+  <data name="Only an administrator can cancel a submitted count." xml:space="preserve"><value>Hanya administrator yang dapat membatalkan hitungan yang sudah diserahkan.</value></data>
+  <data name="{0} already has posted adjustments. Settle the remaining lines instead." xml:space="preserve"><value>{0} sudah memiliki koreksi yang diposting. Selesaikan baris yang tersisa.</value></data>
+  <data name="Give a reason for cancelling." xml:space="preserve"><value>Isi alasan pembatalan.</value></data>
+  <data name="{0} is already closed." xml:space="preserve"><value>{0} sudah ditutup.</value></data>
+  <data name="{0} stock count(s) in this period still have differences waiting for a decision, e.g. {1}. Settle them before closing the books." xml:space="preserve"><value>{0} hitungan stok pada periode ini masih memiliki selisih yang menunggu keputusan, mis. {1}. Selesaikan dulu sebelum tutup buku.</value></data>
+  <data name="Daily Stock Check" xml:space="preserve"><value>Cek Stok Harian</value></data>
+  <data name="Products that moved that day" xml:space="preserve"><value>Produk yang bergerak hari itu</value></data>
+  <data name="Print sheet" xml:space="preserve"><value>Cetak lembar</value></data>
+  <data name="Starts a count of every product that moved today." xml:space="preserve"><value>Mulai hitungan untuk semua produk yang bergerak hari ini.</value></data>
+  <data name="Count today&#x27;s stock" xml:space="preserve"><value>Hitung stok hari ini</value></data>
+  <data name="{0} product(s)" xml:space="preserve"><value>{0} produk</value></data>
+  <data name="Stock counts" xml:space="preserve"><value>Hitung Stok</value></data>
+  <data name="Opening" xml:space="preserve"><value>Awal</value></data>
+  <data name="In" xml:space="preserve"><value>Masuk</value></data>
+  <data name="Out" xml:space="preserve"><value>Keluar</value></data>
+  <data name="Closing" xml:space="preserve"><value>Akhir</value></data>
+  <data name="Count" xml:space="preserve"><value>Hitungan</value></data>
+  <data name="Physical" xml:space="preserve"><value>Fisik</value></data>
+  <data name="Remarks" xml:space="preserve"><value>Keterangan</value></data>
+  <data name="Other" xml:space="preserve"><value>Lainnya</value></data>
+  <data name="Supplier returns" xml:space="preserve"><value>Retur pembelian</value></data>
+  <data name="Dated before the count but entered after it: the count did not see these." xml:space="preserve"><value>Bertanggal sebelum hitungan tetapi diinput sesudahnya: hitungan tidak melihat dokumen ini.</value></data>
+  <data name="Entered after the count" xml:space="preserve"><value>Diinput setelah hitungan</value></data>
+  <data name="No product moved on this day." xml:space="preserve"><value>Tidak ada produk yang bergerak pada hari ini.</value></data>
+  <data name="Closing = opening + in − out, from the stock ledger by document date. Hover over In / Out for the breakdown." xml:space="preserve"><value>Akhir = awal + masuk − keluar, dari buku besar stok menurut tanggal dokumen. Arahkan kursor ke Masuk / Keluar untuk rinciannya.</value></data>
+  <data name="Counted by" xml:space="preserve"><value>Dihitung oleh</value></data>
+  <data name="Checked by" xml:space="preserve"><value>Diperiksa oleh</value></data>
+  <data name="Matched" xml:space="preserve"><value>Cocok</value></data>
+  <data name="Adjusted" xml:space="preserve"><value>Dikoreksi</value></data>
+  <data name="Explained" xml:space="preserve"><value>Dijelaskan</value></data>
+  <data name="Waiting for decision" xml:space="preserve"><value>Menunggu keputusan</value></data>
+  <data name="{0} stock count(s) have differences waiting for your decision." xml:space="preserve"><value>{0} hitungan stok memiliki selisih yang menunggu keputusan Anda.</value></data>
+  <data name="Stock count" xml:space="preserve"><value>Hitungan Stok</value></data>
+  <data name="Print counting sheet" xml:space="preserve"><value>Cetak lembar hitung</value></data>
+  <data name="Started by {0}" xml:space="preserve"><value>Dimulai oleh {0}</value></data>
+  <data name="Draft" xml:space="preserve"><value>Draf</value></data>
+  <data name="counted so far" xml:space="preserve"><value>sudah dihitung</value></data>
+  <data name="Count what is physically there, in whole units; enter 0 if there is none. Submit as soon as you finish: a sale or delivery posted while you count sends that product back to be counted again." xml:space="preserve"><value>Hitung barang yang benar-benar ada, dalam unit utuh; isi 0 bila tidak ada. Serahkan segera setelah selesai: penjualan atau barang masuk yang diposting saat Anda menghitung membuat produk itu harus dihitung ulang.</value></data>
+  <data name="Counted" xml:space="preserve"><value>Hasil hitung</value></data>
+  <data name="Stock changed while counting: count again" xml:space="preserve"><value>Stok berubah saat dihitung: hitung ulang</value></data>
+  <data name="e.g. 1 on display, box damaged" xml:space="preserve"><value>mis. 1 di display, dus rusak</value></data>
+  <data name="Remove from this count" xml:space="preserve"><value>Hapus dari hitungan ini</value></data>
+  <data name="Remove this product from the count?" xml:space="preserve"><value>Hapus produk ini dari hitungan?</value></data>
+  <data name="Add a product" xml:space="preserve"><value>Tambah produk</value></data>
+  <data name="Submit this count? The counts can no longer be changed afterwards." xml:space="preserve"><value>Serahkan hitungan ini? Hasil hitung tidak dapat diubah lagi setelahnya.</value></data>
+  <data name="Submit count" xml:space="preserve"><value>Serahkan hitungan</value></data>
+  <data name="Save draft" xml:space="preserve"><value>Simpan draf</value></data>
+  <data name="Cancel this count? What was entered is discarded." xml:space="preserve"><value>Batalkan hitungan ini? Data yang sudah diisi akan dibuang.</value></data>
+  <data name="Cancel count" xml:space="preserve"><value>Batalkan hitungan</value></data>
+  <data name="Saved. You can continue later." xml:space="preserve"><value>Tersimpan. Anda bisa melanjutkan nanti.</value></data>
+  <data name="Product added." xml:space="preserve"><value>Produk ditambahkan.</value></data>
+  <data name="Product removed from this count." xml:space="preserve"><value>Produk dihapus dari hitungan ini.</value></data>
+  <data name="Count submitted." xml:space="preserve"><value>Hitungan diserahkan.</value></data>
+  <data name="Counted {0} by {1}" xml:space="preserve"><value>Dihitung {0} oleh {1}</value></data>
+  <data name="Completed" xml:space="preserve"><value>Selesai</value></data>
+  <data name="{0} difference(s)" xml:space="preserve"><value>{0} selisih</value></data>
+  <data name="{0} matched" xml:space="preserve"><value>{0} cocok</value></data>
+  <data name="For each difference: look for a sale, return or delivery that was not entered (or entered late). Post adjustment books the difference into stock at the count moment, at average cost. No adjustment closes it without touching stock; say why." xml:space="preserve"><value>Untuk setiap selisih: cari penjualan, retur, atau barang masuk yang belum diinput (atau diinput terlambat). Posting koreksi membukukan selisih ke stok pada saat hitungan, dengan biaya rata-rata. Tanpa koreksi menutup selisih tanpa mengubah stok; tuliskan alasannya.</value></data>
+  <data name="Against the stock at the count moment as it is now, after documents entered since." xml:space="preserve"><value>Dibandingkan stok pada saat hitungan menurut data sekarang, setelah dokumen yang diinput sesudahnya.</value></data>
+  <data name="Difference now" xml:space="preserve"><value>Selisih sekarang</value></data>
+  <data name="posted" xml:space="preserve"><value>diposting</value></data>
+  <data name="Reason / explanation" xml:space="preserve"><value>Alasan / penjelasan</value></data>
+  <data name="Post this difference into stock? This cannot be undone." xml:space="preserve"><value>Posting selisih ini ke stok? Tindakan ini tidak dapat dibatalkan.</value></data>
+  <data name="Post adjustment" xml:space="preserve"><value>Posting koreksi</value></data>
+  <data name="No adjustment" xml:space="preserve"><value>Tanpa koreksi</value></data>
+  <data name="Cancel this count (e.g. counted wrongly; count again)" xml:space="preserve"><value>Batalkan hitungan ini (mis. salah hitung; hitung ulang)</value></data>
+  <data name="Cancel this count? No stock is changed." xml:space="preserve"><value>Batalkan hitungan ini? Stok tidak berubah.</value></data>
+  <data name="Adjustment posted." xml:space="preserve"><value>Koreksi diposting.</value></data>
+  <data name="Settled without adjustment." xml:space="preserve"><value>Diselesaikan tanpa koreksi.</value></data>
+  <data name="Count cancelled." xml:space="preserve"><value>Hitungan dibatalkan.</value></data>
+  <data name="New stock count" xml:space="preserve"><value>Hitungan stok baru</value></data>
+  <data name="Products that moved today" xml:space="preserve"><value>Produk yang bergerak hari ini</value></data>
+  <data name="daily" xml:space="preserve"><value>harian</value></data>
+  <data name="weekly / month-end" xml:space="preserve"><value>mingguan / akhir bulan</value></data>
+  <data name="Pick products" xml:space="preserve"><value>Pilih produk</value></data>
+  <data name="Start counting" xml:space="preserve"><value>Mulai menghitung</value></data>
+  <data name="The counting sheet does not show the system stock: count what is on the shelf." xml:space="preserve"><value>Lembar hitung tidak menampilkan stok sistem: hitung apa yang ada di rak.</value></data>
+  <data name="Waiting for decision only" xml:space="preserve"><value>Hanya yang menunggu keputusan</value></data>
+  <data name="Differences" xml:space="preserve"><value>Selisih</value></data>
+  <data name="Picked products" xml:space="preserve"><value>Produk pilihan</value></data>
+  <data name="Continue" xml:space="preserve"><value>Lanjutkan</value></data>
+  <data name="Only the person who started this count, or an administrator, can change it." xml:space="preserve"><value>Hanya orang yang memulai hitungan ini, atau administrator, yang dapat mengubahnya.</value></data>
 </root>

@@ -1386,6 +1386,28 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
             .Select(g => new { g.Key, Qty = g.Sum(l => l.QtyIn) - g.Sum(l => l.QtyOut) })
             .ToDictionaryAsync(x => x.Key, x => x.Qty);
 
+    public Task<List<InventoryLedger>> GetEnteredLateAsync(IEnumerable<Guid> productIds, DateTime before, DateTime enteredAfter)
+    {
+        var ids = productIds.Distinct().ToList();
+        return _db.InventoryLedgers.AsNoTracking()
+            .Where(l => ids.Contains(l.ProductId) && l.TransactionDate < before && l.EnteredAt > enteredAfter)
+            .OrderBy(l => l.EnteredAt).ToListAsync();
+    }
+
+    public Task<List<Guid>> GetProductsMovedAsync(IEnumerable<Guid>? productIds, DateTime fromUtc, DateTime? toUtc)
+    {
+        var q = _db.InventoryLedgers.AsQueryable();
+        if (productIds != null)
+        {
+            var ids = productIds.Distinct().ToList();
+            q = q.Where(l => ids.Contains(l.ProductId));
+        }
+        q = toUtc is { } to
+            ? q.Where(l => (l.TransactionDate >= fromUtc && l.TransactionDate < to) || (l.EnteredAt >= fromUtc && l.EnteredAt < to))
+            : q.Where(l => l.TransactionDate >= fromUtc || l.EnteredAt >= fromUtc);
+        return q.Select(l => l.ProductId).Distinct().ToListAsync();
+    }
+
     public async Task<Dictionary<Guid, LedgerReference>> ResolveReferencesAsync(IEnumerable<Guid> referenceIds)
     {
         // A ReferenceId is the id of whichever document moved the stock; cancellations reuse
@@ -1414,6 +1436,13 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
         foreach (var a in await _db.StockAdjustments.Where(x => ids.Contains(x.Id))
                      .Select(x => new { x.Id, x.Reason, x.CreatedBy }).ToListAsync())
             map[a.Id] = new("—", $"{a.Reason} ({a.CreatedBy})", null);
+        // An adjustment posted from a stock count shows the count's number and opens it.
+        foreach (var c in await _db.StockCountLines
+                     .Where(x => x.StockAdjustmentId != null && ids.Contains(x.StockAdjustmentId.Value))
+                     .Select(x => new { Id = x.StockAdjustmentId!.Value, x.StockCountId, x.StockCount!.CountNumber })
+                     .ToListAsync())
+            if (map.TryGetValue(c.Id, out var adj))
+                map[c.Id] = new(c.CountNumber ?? "—", adj.Party, $"/StockCounts/Detail/{c.StockCountId}");
         return map;
     }
 
@@ -1679,6 +1708,46 @@ public class StockAdjustmentRepository : IStockAdjustmentRepository
         if (to.HasValue)   q = q.Where(a => a.AdjustmentDate <= to.Value);
         return q.OrderByDescending(a => a.AdjustmentDate).ToListAsync();
     }
+}
+
+public class StockCountRepository : IStockCountRepository
+{
+    private readonly AppDbContext _db;
+    public StockCountRepository(AppDbContext db) => _db = db;
+
+    public async Task AddAsync(StockCount c) => await _db.StockCounts.AddAsync(c);
+
+    public Task<StockCount?> GetByIdAsync(Guid id) =>
+        _db.StockCounts.Include(c => c.Lines).ThenInclude(l => l.Product)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+    public Task<List<StockCount>> GetListAsync(DateTime? fromUtc, DateTime? toUtc, StockCountStatus? status)
+    {
+        var q = _db.StockCounts.AsNoTracking().Include(c => c.Lines).AsQueryable();
+        if (status.HasValue)  q = q.Where(c => c.Status == status.Value);
+        if (fromUtc.HasValue) q = q.Where(c => (c.SubmittedAt ?? c.CreatedAt) >= fromUtc.Value);
+        if (toUtc.HasValue)   q = q.Where(c => (c.SubmittedAt ?? c.CreatedAt) <  toUtc.Value);
+        return q.OrderByDescending(c => c.SubmittedAt ?? c.CreatedAt).ToListAsync();
+    }
+
+    public Task<int> CountAwaitingReviewAsync() =>
+        _db.StockCounts.CountAsync(c => c.Status == StockCountStatus.Submitted);
+
+    public Task<List<string>> AwaitingReviewBeforeAsync(DateTime beforeUtc) =>
+        _db.StockCounts.Where(c => c.Status == StockCountStatus.Submitted && c.SubmittedAt < beforeUtc)
+            .OrderBy(c => c.SubmittedAt).Select(c => c.CountNumber ?? "").ToListAsync();
+
+    public Task<List<StockCountLine>> GetSubmittedLinesAsync(DateTime fromUtc, DateTime toUtc) =>
+        _db.StockCountLines.AsNoTracking().Include(l => l.StockCount)
+            .Where(l => l.StockCount!.SubmittedAt >= fromUtc && l.StockCount.SubmittedAt < toUtc
+                     && l.StockCount.Status != StockCountStatus.Cancelled)
+            .OrderBy(l => l.StockCount!.SubmittedAt).ToListAsync();
+
+    public void RemoveLine(StockCountLine line) => _db.StockCountLines.Remove(line);
+
+    public Task<string> NextNumberAsync() =>
+        DocumentNumber.NextAsync(_db, $"SO-{DocumentNumber.MonthStamp()}",
+            _db.StockCounts.Where(c => c.CountNumber != null).Select(c => c.CountNumber!));
 }
 
 public class AuditLogRepository : IAuditLogRepository

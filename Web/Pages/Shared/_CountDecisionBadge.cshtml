@@ -1,0 +1,7 @@
+@model SimpleERP.Domain.Enums.StockCountDecision?
+@using SimpleERP.Domain.Enums
+@* One stock count line's state, as a badge (daily sheet and count pages). *@
+@if (Model == StockCountDecision.Matched)        { <span class="badge ok">✓ @Localizer["Matched"]</span> }
+else if (Model == StockCountDecision.Pending)    { <span class="badge warn">@Localizer["Difference"]</span> }
+else if (Model == StockCountDecision.Adjusted)   { <span class="badge info">@Localizer["Adjusted"]</span> }
+else if (Model == StockCountDecision.Dismissed)  { <span class="badge gray">@Localizer["Explained"]</span> }

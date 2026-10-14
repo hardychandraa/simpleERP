@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<ISaleRepository,             SaleRepository>();
         services.AddScoped<IPaymentRecordRepository,    PaymentRecordRepository>();
         services.AddScoped<IStockAdjustmentRepository,  StockAdjustmentRepository>();
+        services.AddScoped<IStockCountRepository,       StockCountRepository>();
         services.AddScoped<IAuditLogRepository,         AuditLogRepository>();
         // Reads only. Writes go through AppLogSink over raw Npgsql, outside DI scope —
         // see the note on IAppLogRepository.
@@ -61,6 +62,7 @@ public static class DependencyInjection
         services.AddScoped<PurchaseRecoster>();
         services.AddScoped<InventoryService>();
         services.AddScoped<IInventoryService>(sp => sp.GetRequiredService<InventoryService>());
+        services.AddScoped<IStockCountService,  StockCountService>();
         services.AddScoped<IProductService,     ProductService>();
         services.AddScoped<ICustomerService,    CustomerService>();
         // SaleService chains commission accrual into CommissionService within one

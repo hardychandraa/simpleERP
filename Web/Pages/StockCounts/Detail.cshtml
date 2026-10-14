@@ -1,0 +1,137 @@
+@page "/StockCounts/Detail/{id:guid}"
+@model SimpleERP.Web.Pages.StockCounts.DetailModel
+@using SimpleERP.Domain.Enums
+@{
+    var c = Model.Count;
+    ViewData["Title"] = c.CountNumber ?? Localizer["Stock count"].Value;
+    var rev = Model.Reviews;
+    string Signed(decimal? v) => v is null ? "—" : v > 0 ? "+" + v.Value.ToString("N0") : v.Value.ToString("N0");
+    var cols = rev ? 8 : 5;
+}
+
+@if (Model.Msg != null) { <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Model.Msg</div> }
+
+<div class="no-print" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+  <a href="/StockCounts" class="btn btn-outline">← @Localizer["Stock counts"]</a>
+  <button type="button" class="btn btn-secondary" onclick="window.print()">🖨 @Localizer["Print"]</button>
+</div>
+
+<div class="card" style="margin-bottom:14px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:20px;font-weight:700">@(c.CountNumber ?? Localizer["Stock count"].Value)</div>
+      <div style="color:#6b7280;font-size:13px">
+        @if (c.SubmittedAt is { } at) { @Localizer["Counted {0} by {1}", at.ToLocalTime().ToString("dddd, dd MMM yyyy HH:mm"), c.SubmittedBy ?? ""] }
+        else { @Localizer["Started by {0}", c.CreatedBy] }
+      </div>
+      @if (!string.IsNullOrEmpty(c.Notes)) { <div style="font-size:13px;margin-top:4px">📝 @c.Notes</div> }
+    </div>
+    <div>
+      @if (c.Status == StockCountStatus.Submitted) { <span class="badge warn">@Localizer["Waiting for decision"] (@c.PendingCount)</span> }
+      else if (c.Status == StockCountStatus.Completed) { <span class="badge ok">@Localizer["Completed"]</span> }
+      else if (c.Status == StockCountStatus.Cancelled) { <span class="badge gray">@Localizer["Cancelled"]</span> }
+      @if (c.ClosedAt is { } closed) { <div style="font-size:11px;color:#6b7280;margin-top:4px">@(c.ClosedBy), @closed.ToLocalTime().ToString("dd-MMM-yy HH:mm")</div> }
+    </div>
+  </div>
+  <div style="font-size:13px;margin-top:10px">
+    @c.LineCount @Localizer["Products"] ·
+    @if (rev) { <span>@Localizer["{0} difference(s)", c.DifferenceCount]</span> }
+    else { <span>@Localizer["{0} matched", c.Lines.Count(l => l.Decision == StockCountDecision.Matched)]</span> }
+  </div>
+</div>
+
+@if (rev && c.Status == StockCountStatus.Submitted)
+{
+  <div class="alert alert-info no-print" style="font-size:12px;line-height:1.6">
+    @Localizer["For each difference: look for a sale, return or delivery that was not entered (or entered late). Post adjustment books the difference into stock at the count moment, at average cost. No adjustment closes it without touching stock; say why."]
+  </div>
+}
+
+<div class="card">
+<table>
+  <thead><tr>
+    <th>@Localizer["Product"]</th>
+    <th style="text-align:right">@Localizer["Counted"]</th>
+    @if (rev)
+    {
+      <th style="text-align:right">@Localizer["System"]</th>
+      <th style="text-align:right">@Localizer["Difference"]</th>
+      <th style="text-align:right" title="@Localizer["Against the stock at the count moment as it is now, after documents entered since."]">@Localizer["Difference now"]</th>
+    }
+    <th>@Localizer["Note"]</th>
+    <th>@Localizer["Status"]</th>
+    @if (rev) { <th class="no-print"></th> }
+  </tr></thead>
+  <tbody>
+  @foreach (var l in c.Lines)
+  {
+    var diff = l.Difference;
+    <tr>
+      <td><a href="/Inventory/Ledger?productId=@l.ProductId">@l.ProductName</a>
+        <div style="font-size:11px;color:#9ca3af">@l.SKU</div></td>
+      <td style="text-align:right;font-weight:600">@(l.CountedQty?.ToString("N0") ?? "—")</td>
+      @if (rev)
+      {
+        <td style="text-align:right">@(l.SystemQty?.ToString("N0") ?? "—")</td>
+        <td style="text-align:right;font-weight:700;color:@(diff > 0 ? "#059669" : diff < 0 ? "#dc2626" : "#9ca3af")">@(diff == 0 ? "0" : Signed(diff))</td>
+        <td style="text-align:right">
+          @if (l.Decision == StockCountDecision.Pending && l.CurrentDifference is { } now)
+          {
+            <span style="font-weight:700;color:@(now == 0 ? "#059669" : now != diff ? "#b45309" : "inherit")">@(now == 0 ? "0" : Signed(now))</span>
+          }
+          else if (l.Decision == StockCountDecision.Adjusted) { <span style="font-size:12px">@Localizer["posted"] @Signed(l.AdjustedQty)</span> }
+          else { <span style="color:#9ca3af">—</span> }
+        </td>
+      }
+      <td style="font-size:12px">
+        @l.Note
+        @if (l.EnteredAfterCount.Any())
+        {
+          <div style="color:#b45309;margin-top:2px">⚠ @Localizer["Entered after the count"]:
+            @foreach (var e in l.EnteredAfterCount)
+            {
+              <span style="white-space:nowrap">@if (e.Link != null) { <a href="@e.Link">@e.DocumentNumber</a> } else { @e.DocumentNumber } (@Signed(e.Qty))</span>
+            }
+          </div>
+        }
+        @if (l.DecisionNote != null && l.Decision != StockCountDecision.Matched)
+        {
+          <div style="color:#374151;margin-top:2px">↳ @l.DecisionNote <span style="color:#9ca3af">(@l.DecidedBy)</span></div>
+        }
+      </td>
+      <td><partial name="_CountDecisionBadge" model="(StockCountDecision?)l.Decision" /></td>
+      @if (rev)
+      {
+        <td class="no-print" style="min-width:260px">
+          @if (l.Decision == StockCountDecision.Pending && c.Status == StockCountStatus.Submitted)
+          {
+            <form method="post" asp-page-handler="Decide" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <input type="hidden" name="lineId" value="@l.Id"/>
+              <input type="text" name="note" maxlength="400" placeholder="@Localizer["Reason / explanation"]" style="flex:1;min-width:140px;font-size:12px"/>
+              @if (l.CurrentDifference != 0)
+              {
+                <button type="submit" name="decision" value="adjust" class="btn btn-warn btn-sm"
+                        onclick="return confirm('@Localizer["Post this difference into stock? This cannot be undone."]')">⚖️ @Localizer["Post adjustment"]</button>
+              }
+              <button type="submit" name="decision" value="dismiss" class="btn btn-outline btn-sm">@Localizer["No adjustment"]</button>
+            </form>
+          }
+        </td>
+      }
+    </tr>
+  }
+  @if (!c.Lines.Any()) { <tr><td colspan="@cols" style="text-align:center;color:#9ca3af;padding:28px">@Localizer["No entries found."]</td></tr> }
+  </tbody>
+</table>
+</div>
+
+@if (rev && c.Status == StockCountStatus.Submitted && !c.Lines.Any(l => l.Decision == StockCountDecision.Adjusted))
+{
+  <div class="card no-print" style="margin-top:14px">
+    <form method="post" asp-page-handler="Cancel" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div class="fg" style="margin:0;flex:1;min-width:240px"><label>@Localizer["Cancel this count (e.g. counted wrongly; count again)"]</label>
+        <input type="text" name="reason" maxlength="400" required placeholder="@Localizer["Reason"]"/></div>
+      <button type="submit" class="btn btn-outline" onclick="return confirm('@Localizer["Cancel this count? No stock is changed."]')">@Localizer["Cancel count"]</button>
+    </form>
+  </div>
+}

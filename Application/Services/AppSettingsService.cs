@@ -13,12 +13,13 @@ public class AppSettingsService : IAppSettingsService
     private readonly IBranchRepository _branches;
     private readonly IPurchaseRepository _purchases;
     private readonly IAuditLogRepository _audit;
+    private readonly IStockCountRepository _counts;
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<AppSettingsService> _log;
     public AppSettingsService(IAppSettingsRepository repo, IBranchRepository branches,
-        IPurchaseRepository purchases, IAuditLogRepository audit,
+        IPurchaseRepository purchases, IAuditLogRepository audit, IStockCountRepository counts,
         IStringLocalizer<SharedResource> loc, ILogger<AppSettingsService> log)
-    { _repo = repo; _branches = branches; _purchases = purchases; _audit = audit; _loc = loc; _log = log; }
+    { _repo = repo; _branches = branches; _purchases = purchases; _audit = audit; _counts = counts; _loc = loc; _log = log; }
 
     // 80 = 10 cpi on 8-inch paper, 96 = 12 cpi on the 9.5-inch (half-A4) form,
     // 132 = 10 cpi on a wide-carriage printer. Anything else falls back to 96.
@@ -67,6 +68,13 @@ public class AppSettingsService : IAppSettingsService
             if (pending.Count > 0)
                 return _log.Refuse(_loc["{0} purchase(s) dated in this period still need checking (Perlu dicek), e.g. {1}. Check them before closing the books.",
                                         pending.Count, pending[0].PurchaseNumber]);
+            // A count difference still waiting for Admin could no longer be posted into a closed
+            // month (its adjustment is dated at the count), so it would stay open for ever.
+            var counts = await _counts.AwaitingReviewBeforeAsync(
+                DateTime.SpecifyKind(target!.Value.AddDays(1), DateTimeKind.Local).ToUniversalTime());
+            if (counts.Count > 0)
+                return _log.Refuse(_loc["{0} stock count(s) in this period still have differences waiting for a decision, e.g. {1}. Settle them before closing the books.",
+                                        counts.Count, counts[0]]);
         }
 
         s.BooksClosedThrough = target;

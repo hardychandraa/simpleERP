@@ -1,0 +1,103 @@
+@page "/StockCounts"
+@model SimpleERP.Web.Pages.StockCounts.IndexModel
+@using SimpleERP.Domain.Enums
+@{ ViewData["Title"] = Localizer["Stock counts"].Value; }
+
+@if (Model.Error != null) { <div class="alert alert-danger">@Model.Error</div> }
+@if (User.ReviewsStockCounts() && Model.Waiting > 0 && !Model.WaitingOnly)
+{
+  <div class="alert alert-warning">⚠ @Localizer["{0} stock count(s) have differences waiting for your decision.", Model.Waiting]
+    <a href="/StockCounts?waiting=true" style="font-weight:700;margin-left:6px">@Localizer["Check now"] &rarr;</a></div>
+}
+
+<div class="card" style="margin-bottom:14px">
+  <div class="card-title">📝 @Localizer["New stock count"]</div>
+  <form method="post" asp-page-handler="Create">
+    <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;font-size:14px">
+      <label style="display:inline-flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500">
+        <input type="radio" name="scope" value="@((int)StockCountScope.MovedToday)" checked onchange="pickToggle()"/> @Localizer["Products that moved today"] <span style="color:#6b7280;font-size:12px">(@Localizer["daily"])</span></label>
+      <label style="display:inline-flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500">
+        <input type="radio" name="scope" value="@((int)StockCountScope.All)" onchange="pickToggle()"/> @Localizer["All products"] <span style="color:#6b7280;font-size:12px">(@Localizer["weekly / month-end"])</span></label>
+      <label style="display:inline-flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500">
+        <input type="radio" name="scope" value="@((int)StockCountScope.Selected)" onchange="pickToggle()"/> @Localizer["Pick products"]</label>
+    </div>
+    <div id="picker" style="display:none;margin-bottom:10px">
+      <input type="text" id="pickFilter" placeholder="@Localizer["Search"]…" style="max-width:320px;margin-bottom:6px" oninput="pickFilter(this.value)"/>
+      <div style="max-height:260px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px">
+        @foreach (var p in Model.Products)
+        {
+          <label class="pick" data-name="@($"{p.Name} {p.SKU}".ToLowerInvariant())" style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:400;font-size:13px;margin:3px 0">
+            <input type="checkbox" name="productIds" value="@p.Id" style="width:16px;height:16px"/> @p.Name <span style="color:#9ca3af;font-size:11px">@p.SKU</span></label>
+        }
+      </div>
+    </div>
+    <button type="submit" class="btn btn-success">▶ @Localizer["Start counting"]</button>
+    <span style="font-size:12px;color:#6b7280;margin-left:10px">@Localizer["The counting sheet does not show the system stock: count what is on the shelf."]</span>
+  </form>
+</div>
+
+<div class="card" style="margin-bottom:14px">
+  <form method="get" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+    <div class="fg" style="margin:0;min-width:130px"><label>@Localizer["From"]</label><input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")"/></div>
+    <div class="fg" style="margin:0;min-width:130px"><label>@Localizer["To"]</label><input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")"/></div>
+    <label style="display:inline-flex;align-items:center;gap:8px;margin:0 0 9px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500">
+      <input type="checkbox" name="waiting" value="true" checked="@Model.WaitingOnly" style="width:18px;height:18px"/> @Localizer["Waiting for decision only"]</label>
+    <button type="submit" class="btn btn-primary">@Localizer["Filter"]</button>
+    <a href="/Inventory/Daily" class="btn btn-outline" style="margin-left:auto">📋 @Localizer["Daily Stock Check"]</a>
+  </form>
+</div>
+
+<div class="card">
+<table>
+  <thead><tr>
+    <th>@Localizer["Number"]</th><th>@Localizer["Date"]</th><th>@Localizer["Scope"]</th>
+    <th style="text-align:right">@Localizer["Products"]</th><th style="text-align:right">@Localizer["Differences"]</th>
+    <th>@Localizer["Counted by"]</th><th>@Localizer["Status"]</th><th></th>
+  </tr></thead>
+  <tbody>
+  @foreach (var r in Model.Rows)
+  {
+    var when = (r.SubmittedAt ?? r.CreatedAt).ToLocalTime();
+    <tr>
+      <td><strong>@(r.CountNumber ?? Localizer["Draft"].Value)</strong></td>
+      <td style="white-space:nowrap">@when.ToString("dd-MMM-yy HH:mm")</td>
+      <td style="font-size:12px">@Localizer[r.Scope == StockCountScope.MovedToday ? "Products that moved today" : r.Scope == StockCountScope.All ? "All products" : "Picked products"]</td>
+      <td style="text-align:right">@r.LineCount</td>
+      <td style="text-align:right">
+        @if (r.Status == StockCountStatus.Draft || r.Status == StockCountStatus.Cancelled) { <span style="color:#9ca3af">—</span> }
+        else if (r.DifferenceCount == 0) { <span style="color:#059669">0</span> }
+        else { <strong style="color:#b45309">@r.DifferenceCount</strong> }
+      </td>
+      <td style="font-size:12px">@(r.SubmittedBy ?? r.CreatedBy)</td>
+      <td>
+        @if (r.Status == StockCountStatus.Draft) { <span class="badge gray">@Localizer["Draft"]</span> }
+        else if (r.Status == StockCountStatus.Submitted) { <span class="badge warn">@Localizer["Waiting for decision"] (@r.PendingCount)</span> }
+        else if (r.Status == StockCountStatus.Completed) { <span class="badge ok">@Localizer["Completed"]</span> }
+        else { <span class="badge gray">@Localizer["Cancelled"]</span> }
+      </td>
+      <td>
+        @if (r.Status == StockCountStatus.Draft) { <a href="/StockCounts/Count/@r.Id" class="btn btn-primary btn-sm">@Localizer["Continue"]</a> }
+        else { <a href="/StockCounts/Detail/@r.Id" class="btn btn-outline btn-sm">@Localizer["View"]</a> }
+      </td>
+    </tr>
+  }
+  @if (!Model.Rows.Any())
+  {
+    <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:28px">@Localizer["No entries found."]</td></tr>
+  }
+  </tbody>
+</table>
+</div>
+
+@section Scripts {
+<script>
+function pickToggle() {
+    const sel = document.querySelector('input[name="scope"]:checked').value;
+    document.getElementById('picker').style.display = sel === '@((int)StockCountScope.Selected)' ? '' : 'none';
+}
+function pickFilter(q) {
+    q = q.trim().toLowerCase();
+    document.querySelectorAll('#picker .pick').forEach(l => { l.style.display = !q || l.dataset.name.includes(q) ? '' : 'none'; });
+}
+</script>
+}

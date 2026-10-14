@@ -128,3 +128,20 @@ public enum ReferenceType {
     /// </summary>
     RebateInKind   = 8
 }
+
+/// <summary>
+/// Stock count (stock opname, HC 2026-10-14). Draft while being counted; Submitted once the
+/// counts are in and a difference waits for Admin; Completed when every line matched or was
+/// decided; Cancelled by its counter (draft) or by Admin.
+/// </summary>
+public enum StockCountStatus { Draft = 1, Submitted = 2, Completed = 3, Cancelled = 4 }
+
+/// <summary>Which products a new count starts with. More can be added to the draft.</summary>
+public enum StockCountScope { MovedToday = 1, All = 2, Selected = 3 }
+
+/// <summary>
+/// What happened to one counted line. Matched: count equalled the system at submit. Adjusted:
+/// Admin posted the difference as a stock adjustment. Dismissed: Admin explained it without
+/// changing stock (e.g. a sale entered late that already accounts for it).
+/// </summary>
+public enum StockCountDecision { Pending = 0, Matched = 1, Adjusted = 2, Dismissed = 3 }
