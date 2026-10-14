@@ -97,6 +97,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<decimal>("RebateWithholdingRate")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal>("StaffDiscountLimitPercent")
+                        .HasColumnType("decimal(9,4)");
+
                     b.Property<string>("StoreAddress")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -132,6 +135,7 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                             PrinterEnabled = false,
                             PrinterName = "",
                             RebateWithholdingRate = 0.15m,
+                            StaffDiscountLimitPercent = 10m,
                             StoreAddress = "",
                             StoreFooter = "Thank you for your purchase!",
                             StoreName = "My Store",
@@ -353,6 +357,13 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,4)");
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<int>("Category")
                         .HasColumnType("integer");
 
@@ -371,6 +382,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("NeedsApproval")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("NoteDate")
                         .HasColumnType("timestamp without time zone");
@@ -430,6 +444,8 @@ namespace SimpleERP.Infrastructure.Data.Migrations
 
                     b.HasIndex("DocumentNumber")
                         .IsUnique();
+
+                    b.HasIndex("NeedsApproval");
 
                     b.HasIndex("NoteDate");
 
@@ -578,6 +594,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<bool>("IsTaxInclusive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("NeedsReview")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -594,6 +613,13 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid>("SaleId")
                         .HasColumnType("uuid");
@@ -616,6 +642,8 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BranchId");
+
+                    b.HasIndex("NeedsReview");
 
                     b.HasIndex("ReturnDate");
 
@@ -1435,6 +1463,17 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<Guid>("BranchId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -1469,6 +1508,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<bool>("IsTaxInclusive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("NeedsReview")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -1482,6 +1524,17 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<Guid?>("ReplacesSaleId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ReviewReasons")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTime>("SaleDate")
                         .HasColumnType("timestamp without time zone");
 
@@ -1493,6 +1546,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
 
                     b.Property<decimal>("SubTotal")
                         .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid?>("SubmissionId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("TaxAmount")
                         .HasColumnType("decimal(18,4)");
@@ -1507,12 +1563,16 @@ namespace SimpleERP.Infrastructure.Data.Migrations
 
                     b.HasIndex("BranchId");
 
+                    b.HasIndex("CancelledAt");
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("DueDate");
 
                     b.HasIndex("InvoiceNumber")
                         .IsUnique();
+
+                    b.HasIndex("NeedsReview");
 
                     b.HasIndex("PaymentTermId");
 
@@ -1521,6 +1581,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.HasIndex("SaleDate");
 
                     b.HasIndex("SalesPersonId");
+
+                    b.HasIndex("SubmissionId")
+                        .IsUnique();
 
                     b.ToTable("Sales");
                 });

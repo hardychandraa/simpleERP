@@ -58,6 +58,15 @@ public class CreditNote
     public string          CreatedBy      { get; set; } = string.Empty;
     public DateTime        CreatedAt      { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// A credit note Staff raised by hand, or the note of a return on a cash sale (HC,
+    /// 2026-10-14, G1/G3): it can't be applied, netted or refunded until Admin approves it,
+    /// and it doesn't reduce receivables meanwhile.
+    /// </summary>
+    public bool            NeedsApproval  { get; set; }
+    public string?         ApprovedBy     { get; set; }
+    public DateTime?       ApprovedAt     { get; set; }
+
     public Customer?       Customer       { get; set; }
     public Supplier?       Supplier       { get; set; }
     public Sale?           SourceSale     { get; set; }

@@ -33,6 +33,12 @@ public static class AccessExtensions
     /// Staff count blind and never change stock.
     /// </summary>
     public static bool ReviewsStockCounts(this ClaimsPrincipal user) => user.IsInRole(nameof(UserRole.Admin));
+    /// <summary>
+    /// Works without the Staff limits and checks Staff's work (HC, 2026-10-14, G1–G8): cancels
+    /// or revises any open-period sale, sells on any open date, approves credit notes, checks
+    /// sales and returns flagged Perlu dicek, settles notes.
+    /// </summary>
+    public static bool ChecksStaffWork(this ClaimsPrincipal user) => user.IsInRole(nameof(UserRole.Admin));
 
     /// <summary>
     /// Refuse a handler on a shared page. Razor Pages ignore [Authorize] on handler methods,

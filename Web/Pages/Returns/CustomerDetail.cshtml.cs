@@ -32,6 +32,13 @@ public class CustomerDetailModel : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostReviewedAsync(Guid id)
+    {
+        if (!User.ChecksStaffWork()) return this.Refuse("checking a flagged return is Admin-only");
+        var result = await _returns.MarkCustomerReturnReviewedAsync(id, isAdmin: true, this.CurrentUserName());
+        return RedirectToPage(new { id, msg = result.Success ? "Return checked. Its credit note can now be used." : result.Error, err = !result.Success });
+    }
+
     public async Task<IActionResult> OnPostCancelAsync(Guid id)
     {
         var result = await _returns.CancelCustomerReturnAsync(id, this.CurrentUserName());

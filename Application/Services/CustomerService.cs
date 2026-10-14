@@ -27,9 +27,15 @@ public class CustomerService : ICustomerService
     public async Task<CustomerDto?> GetByIdAsync(Guid id)
         { var c = await _customers.GetByIdAsync(id); return c == null ? null : Map(c); }
 
-    public async Task<ServiceResult> CreateAsync(CreateCustomerDto dto)
+    /// <param name="setsSaleDefaults">
+    /// Admin only (G6, HC 2026-10-14): a customer's default discount, term and salesperson
+    /// flow into every sale, so Staff can add a customer and edit its contact details, but
+    /// what they post for the defaults is ignored (new customer: none; existing: unchanged).
+    /// </param>
+    public async Task<ServiceResult> CreateAsync(CreateCustomerDto dto, bool setsSaleDefaults)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Customer name is required."]);
+        if (!setsSaleDefaults) { dto.SalesPersonId = null; dto.PaymentTermId = null; dto.DefaultDiscountPercent = null; }
         var invalid = ValidateTaxIds(dto.TaxId, dto.NationalId)
                       ?? await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent);
         if (invalid != null) return invalid;
@@ -45,10 +51,12 @@ public class CustomerService : ICustomerService
         return ServiceResult.Ok();
     }
 
-    public async Task<ServiceResult> UpdateAsync(UpdateCustomerDto dto)
+    public async Task<ServiceResult> UpdateAsync(UpdateCustomerDto dto, bool setsSaleDefaults)
     {
         var c = await _customers.GetByIdAsync(dto.Id);
         if (c == null) return _log.Refuse(_loc["Customer not found."]);
+        if (!setsSaleDefaults)
+        { dto.SalesPersonId = c.SalesPersonId; dto.PaymentTermId = c.PaymentTermId; dto.DefaultDiscountPercent = c.DefaultDiscountPercent; }
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Name is required."]);
         var invalid = ValidateTaxIds(dto.TaxId, dto.NationalId)
                       ?? await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent,

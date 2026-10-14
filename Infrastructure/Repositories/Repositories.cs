@@ -815,6 +815,9 @@ public class CustomerReturnRepository : ICustomerReturnRepository
     private readonly AppDbContext _db;
     public CustomerReturnRepository(AppDbContext db) => _db = db;
 
+    public Task<int> CountNeedingReviewAsync() =>
+        _db.CustomerReturns.CountAsync(r => r.NeedsReview && r.Status == ReturnStatus.Active);
+
     public Task<CustomerReturn?> GetByIdWithItemsAsync(Guid id) =>
         _db.CustomerReturns
            .Include(r => r.Sale!).ThenInclude(s => s.Customer)
@@ -1050,11 +1053,15 @@ public class CreditNoteRepository : ICreditNoteRepository
         return await DocumentNumber.NextAsync(_db, prefix, _db.CreditNotes.Select(n => n.DocumentNumber));
     }
 
+    public Task<int> CountAwaitingApprovalAsync() =>
+        _db.CreditNotes.CountAsync(n => n.NeedsApproval && n.Status == CreditNoteStatus.Open);
+
     public async Task<decimal> GetOpenTotalAsync(CreditDebitType type) =>
         // Remaining, not face value: an applied slice already reduces the balance of the
         // document it was applied to, so counting it here as well would double it.
         await _db.CreditNotes
-            .Where(n => n.Type == type && n.Status == CreditNoteStatus.Open)
+            // A note waiting for Admin's approval doesn't reduce anything yet (G1).
+            .Where(n => n.Type == type && n.Status == CreditNoteStatus.Open && !n.NeedsApproval)
             .Select(n => n.Amount -
                 (_db.CreditNoteApplications
                      .Where(a => a.CreditNoteId == n.Id && !a.IsReversed)
@@ -1492,6 +1499,19 @@ public class SaleRepository : ISaleRepository
                                .Select(s => new { s.Id, s.InvoiceNumber }).FirstOrDefaultAsync();
         return r == null ? null : (r.Id, r.InvoiceNumber);
     }
+
+    public Task<Guid?> FindBySubmissionIdAsync(Guid submissionId) =>
+        _db.Sales.Where(s => s.SubmissionId == submissionId).Select(s => (Guid?)s.Id).FirstOrDefaultAsync();
+
+    public Task<List<Sale>> GetNeedingReviewAsync() =>
+        _db.Sales.AsNoTracking().Include(s => s.Customer).Include(s => s.SalesPerson)
+            .Where(s => s.NeedsReview && s.Status == SaleStatus.Active)
+            .OrderBy(s => s.CreatedAt).ToListAsync();
+
+    public Task<List<Sale>> GetCancelledSinceAsync(DateTime sinceUtc) =>
+        _db.Sales.AsNoTracking().Include(s => s.Customer)
+            .Where(s => s.CancelledAt >= sinceUtc)
+            .OrderByDescending(s => s.CancelledAt).ToListAsync();
 
     public Task<Sale?> GetByIdWithItemsAsync(Guid id) =>
         _db.Sales

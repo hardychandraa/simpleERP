@@ -8,7 +8,20 @@
 
 @if (Model.Msg != null)
 {
-    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success") no-print">@Model.Msg</div>
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success") no-print">@Localizer[Model.Msg]</div>
+}
+@if (isActive && Model.Return.NeedsReview)
+{
+    @* A Staff return on a cash sale (G3): its note can't be used until Admin checks it. *@
+    <div class="alert alert-warning no-print">
+        ⚠ @Localizer["A return on a cash sale: its credit note can't be applied or refunded until an administrator checks it."]
+        @if (User.ChecksStaffWork())
+        {
+            <form method="post" asp-page-handler="Reviewed" asp-route-id="@Model.Return.Id" style="display:inline;margin-left:8px">
+                <button type="submit" class="btn btn-primary btn-sm">✓ @Localizer["Mark as checked"]</button>
+            </form>
+        }
+    </div>
 }
 
 <div class="no-print" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">

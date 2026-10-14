@@ -18,7 +18,7 @@ public CreateModel(ICustomerService s, ISalesPersonService people, IPaymentTermS
     public async Task<IActionResult> OnPostAsync(){
         ViewData["Title"]="Add Customer";
         if(!ModelState.IsValid){Error=_loc["Please fill in every required field with a valid value."];await LoadAsync();return Page();}
-        var r=await _svc.CreateAsync(Input);
+        var r=await _svc.CreateAsync(Input, User.MaintainsMasterData());
         if(!r.Success){Error=r.Error;await LoadAsync();return Page();}
         return RedirectToPage("/Customers/Index",new{msg=_loc["Customer created."].Value});
     }

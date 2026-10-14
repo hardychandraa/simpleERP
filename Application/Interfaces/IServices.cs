@@ -30,8 +30,9 @@ public interface ICustomerService {
     Task<List<CustomerDto>> GetAllAsync(string? search = null);
     Task<List<CustomerDto>> GetAllActiveAsync(string? search = null);
     Task<CustomerDto?> GetByIdAsync(Guid id);
-    Task<ServiceResult> CreateAsync(CreateCustomerDto dto);
-    Task<ServiceResult> UpdateAsync(UpdateCustomerDto dto);
+    /// <param name="setsSaleDefaults">Admin only (G6): Staff's default discount / term / salesperson are ignored.</param>
+    Task<ServiceResult> CreateAsync(CreateCustomerDto dto, bool setsSaleDefaults);
+    Task<ServiceResult> UpdateAsync(UpdateCustomerDto dto, bool setsSaleDefaults);
 }
 /// <summary>
 /// One line of a purchase to receive into stock: the quantity, and the real ex-PPN
@@ -88,14 +89,19 @@ public interface IStockCountService {
     Task<ServiceResult> CancelAsync(Guid id, string? reason, bool isAdmin, string user);
 }
 public interface ISaleService {
-    Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user);
+    /// <param name="isAdmin">Staff sales are limited to today/yesterday and flagged Perlu dicek when below cost, over the discount limit, dated yesterday or with another salesperson (G4/G5/G7).</param>
+    Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user, bool isAdmin);
     /// <summary>
     /// Cancels <paramref name="originalId"/> and creates <paramref name="dto"/> in its place,
     /// as one transaction — both happen or neither does. Refused when the original has
     /// recorded payments, paid-out commission, a return or an applied credit note.
     /// </summary>
-    Task<ServiceResult<SaleDto>> ReviseAsync(Guid originalId, CreateSaleDto dto, string user);
-    Task<ServiceResult> CancelAsync(Guid saleId, string user);
+    Task<ServiceResult<SaleDto>> ReviseAsync(Guid originalId, CreateSaleDto dto, string user, bool isAdmin, string? reason);
+    /// <summary>Staff: only a sale entered today, with a reason (G2). Admin: any open-period sale.</summary>
+    Task<ServiceResult> CancelAsync(Guid saleId, string user, bool isAdmin, string? reason);
+    Task<List<SaleListDto>> GetNeedingReviewAsync();
+    Task<List<SaleListDto>> GetCancelledTodayAsync();
+    Task<ServiceResult> MarkReviewedAsync(Guid saleId, bool isAdmin, string user);
     Task<ServiceResult<PaymentRecordDto>> RecordPaymentAsync(RecordPaymentDto dto, string user);
     /// <summary>
     /// Settles several of one customer's open invoices in one action, optionally netting
@@ -264,7 +270,10 @@ public interface IReturnService {
     // ── Sales returns ──
     /// <summary>The invoice and what's still returnable on it. Null if the sale can't be returned against.</summary>
     Task<ReturnFormDto?> GetCustomerReturnFormAsync(Guid saleId);
-    Task<ServiceResult<CustomerReturnDto>> CreateCustomerReturnAsync(CreateCustomerReturnDto dto, string user);
+    /// <param name="isAdmin">A Staff return on a cash sale is flagged and its note waits for Admin (G3).</param>
+    Task<ServiceResult<CustomerReturnDto>> CreateCustomerReturnAsync(CreateCustomerReturnDto dto, string user, bool isAdmin);
+    Task<ServiceResult> MarkCustomerReturnReviewedAsync(Guid id, bool isAdmin, string user);
+    Task<int> CountCustomerReturnsNeedingReviewAsync();
     Task<CustomerReturnDto?> GetCustomerReturnAsync(Guid id);
     Task<List<ReturnListDto>> GetCustomerReturnsAsync(DateTime? from = null, DateTime? to = null, string? search = null);
     Task<List<ReturnListDto>> GetReturnsForSaleAsync(Guid saleId);
@@ -282,13 +291,17 @@ public interface ICreditNoteService {
     Task<List<CreditNoteDto>> GetAllAsync(CreditDebitType? type = null, CreditNoteStatus? status = null,
                                           DateTime? from = null, DateTime? to = null);
     Task<CreditNoteDto?> GetByIdAsync(Guid id);
-    Task<ServiceResult> CreateAsync(CreateCreditNoteDto dto, string user);
+    /// <param name="isAdmin">A credit note Staff raise waits for Admin's approval (G1).</param>
+    Task<ServiceResult> CreateAsync(CreateCreditNoteDto dto, string user, bool isAdmin);
+    Task<ServiceResult> ApproveAsync(Guid id, bool isAdmin, string user);
+    Task<int> CountAwaitingApprovalAsync();
     /// <summary>
     /// Settle a note outright with free text, no document behind it — a price dispute
     /// refunded in cash, say. Still the right path when there is nothing to apply
     /// against; <see cref="ApplyAsync"/> is for when there is.
     /// </summary>
-    Task<ServiceResult> SettleAsync(SettleCreditNoteDto dto, string user);
+    /// <summary>Admin only (G1): settling is where a note becomes a refund or a payment.</summary>
+    Task<ServiceResult> SettleAsync(SettleCreditNoteDto dto, string user, bool isAdmin);
     Task<ServiceResult> CancelAsync(Guid id, string user);
     /// <summary>
     /// Apply part or all of a note against one specific invoice or purchase, reducing

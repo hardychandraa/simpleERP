@@ -175,7 +175,7 @@ public class CreditNoteService : ICreditNoteService
         return note.DocumentNumber;
     }
 
-    public async Task<ServiceResult> CreateAsync(CreateCreditNoteDto dto, string user)
+    public async Task<ServiceResult> CreateAsync(CreateCreditNoteDto dto, string user, bool isAdmin)
     {
         var reason = Trim(dto.Reason, 500);
         if (reason == null)  return _log.Refuse(_loc["A reason for the note is required."]);
@@ -262,7 +262,10 @@ public class CreditNoteService : ICreditNoteService
             Reason           = reason,
             Notes            = Trim(dto.Notes, 500),
             CreatedBy        = user,
-            CreatedAt        = DateTime.UtcNow
+            CreatedAt        = DateTime.UtcNow,
+            // A credit note Staff raise by hand waits for Admin before it can reduce anything
+            // (G1, HC 2026-10-14): one person could otherwise turn it into cash.
+            NeedsApproval    = !isAdmin && dto.Type == CreditDebitType.Credit
         };
 
         await _notes.AddAsync(note);
@@ -277,12 +280,16 @@ public class CreditNoteService : ICreditNoteService
         return ServiceResult.Ok();
     }
 
-    public async Task<ServiceResult> SettleAsync(SettleCreditNoteDto dto, string user)
+    public async Task<ServiceResult> SettleAsync(SettleCreditNoteDto dto, string user, bool isAdmin)
     {
+        // Settling is where a note becomes money (a refund, a payment): Admin's (G1, HC 2026-10-14).
+        if (!isAdmin) return _log.Refuse(_loc["Only an administrator can settle a note."]);
         // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
         await _uow.LockAsync(dto.Id);
         var note = await _notes.GetByIdAsync(dto.Id);
         if (note == null) return _log.Refuse(_loc["Note not found."]);
+        if (note.NeedsApproval)
+            return _log.Refuse(_loc["{0} is waiting for an administrator's approval and cannot be used yet.", note.DocumentNumber]);
         if (note.Status == CreditNoteStatus.Settled)
             return _log.Refuse(_loc["{0} is already settled.", note.DocumentNumber]);
         if (note.Status == CreditNoteStatus.Cancelled)
@@ -324,6 +331,8 @@ public class CreditNoteService : ICreditNoteService
             return _log.Refuse(_loc["{0} is cancelled.", note.DocumentNumber]);
         if (note.Status == CreditNoteStatus.Settled)
             return _log.Refuse(_loc["{0} is already settled.", note.DocumentNumber]);
+        if (note.NeedsApproval)
+            return _log.Refuse(_loc["{0} is waiting for an administrator's approval and cannot be used yet.", note.DocumentNumber]);
 
         var todayLocal      = DateTime.Now.Date;
         var applicationDate = dto.ApplicationDate?.Date ?? todayLocal;
@@ -501,6 +510,28 @@ public class CreditNoteService : ICreditNoteService
         => await _applications.GetByIdAsync(applicationId) is { } a
             ? MapApplicationDto(a, canReverse: !a.IsReversed) : null;
 
+    /// <summary>Admin approves a note waiting since Staff raised it (G1) or since a cash-sale return (G3).</summary>
+    public async Task<ServiceResult> ApproveAsync(Guid id, bool isAdmin, string user)
+    {
+        if (!isAdmin) return _log.Refuse(_loc["Only an administrator can approve a note."]);
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(id);
+        var note = await _notes.GetByIdAsync(id);
+        if (note == null) return _log.Refuse(_loc["Note not found."]);
+        if (!note.NeedsApproval) return _log.Refuse(_loc["{0} is already approved.", note.DocumentNumber]);
+        if (note.Status == CreditNoteStatus.Cancelled) return _log.Refuse(_loc["{0} is cancelled.", note.DocumentNumber]);
+        note.NeedsApproval = false; note.ApprovedBy = user; note.ApprovedAt = DateTime.UtcNow;
+        // A cash-sale return's note: approving it is checking that return (G3).
+        if (note.SourceCustomerReturn is { NeedsReview: true } ret)
+        { ret.NeedsReview = false; ret.ReviewedBy = user; ret.ReviewedAt = note.ApprovedAt; }
+        await _audit.LogAsync(user, $"{note.Type}Note.Approve", $"{note.DocumentNumber} | {note.Amount:N0}");
+        _log.LogInformation("{NoteType} note {DocumentNumber} approved by {User}", note.Type, note.DocumentNumber, user);
+        await _uow.SaveChangesAsync();
+        return ServiceResult.Ok();
+    }
+
+    public async Task<int> CountAwaitingApprovalAsync() => await _notes.CountAwaitingApprovalAsync();
+
     public async Task<ServiceResult> CancelAsync(Guid id, string user)
     {
         // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
@@ -590,6 +621,8 @@ public class CreditNoteService : ICreditNoteService
         SettlementNotes  = n.SettlementNotes,
         Reason           = n.Reason,
         Notes            = n.Notes,
-        CreatedBy        = n.CreatedBy
+        CreatedBy        = n.CreatedBy,
+        NeedsApproval    = n.NeedsApproval,
+        ApprovedBy       = n.ApprovedBy
     };
 }

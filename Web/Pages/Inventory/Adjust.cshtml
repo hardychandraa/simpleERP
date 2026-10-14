@@ -31,7 +31,7 @@
       </div>
       <div class="fg">
         <label>@Localizer["Actual Physical Count"] *</label>
-        <input type="number" asp-for="Input.QtyActual" min="0" step="0.01" required
+        <input type="number" asp-for="Input.QtyActual" min="0" step="1" required
                style="font-size:16px;font-weight:600"/>
         @{ var diff = Model.Input.QtyActual - Model.CurrentStock; }
         @if (Model.CurrentStock > 0 || Model.Input.QtyActual > 0) {

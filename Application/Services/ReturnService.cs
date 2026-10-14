@@ -97,7 +97,7 @@ public class ReturnService : IReturnService
     }
 
     public async Task<ServiceResult<CustomerReturnDto>> CreateCustomerReturnAsync(
-        CreateCustomerReturnDto dto, string user)
+        CreateCustomerReturnDto dto, string user, bool isAdmin)
     {
         if (dto.Items == null || dto.Items.Count == 0)
             return _log.Refuse<CustomerReturnDto>(_loc["Add at least one line to return."]);
@@ -137,6 +137,8 @@ public class ReturnService : IReturnService
         {
             if (input.Qty <= 0)
                 return _log.Refuse<CustomerReturnDto>(_loc["All return quantities must be greater than zero."]);
+            if (!Limits.IsWholeUnits(input.Qty))
+                return _log.Refuse<CustomerReturnDto>(_loc["Quantities must be whole units (no fractions)."]);
 
             var line = sale.SaleItems.FirstOrDefault(i => i.Id == input.SourceItemId);
             if (line == null)
@@ -193,6 +195,9 @@ public class ReturnService : IReturnService
             Status         = ReturnStatus.Active,
             CreatedBy      = user,
             CreatedAt      = DateTime.UtcNow,
+            // A return on a cash sale is how a fake return becomes cash (G3, HC 2026-10-14):
+            // Staff's are flagged, and the note waits with it.
+            NeedsReview    = !isAdmin && sale.PaymentType == PaymentType.Cash,
             Items          = items
         };
         await _customerReturns.AddAsync(ret);
@@ -215,7 +220,8 @@ public class ReturnService : IReturnService
             Status                 = CreditNoteStatus.Open,
             Reason                 = $"Sales return {ret.ReturnNumber}: {reason}",
             CreatedBy              = user,
-            CreatedAt              = DateTime.UtcNow
+            CreatedAt              = DateTime.UtcNow,
+            NeedsApproval          = ret.NeedsReview
         });
 
         // The salesperson doesn't keep commission on revenue that came back — see
@@ -364,6 +370,8 @@ public class ReturnService : IReturnService
         {
             if (input.Qty <= 0)
                 return _log.Refuse<SupplierReturnDto>(_loc["All return quantities must be greater than zero."]);
+            if (!Limits.IsWholeUnits(input.Qty))
+                return _log.Refuse<SupplierReturnDto>(_loc["Quantities must be whole units (no fractions)."]);
 
             var line = purchase.PurchaseItems.FirstOrDefault(i => i.Id == input.SourceItemId);
             if (line == null)
@@ -578,6 +586,30 @@ public class ReturnService : IReturnService
         return s.Length > maxLen ? s[..maxLen] : s;
     }
 
+    /// <summary>
+    /// Admin checks a Staff return on a cash sale (G3); its credit note is approved with it, so
+    /// it can be applied or refunded from then on.
+    /// </summary>
+    public async Task<ServiceResult> MarkCustomerReturnReviewedAsync(Guid id, bool isAdmin, string user)
+    {
+        if (!isAdmin) return _log.Refuse(_loc["Only an administrator can mark a return as checked."]);
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(id);
+        var ret = await _customerReturns.GetByIdWithItemsAsync(id);
+        if (ret == null) return _log.Refuse(_loc["Return not found."]);
+        if (!ret.NeedsReview) return _log.Refuse(_loc["{0} is already checked.", ret.ReturnNumber]);
+        var now = DateTime.UtcNow;
+        ret.NeedsReview = false; ret.ReviewedBy = user; ret.ReviewedAt = now;
+        foreach (var n in ret.CreditNotes.Where(n => n.NeedsApproval))
+        { n.NeedsApproval = false; n.ApprovedBy = user; n.ApprovedAt = now; }
+        await _audit.LogAsync(user, "CustomerReturn.Review", ret.ReturnNumber);
+        _log.LogInformation("Sales return {ReturnNumber} checked by {User}", ret.ReturnNumber, user);
+        await _uow.SaveChangesAsync();
+        return ServiceResult.Ok();
+    }
+
+    public Task<int> CountCustomerReturnsNeedingReviewAsync() => _customerReturns.CountNeedingReviewAsync();
+
     private static CustomerReturnDto MapCustomerReturn(CustomerReturn r)
     {
         var note = r.CreditNotes.FirstOrDefault(n => n.Status != CreditNoteStatus.Cancelled)
@@ -600,6 +632,8 @@ public class ReturnService : IReturnService
             Notes          = r.Notes,
             Status         = r.Status.ToString(),
             CreatedBy      = r.CreatedBy,
+            NeedsReview    = r.NeedsReview,
+            ReviewedBy     = r.ReviewedBy,
             CreditNoteId     = note?.Id,
             CreditNoteNumber = note?.DocumentNumber ?? "",
             CreditNoteStatus = note?.Status.ToString() ?? "",
@@ -667,7 +701,8 @@ public class ReturnService : IReturnService
         LineCount        = r.Items.Count,
         GrandTotal       = r.GrandTotal,
         Reason           = r.Reason,
-        Status           = r.Status.ToString()
+        Status           = r.Status.ToString(),
+        NeedsReview      = r.NeedsReview && r.Status == ReturnStatus.Active
     };
 
     private static ReturnListDto MapSupplierList(SupplierReturn r) => new() {

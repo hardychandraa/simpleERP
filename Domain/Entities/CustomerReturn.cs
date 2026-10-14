@@ -46,6 +46,11 @@ public class CustomerReturn
     public string   CreatedBy    { get; set; } = string.Empty;
     public DateTime CreatedAt    { get; set; } = DateTime.UtcNow;
 
+    /// <summary>A return on a cash sale, flagged for Admin (G3, HC 2026-10-14); its note waits with it.</summary>
+    public bool      NeedsReview { get; set; }
+    public string?   ReviewedBy  { get; set; }
+    public DateTime? ReviewedAt  { get; set; }
+
     public Sale?   Sale   { get; set; }
     public Branch? Branch { get; set; }
     public ICollection<CustomerReturnItem> Items       { get; set; } = new List<CustomerReturnItem>();

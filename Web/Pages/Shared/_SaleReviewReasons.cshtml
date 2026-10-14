@@ -1,0 +1,17 @@
+@model string?
+@using SimpleERP.Application.Services
+@* Why a Staff sale was flagged Perlu dicek (G4/G5/G7), worded in the reader's language. Admin only:
+   a below-cost line names the product. *@
+<ul style="margin:4px 0 0 18px;padding:0;font-size:13px">
+@foreach (var r in SaleReview.Parse(Model))
+{
+    var a = r.Skip(1).ToArray();
+    string Arg(int i) => i < a.Length ? a[i] : "";
+    <li>@(r[0] switch {
+        SaleReview.BelowCost   => Localizer["{0}: sold below cost (HPP)", Arg(0)],
+        SaleReview.Discount    => Localizer["{0}: {1}% below the master price", Arg(0), Arg(1)],
+        SaleReview.Backdated   => Localizer["Dated {0} (yesterday)", Arg(0)],
+        SaleReview.SalesPerson => Localizer["Salesperson {0} instead of the customer's {1}", Arg(0), Arg(1)],
+        _                      => Localizer[r[0]] })</li>
+}
+</ul>

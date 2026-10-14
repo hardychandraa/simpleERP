@@ -38,7 +38,8 @@ public class AppSettingsService : IAppSettingsService
             // Stored as a fraction, surfaced to the UI as a percentage.
             VatRatePercent = s.VatRate * 100m,
             RebateWithholdingPercent = s.RebateWithholdingRate * 100m,
-            BooksClosedThrough = s.BooksClosedThrough?.Date };
+            BooksClosedThrough = s.BooksClosedThrough?.Date,
+            StaffDiscountLimitPercent = s.StaffDiscountLimitPercent };
     }
 
     public async Task<ServiceResult> SetBooksClosedThroughAsync(DateTime? monthEnd, string user)
@@ -93,6 +94,8 @@ public class AppSettingsService : IAppSettingsService
             return _log.Refuse(_loc["PPN rate must be between 0 and 100 percent."]);
         if (dto.RebateWithholdingPercent < 0m || dto.RebateWithholdingPercent > 100m)
             return _log.Refuse(_loc["Rebate withholding rate must be between 0 and 100 percent."]);
+        if (dto.StaffDiscountLimitPercent < 0m || dto.StaffDiscountLimitPercent > 100m)
+            return _log.Refuse(_loc["The Staff discount limit must be between 0 and 100 percent."]);
         // Below ~20 lines the invoice header and totals alone would not fit on one sheet.
         if (dto.PaperLines < 20 || dto.PaperLines > 132)
             return _log.Refuse(_loc["Paper height must be between 20 and 132 lines."]);
@@ -115,6 +118,7 @@ public class AppSettingsService : IAppSettingsService
         s.PrinterEnabled = dto.PrinterEnabled;
         s.VatRate      = dto.VatRatePercent / 100m;
         s.RebateWithholdingRate = dto.RebateWithholdingPercent / 100m;
+        s.StaffDiscountLimitPercent = dto.StaffDiscountLimitPercent;
         await _repo.SaveAsync(s);
         return ServiceResult.Ok();
     }

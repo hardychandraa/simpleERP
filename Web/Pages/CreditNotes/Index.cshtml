@@ -204,13 +204,44 @@
                     </td>
                     <td style="text-align:center">
                         <span class="badge @(n.Status == "Open" ? "warn" : n.Status == "Settled" ? "ok" : "gray")">@Localizer[EnumDisplay.Key("CreditNoteStatus", n.Status)]</span>
+                        @if (n.NeedsApproval && n.Status == "Open")
+                        {
+                            <div><span class="badge danger" style="font-size:10px;margin-top:3px">@Localizer["Awaiting approval"]</span></div>
+                        }
+                        else if (n.ApprovedBy != null)
+                        {
+                            <div style="font-size:10px;color:#9ca3af;margin-top:2px">✓ @n.ApprovedBy</div>
+                        }
                         @if (n.SettledDate.HasValue)
                         {
                             <div style="font-size:10px;color:#9ca3af;margin-top:2px">@n.SettledDate.Value.ToLocalTime().ToString("dd-MMM-yy")</div>
                         }
                     </td>
                     <td>
-                        @if (n.IsOpen)
+                        @if (n.IsOpen && n.NeedsApproval)
+                        {
+                            @* Staff's manual note, or a cash-sale return's (G1/G3): nothing until Admin approves. *@
+                            @if (User.ChecksStaffWork())
+                            {
+                                <form method="post" asp-page-handler="Approve" asp-route-id="@n.Id" style="display:inline"
+                                      onsubmit="return confirm('@Localizer["Approve this note? It can then be applied or refunded."]')">
+                                    <button type="submit" class="btn btn-primary btn-sm">✓ @Localizer["Approve"]</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span style="font-size:11px;color:#6b7280">@Localizer["Waiting for an administrator."]</span>
+                            }
+                            @if (!n.SourceCustomerReturnId.HasValue && !n.SourceSupplierReturnId.HasValue)
+                            {
+                                <form method="post" asp-page-handler="Cancel" asp-route-id="@n.Id"
+                                      style="margin-top:4px"
+                                      onsubmit="return confirm('@Localizer["Cancel this note?"]')">
+                                    <button type="submit" class="btn btn-outline btn-sm">@Localizer["Cancel note"]</button>
+                                </form>
+                            }
+                        }
+                        else if (n.IsOpen)
                         {
                             @* Apply against a named document — the reason this page can now
                                answer "which invoice did this note cover?". Only offered when
@@ -234,12 +265,16 @@
                                     <button type="submit" class="btn btn-primary btn-sm">@Localizer["Apply"]</button>
                                 </form>
                             }
+                            @* A refund or write-off is Admin's (G1, HC 2026-10-14). *@
+                            @if (User.ChecksStaffWork())
+                            {
                             <form method="post" asp-page-handler="Settle" style="display:flex;gap:5px;align-items:center;margin-top:4px">
                                 <input type="hidden" name="Settle.Id" value="@n.Id" />
                                 <input type="text" name="Settle.SettlementNotes" maxlength="500"
                                        placeholder="@Localizer["Refunded / written off"]" style="width:130px" />
                                 <button type="submit" class="btn btn-success btn-sm">@Localizer["Settle"]</button>
                             </form>
+                            }
                             @if (!n.SourceCustomerReturnId.HasValue && !n.SourceSupplierReturnId.HasValue)
                             {
                                 <form method="post" asp-page-handler="Cancel" asp-route-id="@n.Id"

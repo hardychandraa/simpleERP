@@ -112,7 +112,11 @@
       {
           <a href="/Suppliers"     class="@(page.StartsWith("/Suppliers")   ?"active":"")">🏭 @Localizer["Suppliers"]</a>
       }
-      <a href="/PaymentTerms"      class="@(page.StartsWith("/PaymentTerms")?"active":"")">📆 @Localizer["Payment Terms"]</a>
+      @if (isAdmin)
+      {
+          @* Admin's since 2026-10-14 (G6). *@
+          <a href="/PaymentTerms"  class="@(page.StartsWith("/PaymentTerms")?"active":"")">📆 @Localizer["Payment Terms"]</a>
+      }
       <a href="/SalesPersons"      class="@(page.StartsWith("/SalesPersons")?"active":"")">👤 @Localizer["Sales People"]</a>
       @if (isAdmin)
       {

@@ -98,7 +98,7 @@ else
                     {
                         <input type="number" name="Lines[@i].Qty" class="ret-qty"
                                data-unit="@Inv(line.UnitCredit)"
-                               min="0" max="@Inv(line.ReturnableQty)" step="0.01"
+                               min="0" max="@Inv(line.ReturnableQty)" step="1"
                                value="@(posted != null && posted.Qty > 0 ? Inv(posted.Qty) : "")"
                                placeholder="0" style="text-align:center" />
                         <div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:2px">

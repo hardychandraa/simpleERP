@@ -66,7 +66,7 @@ public class CreateCustomerModel : PageModel
             Reason     = Reason,
             Notes      = Notes,
             Items      = items
-        }, this.CurrentUserName());
+        }, this.CurrentUserName(), User.ChecksStaffWork());
 
         if (!result.Success) { Error = result.Error; return Page(); }
 

@@ -63,6 +63,27 @@ public class Sale
     public string      CreatedBy     { get; set; } = string.Empty;
     public DateTime    CreatedAt     { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Perlu dicek (HC, 2026-10-14): a Staff sale below cost, over the discount limit, dated
+    /// yesterday, or with a salesperson other than the customer's. It posts as normal; Admin
+    /// checks it. <see cref="ReviewReasons"/> says why, for Admin only (it can name cost).
+    /// </summary>
+    public bool        NeedsReview   { get; set; }
+    public string?     ReviewReasons { get; set; }
+    public string?     ReviewedBy    { get; set; }
+    public DateTime?   ReviewedAt    { get; set; }
+
+    /// <summary>When, by whom and why the sale was cancelled (a revision cancels its original).</summary>
+    public DateTime?   CancelledAt   { get; set; }
+    public string?     CancelledBy   { get; set; }
+    public string?     CancelReason  { get; set; }
+
+    /// <summary>
+    /// The New Sale form's one-time id (G9): a second submit of the same form finds this sale
+    /// instead of posting a duplicate. Unique; null for sales from before 2026-10-14.
+    /// </summary>
+    public Guid?       SubmissionId  { get; set; }
+
     public Customer?                  Customer       { get; set; }
     public Branch?                    Branch         { get; set; }
     public PaymentTerm?               PaymentTerm    { get; set; }

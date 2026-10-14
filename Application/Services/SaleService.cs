@@ -48,17 +48,51 @@ public class SaleService : ISaleService
       _batches=batches;
       _commissions=commissions; _uow=uow;  _period = period; _loc = loc; _log = log; }
 
-    public Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user)
-        => CreateCoreAsync(dto, user, replacesSaleId: null);
-
-    public async Task<ServiceResult<SaleDto>> ReviseAsync(Guid originalId, CreateSaleDto dto, string user)
+    public async Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user, bool isAdmin)
     {
+        if (await AlreadySubmittedAsync(dto) is { } done) return done;
+        return await CreateCoreAsync(dto, user, replacesSaleId: null, isAdmin);
+    }
+
+    /// <summary>
+    /// A second submit of the same New Sale form (double click, back + resubmit) returns the
+    /// sale the first one made instead of posting it again (G9, HC 2026-10-14). The lock makes
+    /// two simultaneous submits of one form wait for each other; the unique index backs it up.
+    /// </summary>
+    private async Task<ServiceResult<SaleDto>?> AlreadySubmittedAsync(CreateSaleDto dto)
+    {
+        if (dto.SubmissionId is not { } sid || sid == Guid.Empty) return null;
+        await _uow.LockAsync(sid);
+        if (await _sales.FindBySubmissionIdAsync(sid) is not { } existing) return null;
+        _log.LogInformation("Sale form {SubmissionId} submitted again: the sale it already made is returned", sid);
+        return ServiceResult<SaleDto>.Ok(MapDto((await _sales.GetByIdWithItemsAsync(existing))!));
+    }
+
+    /// <summary>
+    /// Staff may cancel or revise only a sale entered today, and must say why (G2, HC
+    /// 2026-10-14): a paid cash sale cancelled days later is how cash and stock vanish.
+    /// Admin is not limited (a reason is still recorded when given).
+    /// </summary>
+    private LocalizedString? StaffChangeRefusal(Sale sale, bool isAdmin, string? reason)
+    {
+        if (isAdmin) return null;
+        if (PeriodLock.LocalDay(sale.CreatedAt) != DateTime.Now.Date)
+            return _loc["{0} was entered before today. Only an administrator can cancel or revise it now.", sale.InvoiceNumber];
+        if (string.IsNullOrWhiteSpace(reason))
+            return _loc["Give a reason for cancelling or revising {0}.", sale.InvoiceNumber];
+        return null;
+    }
+
+    public async Task<ServiceResult<SaleDto>> ReviseAsync(Guid originalId, CreateSaleDto dto, string user, bool isAdmin, string? reason)
+    {
+        if (await AlreadySubmittedAsync(dto) is { } done) return done;
         // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
         await _uow.LockAsync(originalId);
         var original = await _sales.GetByIdWithItemsAsync(originalId);
         if (original == null) return _log.Refuse<SaleDto>(_loc["Sale not found."]);
         if (original.Status == SaleStatus.Cancelled)
             return _log.Refuse<SaleDto>(_loc["{0} is already cancelled and cannot be revised.", original.InvoiceNumber]);
+        if (StaffChangeRefusal(original, isAdmin, reason) is { } staffNo) return _log.Refuse<SaleDto>(staffNo);
         // Money already received belongs to this invoice; moving it is a decision, not a
         // side effect of fixing a typo.
         if (original.PaymentType == PaymentType.Due && original.AmountPaid > 0)
@@ -78,11 +112,15 @@ public class SaleService : ISaleService
         // untouched.
         await _uow.InTransactionAsync(async () =>
         {
-            var cancelled = await CancelAsync(originalId, user);
+            var cancelled = await CancelAsync(originalId, user, isAdmin, reason);
             if (!cancelled.Success) { result = ServiceResult<SaleDto>.Fail(cancelled.Error!); return false; }
 
-            var created = await CreateCoreAsync(dto, user, replacesSaleId: originalId);
+            var created = await CreateCoreAsync(dto, user, replacesSaleId: originalId, isAdmin);
             if (!created.Success) { result = created; return false; }
+
+            // Shown on Admin's "cancelled / revised today" list with the replacement's number.
+            original.CancelReason = Sanitise($"Revised as {created.Data!.InvoiceNumber}" + (string.IsNullOrWhiteSpace(reason) ? "" : $": {reason.Trim()}"), 500);
+            await _uow.SaveChangesAsync();
 
             await _audit.LogAsync(user, "Sale.Revise", $"{originalNumber} -> {created.Data!.InvoiceNumber}");
             _log.LogInformation("Sale {Original} revised as {Replacement}, by {User}",
@@ -93,7 +131,7 @@ public class SaleService : ISaleService
         return result!;
     }
 
-    private async Task<ServiceResult<SaleDto>> CreateCoreAsync(CreateSaleDto dto, string user, Guid? replacesSaleId)
+    private async Task<ServiceResult<SaleDto>> CreateCoreAsync(CreateSaleDto dto, string user, Guid? replacesSaleId, bool isAdmin)
     {
         if (dto.Items == null || dto.Items.Count == 0)
             return _log.Refuse<SaleDto>(_loc["Add at least one item."]);
@@ -136,6 +174,10 @@ public class SaleService : ISaleService
         if (pickedLocal > todayLocal)
             return _log.Refuse<SaleDto>(_loc["Sale date cannot be in the future."]);
         if (await _period.NewDateAsync(pickedLocal) is { } closed) return _log.Refuse<SaleDto>(closed);
+        // Staff sell dated today or yesterday; yesterday is flagged below (G5, HC 2026-10-14):
+        // a sale dated further back lands in a day whose cash and stock were already counted.
+        if (!isAdmin && pickedLocal < todayLocal.AddDays(-1))
+            return _log.Refuse<SaleDto>(_loc["Staff can date a sale today or yesterday only. Ask an administrator for an older date."]);
 
         // Today keeps the real clock time, so same-day ordering and EndOfDay are unchanged.
         // A backdated entry anchors to that day's local midnight, converted to UTC — SaleDate
@@ -149,6 +191,7 @@ public class SaleService : ISaleService
         foreach (var item in dto.Items)
         {
             if (item.Qty <= 0) return _log.Refuse<SaleDto>(_loc["All quantities must be > 0."]);
+            if (!Limits.IsWholeUnits(item.Qty)) return _log.Refuse<SaleDto>(_loc["Quantities must be whole units (no fractions)."]);
             if (item.UnitPrice < 0) return _log.Refuse<SaleDto>(_loc["Price cannot be negative."]);
             if (item.Qty > Limits.MaxQty) return _log.Refuse<SaleDto>(_loc["Quantity is too large (at most {0} per line).", Limits.MaxQty.ToString("N0")]);
             if (item.UnitPrice > Limits.MaxUnitAmount || item.UnitPrice * item.Qty > Limits.MaxLineAmount)
@@ -300,6 +343,38 @@ public class SaleService : ISaleService
             dueDate = pickedLocal.AddDays(term.DueDays);
         }
 
+        // ── Perlu dicek (Staff only; HC 2026-10-14) ─────────────────────────────────
+        // The sale posts as normal; Admin sees why it was flagged. Compared per unit after
+        // every discount (line and invoice), on the same footing as the master price; cost is
+        // ex PPN, so an inclusive price is taken ex PPN for the cost test.
+        var reasons = new List<string>();
+        if (!isAdmin)
+        {
+            var limit = (await _settings.GetAsync()).StaffDiscountLimitPercent;
+            foreach (var i in saleItems)
+            {
+                var netUnit = (i.LineTotal - i.AllocatedInvoiceDiscount) / i.Qty;
+                var netExTax = dto.IsTaxInclusive && taxRate > 0 ? netUnit / (1m + taxRate) : netUnit;
+                var name = i.Product?.Name ?? "";
+                if (i.CostAtSale > 0 && netExTax < i.CostAtSale)
+                    reasons.Add(SaleReview.Line(SaleReview.BelowCost, name));
+                var master = i.Product?.UnitPrice ?? 0m;
+                if (master > 0)
+                {
+                    var off = Math.Round((1m - netUnit / master) * 100m, 2, MidpointRounding.AwayFromZero);
+                    if (off > limit) reasons.Add(SaleReview.Line(SaleReview.Discount, name, off.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)));
+                }
+            }
+            if (pickedLocal < todayLocal)
+                reasons.Add(SaleReview.Line(SaleReview.Backdated, pickedLocal.ToString("yyyy-MM-dd")));
+            if (salesPersonId != customer.SalesPersonId)
+            {
+                var chosen = salesPersonId is { } spId ? (await _people.GetByIdAsync(spId))?.Name ?? "-" : "-";
+                var own    = customer.SalesPersonId is { } ownId ? (await _people.GetByIdAsync(ownId))?.Name ?? "-" : "-";
+                reasons.Add(SaleReview.Line(SaleReview.SalesPerson, chosen, own));
+            }
+        }
+
         // Build audit detail — note any price overrides
         var overrides = saleItems
             .Where(i => !string.IsNullOrEmpty(i.PriceReason))
@@ -331,6 +406,9 @@ public class SaleService : ISaleService
             Notes         = dto.Notes,
             CreatedBy     = user,
             CreatedAt     = DateTime.UtcNow,
+            NeedsReview   = reasons.Count > 0,
+            ReviewReasons = reasons.Count > 0 ? string.Join('\n', reasons) : null,
+            SubmissionId  = dto.SubmissionId is { } sub && sub != Guid.Empty ? sub : null,
             SaleItems     = saleItems
         };
 
@@ -343,7 +421,8 @@ public class SaleService : ISaleService
 
         // Audit
         var auditDetail = sale.InvoiceNumber +
-            (overrides.Any() ? " | PriceOverrides: " + string.Join("; ", overrides) : "");
+            (overrides.Any() ? " | PriceOverrides: " + string.Join("; ", overrides) : "") +
+            (sale.NeedsReview ? " | Perlu dicek: " + string.Join("; ", reasons) : "");
         await _audit.LogAsync(user, "Sale.Create", auditDetail);
 
         _log.LogInformation(
@@ -358,13 +437,14 @@ public class SaleService : ISaleService
         return ServiceResult<SaleDto>.Ok(MapDto(created!));
     }
 
-    public async Task<ServiceResult> CancelAsync(Guid saleId, string user)
+    public async Task<ServiceResult> CancelAsync(Guid saleId, string user, bool isAdmin, string? reason)
     {
         // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
         await _uow.LockAsync(saleId);
         var sale = await _sales.GetByIdWithItemsAsync(saleId);
         if (sale == null) return _log.Refuse(_loc["Sale not found."]);
         if (sale.Status == SaleStatus.Cancelled) return _log.Refuse(_loc["Sale is already cancelled."]);
+        if (StaffChangeRefusal(sale, isAdmin, reason) is { } staffNo) return _log.Refuse(staffNo);
         // Also covers Revise, which cancels the original through here.
         if (await _period.ExistingAsync(sale.InvoiceNumber, PeriodLock.LocalDay(sale.SaleDate)) is { } closed)
             return _log.Refuse(closed);
@@ -394,12 +474,15 @@ public class SaleService : ISaleService
             await _inventory.StockInForCancelAsync(item.ProductId, item.Qty, item.CostAtSale, saleId, branch.Id);
 
         sale.Status = SaleStatus.Cancelled;
+        sale.CancelledAt  = DateTime.UtcNow;
+        sale.CancelledBy  = user;
+        sale.CancelReason = Sanitise(reason, 500);
         _sales.Update(sale);
 
         // Void (never delete) any unpaid commission this sale accrued.
         await _commissions.VoidForSaleAsync(saleId);
 
-        await _audit.LogAsync(user, "Sale.Cancel", sale.InvoiceNumber);
+        await _audit.LogAsync(user, "Sale.Cancel", sale.InvoiceNumber + (sale.CancelReason is { } why ? $" | {why}" : ""));
         // Worth Information rather than Debug: a cancellation reverses stock and voids
         // commission, so it is the event most likely to be behind "the numbers moved and
         // nobody knows why".
@@ -454,7 +537,7 @@ public class SaleService : ISaleService
     /// transaction, so a single payment and a multi-invoice settlement both commit once.
     /// </summary>
     private async Task<PaymentRecord> RecordPaymentCoreAsync(
-        Sale sale, decimal amount, string? notes, Guid? batchId, string user)
+        Sale sale, decimal amount, string? notes, Guid? batchId, string user, decimal cashShare = 1m)
     {
         var record = new PaymentRecord {
             Id             = Guid.NewGuid(),
@@ -470,8 +553,10 @@ public class SaleService : ISaleService
         sale.AmountPaid += amount;
         _sales.Update(sale);
 
-        // Commission accrues on collection, prorated to this payment's share of the invoice.
-        await _commissions.AccrueForPaymentAsync(sale, record);
+        // Commission accrues on collection, prorated to this payment's share of the invoice,
+        // and only on the cash in it (G7, HC 2026-10-14): in a settlement netted with credit
+        // notes, the note-funded part earns nothing, the same as applying the note directly.
+        await _commissions.AccrueForPaymentAsync(sale, record, Math.Round(amount * cashShare, 2, MidpointRounding.AwayFromZero));
         return record;
     }
 
@@ -532,6 +617,8 @@ public class SaleService : ISaleService
                 return _log.Refuse<PaymentBatchDto>(_loc["{0} belongs to a different customer.", note.DocumentNumber]);
             if (note.Status != CreditNoteStatus.Open)
                 return _log.Refuse<PaymentBatchDto>(_loc["{0} is already {1}.", note.DocumentNumber, _loc["CreditNoteStatus_" + note.Status].Value]);
+            if (note.NeedsApproval)
+                return _log.Refuse<PaymentBatchDto>(_loc["{0} is waiting for an administrator's approval and cannot be used yet.", note.DocumentNumber]);
         }
 
         // ── Post ─────────────────────────────────────────────────────────────────
@@ -565,8 +652,11 @@ public class SaleService : ISaleService
         };
         await _batches.AddAsync(batch);
 
+        // The cash share of this settlement: notes net part of the gross, and that part is not
+        // cash collected, so it earns no commission (G7).
+        var cashShare = gross > 0 ? (gross - notesApplied) / gross : 0m;
         foreach (var line in lines)
-            await RecordPaymentCoreAsync(byId[line.SaleId], line.Amount, batchNotes, batch.Id, user);
+            await RecordPaymentCoreAsync(byId[line.SaleId], line.Amount, batchNotes, batch.Id, user, cashShare);
 
         // Tracked mutation — no Update() on entities EF is already following.
         foreach (var note in notes)
@@ -605,8 +695,10 @@ public class SaleService : ISaleService
         if (from.HasValue) due = due.Where(s => LocalDay(s.SaleDate) >= from.Value.Date).ToList();
         if (to.HasValue)   due = due.Where(s => LocalDay(s.SaleDate) <= to.Value.Date).ToList();
 
-        var openNotes = await _notes.GetAllAsync(
-            type: CreditDebitType.Credit, status: CreditNoteStatus.Open, customerId: customerId);
+        // A note still waiting for Admin's approval can't be ticked into a settlement (G1).
+        var openNotes = (await _notes.GetAllAsync(
+            type: CreditDebitType.Credit, status: CreditNoteStatus.Open, customerId: customerId))
+            .Where(n => !n.NeedsApproval).ToList();
 
         // Both sides net of what's already been applied per document: the invoices so each
         // line shows what's genuinely left, and the notes so ticking one nets what it can
@@ -746,8 +838,42 @@ public class SaleService : ISaleService
             DueDate       = s.DueDate,
             GrandTotal    = s.GrandTotal,
             AmountPaid    = s.AmountPaid,
-            Status        = s.Status.ToString()
+            Status        = s.Status.ToString(),
+            NeedsReview   = s.NeedsReview,
+            CancelledAt   = s.CancelledAt,
+            CancelledBy   = s.CancelledBy,
+            CancelReason  = s.CancelReason
         }).ToList();
+    }
+
+    // ── Perlu dicek and today's cancellations (Admin) ─────────────────────────
+    public async Task<List<SaleListDto>> GetNeedingReviewAsync() =>
+        (await _sales.GetNeedingReviewAsync()).Select(ListRow).ToList();
+
+    public async Task<List<SaleListDto>> GetCancelledTodayAsync() =>
+        (await _sales.GetCancelledSinceAsync(DateTime.SpecifyKind(DateTime.Today, DateTimeKind.Local).ToUniversalTime()))
+        .Select(ListRow).ToList();
+
+    private static SaleListDto ListRow(Sale s) => new() {
+        Id = s.Id, InvoiceNumber = s.InvoiceNumber, SaleDate = s.SaleDate, CustomerId = s.CustomerId,
+        CustomerName = s.Customer?.Name ?? "", SalesPersonName = s.SalesPerson?.Name ?? "",
+        PaymentType = s.PaymentType.ToString(), GrandTotal = s.GrandTotal, AmountPaid = s.AmountPaid,
+        Status = s.Status.ToString(), NeedsReview = s.NeedsReview,
+        CancelledAt = s.CancelledAt, CancelledBy = s.CancelledBy, CancelReason = s.CancelReason };
+
+    public async Task<ServiceResult> MarkReviewedAsync(Guid saleId, bool isAdmin, string user)
+    {
+        if (!isAdmin) return _log.Refuse(_loc["Only an administrator can mark a sale as checked."]);
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        await _uow.LockAsync(saleId);
+        var sale = await _sales.GetByIdWithItemsAsync(saleId);
+        if (sale == null) return _log.Refuse(_loc["Sale not found."]);
+        if (!sale.NeedsReview) return _log.Refuse(_loc["{0} is already checked.", sale.InvoiceNumber]);
+        sale.NeedsReview = false; sale.ReviewedBy = user; sale.ReviewedAt = DateTime.UtcNow;
+        await _audit.LogAsync(user, "Sale.Review", sale.InvoiceNumber);
+        _log.LogInformation("Sale {InvoiceNumber} checked by {User}", sale.InvoiceNumber, user);
+        await _uow.SaveChangesAsync();
+        return ServiceResult.Ok();
     }
 
     public async Task<List<DueCustomerDto>> GetDueSummaryAsync()
@@ -823,6 +949,8 @@ public class SaleService : ISaleService
         }
     }
 
+    private static string? Sanitise(string? s, int maxLen) => SanitiseText(s, maxLen);
+
     private static string? SanitiseText(string? s, int maxLen)
     {
         s = TextClean.StripControl(s);
@@ -864,6 +992,14 @@ public class SaleService : ISaleService
         Status        = s.Status.ToString(),
         Notes         = s.Notes,
         CreatedBy     = s.CreatedBy,
+        CreatedAt     = s.CreatedAt,
+        NeedsReview   = s.NeedsReview,
+        ReviewReasons = s.ReviewReasons,
+        ReviewedBy    = s.ReviewedBy,
+        ReviewedAt    = s.ReviewedAt,
+        CancelledAt   = s.CancelledAt,
+        CancelledBy   = s.CancelledBy,
+        CancelReason  = s.CancelReason,
         Items = s.SaleItems.Select(i => new SaleItemDto {
             Id             = i.Id,
             ProductId      = i.ProductId,

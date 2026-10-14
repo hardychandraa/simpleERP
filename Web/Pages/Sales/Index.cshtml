@@ -21,6 +21,12 @@
             <label>@Localizer["Search"]</label>
             <input type="text" name="search" value="@Model.Search" placeholder="@Localizer["Invoice, customer, or phone..."]" />
         </div>
+        @if (User.ChecksStaffWork())
+        {
+            <label style="display:inline-flex;align-items:center;gap:8px;margin:0 0 9px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500">
+                <input type="checkbox" name="pending" value="true" checked="@Model.PendingOnly" style="width:18px;height:18px" /> @Localizer["Needs checking only"]
+            </label>
+        }
         <button type="submit" class="btn btn-primary">@Localizer["Filter"]</button>
         <a href="/Sales" class="btn btn-outline">@Localizer["Reset"]</a>
         <a href="/Sales/Create" class="btn btn-success" style="margin-left:auto">＋ @Localizer["New Sale"]</a>
@@ -46,7 +52,8 @@
             @foreach (var s in Model.Sales)
             {
                 <tr>
-                    <td><strong>@s.InvoiceNumber</strong></td>
+                    <td><strong>@s.InvoiceNumber</strong>
+                        @if (s.NeedsReview && s.Status == "Active" && User.ChecksStaffWork()) { <div><span class="badge warn" style="font-size:10px">@Localizer["Needs checking"]</span></div> }</td>
                     <td>@s.SaleDate.ToLocalTime().ToString("dd-MMM-yy HH:mm")</td>
                     <td>
                         @s.CustomerName

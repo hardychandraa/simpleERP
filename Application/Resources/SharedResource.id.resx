@@ -1514,4 +1514,49 @@
   <data name="Picked products" xml:space="preserve"><value>Produk pilihan</value></data>
   <data name="Continue" xml:space="preserve"><value>Lanjutkan</value></data>
   <data name="Only the person who started this count, or an administrator, can change it." xml:space="preserve"><value>Hanya orang yang memulai hitungan ini, atau administrator, yang dapat mengubahnya.</value></data>
+  <!-- Staff limits G1-G9 and whole units (2026-10-14) -->
+  <data name="The Staff discount limit must be between 0 and 100 percent." xml:space="preserve"><value>Batas diskon Staf harus antara 0 dan 100 persen.</value></data>
+  <data name="Only an administrator can settle a note." xml:space="preserve"><value>Hanya administrator yang dapat menyelesaikan nota.</value></data>
+  <data name="{0} is waiting for an administrator&#x27;s approval and cannot be used yet." xml:space="preserve"><value>{0} menunggu persetujuan administrator dan belum dapat digunakan.</value></data>
+  <data name="Only an administrator can approve a note." xml:space="preserve"><value>Hanya administrator yang dapat menyetujui nota.</value></data>
+  <data name="{0} is already approved." xml:space="preserve"><value>{0} sudah disetujui.</value></data>
+  <data name="Quantities must be whole units (no fractions)." xml:space="preserve"><value>Jumlah harus dalam unit utuh (tanpa pecahan).</value></data>
+  <data name="{0} has been checked by an administrator and can no longer be edited here. Ask an administrator." xml:space="preserve"><value>{0} sudah dicek administrator dan tidak dapat diubah di sini lagi. Minta administrator.</value></data>
+  <data name="Only an administrator can mark a return as checked." xml:space="preserve"><value>Hanya administrator yang dapat menandai retur sudah dicek.</value></data>
+  <data name="{0} was entered before today. Only an administrator can cancel or revise it now." xml:space="preserve"><value>{0} diinput sebelum hari ini. Sekarang hanya administrator yang dapat membatalkan atau merevisinya.</value></data>
+  <data name="Give a reason for cancelling or revising {0}." xml:space="preserve"><value>Isi alasan pembatalan atau revisi {0}.</value></data>
+  <data name="Staff can date a sale today or yesterday only. Ask an administrator for an older date." xml:space="preserve"><value>Staf hanya dapat memberi tanggal penjualan hari ini atau kemarin. Minta administrator untuk tanggal yang lebih lama.</value></data>
+  <data name="Only an administrator can mark a sale as checked." xml:space="preserve"><value>Hanya administrator yang dapat menandai penjualan sudah dicek.</value></data>
+  <data name="Awaiting approval" xml:space="preserve"><value>Menunggu persetujuan</value></data>
+  <data name="Approve this note? It can then be applied or refunded." xml:space="preserve"><value>Setujui nota ini? Setelah itu nota dapat dipakai atau dikembalikan tunai.</value></data>
+  <data name="Approve" xml:space="preserve"><value>Setujui</value></data>
+  <data name="Waiting for an administrator." xml:space="preserve"><value>Menunggu administrator.</value></data>
+  <data name="Credit note created. It waits for an administrator&#x27;s approval before it can be applied or refunded." xml:space="preserve"><value>Nota kredit dibuat. Nota menunggu persetujuan administrator sebelum dapat dipakai atau dikembalikan tunai.</value></data>
+  <data name="Note approved." xml:space="preserve"><value>Nota disetujui.</value></data>
+  <data name="Only an administrator can change these." xml:space="preserve"><value>Hanya administrator yang dapat mengubah ini.</value></data>
+  <data name="Staff work to check" xml:space="preserve"><value>Pekerjaan Staf yang perlu dicek</value></data>
+  <data name="{0} sale(s)" xml:space="preserve"><value>{0} penjualan</value></data>
+  <data name="{0} credit note(s) to approve" xml:space="preserve"><value>{0} nota kredit untuk disetujui</value></data>
+  <data name="{0} cash-sale return(s)" xml:space="preserve"><value>{0} retur penjualan tunai</value></data>
+  <data name="Cancelled or revised today" xml:space="preserve"><value>Dibatalkan atau direvisi hari ini</value></data>
+  <data name="By" xml:space="preserve"><value>Oleh</value></data>
+  <data name="A return on a cash sale: its credit note can&#x27;t be applied or refunded until an administrator checks it." xml:space="preserve"><value>Retur atas penjualan tunai: nota kreditnya tidak dapat dipakai atau dikembalikan tunai sampai administrator mengeceknya.</value></data>
+  <data name="Reason for revising" xml:space="preserve"><value>Alasan revisi</value></data>
+  <data name="e.g. wrong price, wrong customer" xml:space="preserve"><value>mis. harga salah, pelanggan salah</value></data>
+  <data name="Reason for cancelling" xml:space="preserve"><value>Alasan pembatalan</value></data>
+  <data name="If it is wrong, revise or cancel the invoice instead." xml:space="preserve"><value>Jika salah, revisi atau batalkan fakturnya.</value></data>
+  <data name="This sale is marked for an administrator to check." xml:space="preserve"><value>Penjualan ini ditandai untuk dicek administrator.</value></data>
+  <data name="Cancelled {0} by {1}" xml:space="preserve"><value>Dibatalkan {0} oleh {1}</value></data>
+  <data name="Staff discount limit (%)" xml:space="preserve"><value>Batas diskon Staf (%)</value></data>
+  <data name="A Staff sale priced more than this below the master price, or below cost, still posts but is marked Perlu dicek for you." xml:space="preserve"><value>Penjualan Staf dengan harga lebih rendah dari harga master melebihi batas ini, atau di bawah HPP, tetap tersimpan tetapi ditandai Perlu dicek untuk Anda.</value></data>
+  <data name="{0}: sold below cost (HPP)" xml:space="preserve"><value>{0}: dijual di bawah HPP</value></data>
+  <data name="{0}: {1}% below the master price" xml:space="preserve"><value>{0}: {1}% di bawah harga master</value></data>
+  <data name="Dated {0} (yesterday)" xml:space="preserve"><value>Bertanggal {0} (kemarin)</value></data>
+  <data name="Salesperson {0} instead of the customer&#x27;s {1}" xml:space="preserve"><value>Tenaga penjual {0}, bukan milik pelanggan ({1})</value></data>
+  <data name="Payment recorded successfully." xml:space="preserve"><value>Pembayaran berhasil dicatat.</value></data>
+  <data name="Sale cancelled. Stock reversed." xml:space="preserve"><value>Penjualan dibatalkan. Stok dikembalikan.</value></data>
+  <data name="Credit note application reversed." xml:space="preserve"><value>Pemakaian nota kredit dibatalkan.</value></data>
+  <data name="Marked as checked." xml:space="preserve"><value>Ditandai sudah dicek.</value></data>
+  <data name="Return checked. Its credit note can now be used." xml:space="preserve"><value>Retur sudah dicek. Nota kreditnya sekarang dapat dipakai.</value></data>
+  <data name="Return cancelled. The goods have been taken back out of stock and the credit note voided." xml:space="preserve"><value>Retur dibatalkan. Barang dikeluarkan lagi dari stok dan nota kredit dibatalkan.</value></data>
 </root>

@@ -13,7 +13,8 @@
 
 <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
     <a href="/GoodsIn" class="btn btn-outline">← @Localizer["Goods In"]</a>
-    @if (active && p.EnteredWithoutPrice)
+    @* Locked for Staff once Admin has checked it (G8, HC 2026-10-14). *@
+    @if (active && p.EnteredWithoutPrice && (p.ReviewedAt == null || User.ChecksStaffWork()))
     {
         <a href="/GoodsIn/Create?edit=@p.Id" class="btn btn-primary">✎ @Localizer["Edit"]</a>
     }

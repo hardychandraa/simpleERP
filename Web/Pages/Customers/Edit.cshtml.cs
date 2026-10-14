@@ -28,7 +28,7 @@ public EditModel(ICustomerService s, ISalesPersonService people, IPaymentTermSer
         // The customer is the one in the URL, never an id posted in the form (security review R6).
         Input.Id=id;
         if(!ModelState.IsValid){Error=_loc["Please fill in every required field with a valid value."];await LoadAsync();return Page();}
-        var r=await _svc.UpdateAsync(Input);
+        var r=await _svc.UpdateAsync(Input, User.MaintainsMasterData());
         if(!r.Success){Error=r.Error;await LoadAsync();return Page();}
         return RedirectToPage("/Customers/Index",new{msg=_loc["Customer updated."].Value});
     }

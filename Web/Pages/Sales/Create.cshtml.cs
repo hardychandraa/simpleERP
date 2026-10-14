@@ -53,6 +53,13 @@ public class CreateModel : PageModel
     /// a single transaction (SaleService.ReviseAsync); leaving the page changes nothing.
     /// </summary>
     [BindProperty(SupportsGet = true)] public Guid? Revise { get; set; }
+    /// <summary>Why the invoice is being revised: required from Staff (G2, HC 2026-10-14).</summary>
+    [BindProperty] public string? ChangeReason { get; set; }
+    /// <summary>
+    /// This form's one-time id (G9): set when the page opens, posted back, and stored on the
+    /// sale, so a double click or a resubmit opens the sale already made instead of a second one.
+    /// </summary>
+    [BindProperty] public Guid? SubmissionId { get; set; }
     public string? RevisingInvoiceNumber { get; set; }
     /// <summary>Line items to load into the page on open, in the shape the page posts.</summary>
     public string PrefillItemsJson { get; set; } = "[]";
@@ -72,6 +79,7 @@ public class CreateModel : PageModel
     {
         ViewData["Title"] = "New Sale";
         SaleDate = DateTime.Now.Date;   // business-local today
+        SubmissionId = Guid.NewGuid();
 
         if (Revise.HasValue)
         {
@@ -135,6 +143,7 @@ public class CreateModel : PageModel
         var user = this.CurrentUserName();
 
         var dto = new CreateSaleDto {
+            SubmissionId   = SubmissionId,
             CustomerId     = CustomerId,
             SaleDate       = SaleDate,
             PaymentType    = PaymentType,
@@ -148,9 +157,10 @@ public class CreateModel : PageModel
             InvoiceDiscountPercent = InvoiceDiscountIsPercent ? InvoiceDiscountInput : null,
             Items          = items
         };
+        var admin  = User.ChecksStaffWork();
         var result = Revise.HasValue
-            ? await _sales.ReviseAsync(Revise.Value, dto, user)
-            : await _sales.CreateAsync(dto, user);
+            ? await _sales.ReviseAsync(Revise.Value, dto, user, admin, ChangeReason)
+            : await _sales.CreateAsync(dto, user, admin);
 
         if (!result.Success) { Error = result.Error; return Page(); }
         return RedirectToPage("/Sales/Detail", new { id = result.Data!.Id });

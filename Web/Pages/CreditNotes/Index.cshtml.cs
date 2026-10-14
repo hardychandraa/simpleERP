@@ -81,19 +81,32 @@ public class IndexModel : PageModel
     {
         if (!User.SeesSupplierSide() && (NewNote.Type != CreditDebitType.Credit || NewNote.SupplierId != null))
             return this.Refuse("debit notes are Admin-only");
-        var result = await _notes.CreateAsync(NewNote, User_);
+        var admin  = User.ChecksStaffWork();
+        var result = await _notes.CreateAsync(NewNote, User_, admin);
+        var done   = admin
+            ? _loc["{0} note created.", _loc["CreditDebitType_" + NewNote.Type].Value].Value
+            : _loc["Credit note created. It waits for an administrator's approval before it can be applied or refunded."].Value;
         return Redirect(result.Success
-            ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["{0} note created.", _loc["CreditDebitType_" + NewNote.Type].Value].Value)}"
+            ? $"/CreditNotes?msg={Uri.EscapeDataString(done)}"
             : $"/CreditNotes?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 
     public async Task<IActionResult> OnPostSettleAsync()
     {
-        if (!User.SeesSupplierSide() && !await IsCreditNoteAsync(Settle.Id))
-            return this.Refuse("debit notes are Admin-only");
-        var result = await _notes.SettleAsync(Settle, User_);
+        // Settling is where a note becomes a refund: Admin's (G1, HC 2026-10-14).
+        if (!User.ChecksStaffWork()) return this.Refuse("settling a note is Admin-only");
+        var result = await _notes.SettleAsync(Settle, User_, isAdmin: true);
         return Redirect(result.Success
             ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Note settled."].Value)}"
+            : $"/CreditNotes?err=true&msg={Uri.EscapeDataString(result.Error!)}");
+    }
+
+    public async Task<IActionResult> OnPostApproveAsync(Guid id)
+    {
+        if (!User.ChecksStaffWork()) return this.Refuse("approving a note is Admin-only");
+        var result = await _notes.ApproveAsync(id, isAdmin: true, User_);
+        return Redirect(result.Success
+            ? $"/CreditNotes?msg={Uri.EscapeDataString(_loc["Note approved."].Value)}"
             : $"/CreditNotes?err=true&msg={Uri.EscapeDataString(result.Error!)}");
     }
 

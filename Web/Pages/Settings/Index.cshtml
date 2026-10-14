@@ -65,6 +65,13 @@
                     @Localizer["Deducted from a rebate settlement before it offsets the payable. The supplier sheet shows 15%; confirm the legal basis with your consultant."]
                 </div>
             </div>
+            <div class="fg" style="max-width:240px">
+                <label>@Localizer["Staff discount limit (%)"]</label>
+                <input type="number" asp-for="Input.StaffDiscountLimitPercent" step="0.01" min="0" max="100" />
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                    @Localizer["A Staff sale priced more than this below the master price, or below cost, still posts but is marked Perlu dicek for you."]
+                </div>
+            </div>
         </div>
     </div>
 

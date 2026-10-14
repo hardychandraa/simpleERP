@@ -102,6 +102,9 @@ public class PurchaseService : IPurchaseService
         if (purchase == null) return _log.Refuse(_loc["Purchase not found."]);
         if (!purchase.EnteredWithoutPrice)
             return _log.Refuse(_loc["Only purchases entered through Barang Masuk can be edited here. Ask an administrator."]);
+        // Once Admin has checked it against the supplier invoice it is Admin's (G8, HC 2026-10-14).
+        if (purchase.ReviewedAt != null)
+            return _log.Refuse(_loc["{0} has been checked by an administrator and can no longer be edited here. Ask an administrator.", purchase.PurchaseNumber]);
 
         var priced = await PricedFromMasterAsync(dto, purchase);
         if (priced.Error != null) return _log.Refuse(priced.Error);
@@ -289,6 +292,7 @@ public class PurchaseService : IPurchaseService
         foreach (var item in dto.Items)
         {
             if (item.Qty <= 0)      return (null, _loc["All quantities must be > 0."]);
+            if (!Limits.IsWholeUnits(item.Qty)) return (null, _loc["Quantities must be whole units (no fractions)."]);
             if (item.UnitCost < 0)  return (null, _loc["Cost cannot be negative."]);
             if (item.Qty > Limits.MaxQty) return (null, _loc["Quantity is too large (at most {0} per line).", Limits.MaxQty.ToString("N0")]);
             if (item.UnitCost > Limits.MaxUnitAmount || item.UnitCost * item.Qty > Limits.MaxLineAmount)

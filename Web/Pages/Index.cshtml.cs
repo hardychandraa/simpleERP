@@ -13,10 +13,21 @@ public class IndexModel : PageModel
     private readonly IReportService    _reports;
     private readonly IPurchaseService  _purchases;
     private readonly IStockCountService _counts;
+    private readonly ICreditNoteService _notes;
+    private readonly IReturnService     _returns;
 
     public IndexModel(IProductService p, ICustomerService c, ISaleService s, IInventoryService inv,
-                      IReportService reports, IPurchaseService purchases, IStockCountService counts)
-    { _p = p; _c = c; _s = s; _inv = inv; _reports = reports; _purchases = purchases; _counts = counts; }
+                      IReportService reports, IPurchaseService purchases, IStockCountService counts,
+                      ICreditNoteService notes, IReturnService returns)
+    { _p = p; _c = c; _s = s; _inv = inv; _reports = reports; _purchases = purchases; _counts = counts;
+      _notes = notes; _returns = returns; }
+
+    /// <summary>Staff work waiting for Admin (HC, 2026-10-14): flagged sales, credit notes, cash-sale returns.</summary>
+    public int SalesToCheck   { get; set; }
+    public int NotesToApprove { get; set; }
+    public int ReturnsToCheck { get; set; }
+    /// <summary>Sales cancelled or revised today, by whom and why (G2).</summary>
+    public List<Application.DTOs.SaleListDto> CancelledToday { get; set; } = new();
 
     /// <summary>Stock counts with differences waiting for Admin (Admin only).</summary>
     public int PendingCounts { get; set; }
@@ -44,6 +55,13 @@ public class IndexModel : PageModel
         ViewData["Title"] = "Dashboard";
         if (User.SeesSupplierSide()) PendingChecks = (await _purchases.GetNeedingReviewAsync()).Count;
         if (User.ReviewsStockCounts()) PendingCounts = await _counts.CountAwaitingReviewAsync();
+        if (User.ChecksStaffWork())
+        {
+            SalesToCheck   = (await _s.GetNeedingReviewAsync()).Count;
+            NotesToApprove = await _notes.CountAwaitingApprovalAsync();
+            ReturnsToCheck = await _returns.CountCustomerReturnsNeedingReviewAsync();
+            CancelledToday = await _s.GetCancelledTodayAsync();
+        }
         RecentSales = (await _s.GetAllAsync()).Take(8).ToList();
         LowStock = (await _inv.GetAllStockLevelsAsync())
                     .Where(s => s.IsLow && s.IsActive)

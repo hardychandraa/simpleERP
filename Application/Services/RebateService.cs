@@ -612,6 +612,8 @@ public class RebateService : IRebateService
             case RebateRewardType.InKindGoods:
                 if (dto.RewardProductId == null || !(dto.RewardQty > 0))
                     return _log.Refuse(_loc["In-kind reward needs a product and a quantity."]);
+                if (!Limits.IsWholeUnits(dto.RewardQty!.Value))
+                    return _log.Refuse(_loc["Quantities must be whole units (no fractions)."]);
                 if (await _products.GetByIdAsync(dto.RewardProductId.Value) == null)
                     return _log.Refuse(_loc["Reward product not found."]);
                 break;

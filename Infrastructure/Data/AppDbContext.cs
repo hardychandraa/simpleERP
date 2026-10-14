@@ -172,6 +172,27 @@ public class AppDbContext : DbContext
             e.Ignore(a => a.QtyDelta);
         });
 
+        // Business-rule review flags (G1–G9, HC 2026-10-14).
+        m.Entity<Sale>(e => {
+            e.Property(s => s.ReviewReasons).HasMaxLength(500);
+            e.Property(s => s.ReviewedBy).HasMaxLength(100);
+            e.Property(s => s.CancelledBy).HasMaxLength(100);
+            e.Property(s => s.CancelReason).HasMaxLength(500);
+            e.HasIndex(s => s.NeedsReview);
+            e.HasIndex(s => s.CancelledAt);
+            e.HasIndex(s => s.SubmissionId).IsUnique();
+        });
+        m.Entity<CreditNote>(e => {
+            e.Property(n => n.ApprovedBy).HasMaxLength(100);
+            e.HasIndex(n => n.NeedsApproval);
+        });
+        m.Entity<CustomerReturn>(e => {
+            e.Property(r => r.ReviewedBy).HasMaxLength(100);
+            e.HasIndex(r => r.NeedsReview);
+        });
+        // Existing settings rows get 10 from the migration (AddColumn defaultValue), not from EF.
+        m.Entity<AppSettings>(e => e.Property(s => s.StaffDiscountLimitPercent).HasColumnType("decimal(9,4)"));
+
         m.Entity<StockCount>(e => {
             e.HasKey(c => c.Id);
             e.Property(c => c.CountNumber).HasMaxLength(50);

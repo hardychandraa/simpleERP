@@ -3,7 +3,7 @@
 @{ ViewData["Title"] = Localizer["Invoice {0}", Model.Sale.InvoiceNumber].Value; }
 
 @if (Model.Msg != null) {
-  <div class="alert @(Model.IsErr?"alert-danger":"alert-success") no-print">@Model.Msg</div>
+  <div class="alert @(Model.IsErr?"alert-danger":"alert-success") no-print">@Localizer[Model.Msg]</div>
 }
 
 <!-- Action Bar -->
@@ -25,20 +25,48 @@
   @if (Model.Sale.Status == "Active") {
     <a href="/Returns/Customer/New/@Model.Sale.Id" class="btn btn-warn btn-sm">↩ @Localizer["Return items"]</a>
     @* Hidden once a credit invoice has payments — ReviseAsync refuses it anyway. *@
-    @if (Model.Sale.PaymentType == "Cash" || Model.Sale.AmountPaid == 0) {
+    @if (Model.CanChange && (Model.Sale.PaymentType == "Cash" || Model.Sale.AmountPaid == 0)) {
     <a href="/Sales/Create?revise=@Model.Sale.Id" class="btn btn-outline btn-sm"
        title="@Localizer["Opens a pre-filled copy. Saving it cancels this invoice and issues a corrected one."]">✎ @Localizer["Revise"]</a>
     }
     @* Same condition: CancelAsync refuses a credit invoice with payments (2026-10-05). *@
-    @if (Model.Sale.PaymentType == "Cash" || Model.Sale.AmountPaid == 0) {
-    <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Sale.Id" style="margin-left:auto"
+    @if (Model.CanChange && (Model.Sale.PaymentType == "Cash" || Model.Sale.AmountPaid == 0)) {
+    <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Sale.Id" style="margin-left:auto;display:flex;gap:6px;align-items:center"
           onsubmit="return confirm('@Localizer["Cancel this sale? Stock will be reversed."]')">
+      @* Staff must say why (G2). *@
+      <input type="text" name="reason" maxlength="300" required="@(!User.ChecksStaffWork())"
+             placeholder="@Localizer["Reason for cancelling"]@(User.ChecksStaffWork() ? "" : " *")" style="width:220px;font-size:12px" />
       <button type="submit" class="btn btn-danger btn-sm">✕ @Localizer["Cancel Sale"]</button>
     </form>
     }
   }
 </div>
 <div id="printStatus" class="alert" style="display:none;margin-bottom:10px"></div>
+
+@if (Model.Sale.Status == "Active" && Model.Sale.NeedsReview)
+{
+  <div class="alert alert-warning no-print" style="line-height:1.6">
+    @if (User.ChecksStaffWork())
+    {
+      <strong>⚠ @Localizer["Needs checking"]</strong>
+      <partial name="_SaleReviewReasons" model="Model.Sale.ReviewReasons" />
+      <form method="post" asp-page-handler="Reviewed" asp-route-id="@Model.Sale.Id" style="margin-top:6px">
+        <button type="submit" class="btn btn-primary btn-sm">✓ @Localizer["Mark as checked"]</button>
+        <span style="font-size:12px;color:#6b7280;margin-left:6px">@Localizer["If it is wrong, revise or cancel the invoice instead."]</span>
+      </form>
+    }
+    else
+    {
+      <span>⚠ @Localizer["This sale is marked for an administrator to check."]</span>
+    }
+  </div>
+}
+@if (Model.Sale.Status == "Cancelled" && Model.Sale.CancelledAt is { } cAt)
+{
+  <div class="alert alert-info no-print" style="font-size:13px">
+    ⛔ @Localizer["Cancelled {0} by {1}", cAt.ToLocalTime().ToString("dd MMM yyyy HH:mm"), Model.Sale.CancelledBy ?? ""]@if (!string.IsNullOrEmpty(Model.Sale.CancelReason)) { <span>: @Model.Sale.CancelReason</span> }
+  </div>
+}
 
 <div style="display:grid;grid-template-columns:1fr 360px;gap:16px">
 <!-- Invoice -->

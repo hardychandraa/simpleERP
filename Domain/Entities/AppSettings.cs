@@ -38,4 +38,6 @@ public class AppSettings {
     /// audits it; the main settings form never touches it.
     /// </summary>
     public DateTime? BooksClosedThrough { get; set; }
+    /// <summary>A Staff sale discounted beyond this % of the master price is flagged for Admin (G4, HC 2026-10-14).</summary>
+    public decimal StaffDiscountLimitPercent { get; set; } = 10m;
 }

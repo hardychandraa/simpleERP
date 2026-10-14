@@ -49,9 +49,13 @@ public class CommissionService : ICommissionService
     public Task AccrueForCashSaleAsync(Sale sale, IReadOnlyList<SaleItem> items)
         => AccrueAsync(sale, items, sale.GrandTotal, paymentRecordId: null);
 
-    /// <summary>Commission on a credit payment — prorated to the fraction of the invoice it collects.</summary>
-    public Task AccrueForPaymentAsync(Sale sale, PaymentRecord payment)
-        => AccrueAsync(sale, sale.SaleItems.ToList(), payment.Amount, payment.Id);
+    /// <summary>
+    /// Commission on a credit payment — prorated to the fraction of the invoice it collects.
+    /// <paramref name="cashCollected"/> is the cash in it when part of the payment was funded
+    /// by credit notes in a settlement (that part earns nothing: G7, HC 2026-10-14).
+    /// </summary>
+    public Task AccrueForPaymentAsync(Sale sale, PaymentRecord payment, decimal? cashCollected = null)
+        => AccrueAsync(sale, sale.SaleItems.ToList(), cashCollected ?? payment.Amount, payment.Id);
 
     private async Task AccrueAsync(Sale sale, IReadOnlyList<SaleItem> items,
         decimal collectedAmount, Guid? paymentRecordId)

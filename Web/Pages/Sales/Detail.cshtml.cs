@@ -34,6 +34,8 @@ public class DetailModel : PageModel
     public decimal        StillOwed      { get; set; }
 
     [BindProperty] public RecordPaymentDto PayInput { get; set; } = new();
+    /// <summary>Staff may cancel or revise only a sale entered today (G2); Admin any.</summary>
+    public bool CanChange { get; set; }
     public string? Msg   { get; set; }
     public bool    IsErr { get; set; }
 
@@ -56,8 +58,18 @@ public class DetailModel : PageModel
         // will actually accept rather than inviting a refusal.
         StillOwed   = Math.Max(0, sale.NetBalanceDue);
         PayInput.SaleId = id;
+        CanChange = User.ChecksStaffWork() || sale.CreatedAt.ToLocalTime().Date == DateTime.Today;
+        // The flag's reasons can name a product sold below cost: Admin only (G4).
+        if (!User.ChecksStaffWork()) sale.ReviewReasons = null;
         Msg = msg; IsErr = err;
         return Page();
+    }
+
+    public async Task<IActionResult> OnPostReviewedAsync(Guid id)
+    {
+        if (!User.ChecksStaffWork()) return this.Refuse("checking a flagged sale is Admin-only");
+        var result = await _sales.MarkReviewedAsync(id, isAdmin: true, this.CurrentUserName());
+        return RedirectToPage(new { id, msg = result.Success ? "Marked as checked." : result.Error, err = !result.Success });
     }
 
     public async Task<IActionResult> OnPostPaymentAsync(Guid id)
@@ -74,10 +86,10 @@ public class DetailModel : PageModel
         });
     }
 
-    public async Task<IActionResult> OnPostCancelAsync(Guid id)
+    public async Task<IActionResult> OnPostCancelAsync(Guid id, string? reason)
     {
         var user   = this.CurrentUserName();
-        var result = await _sales.CancelAsync(id, user);
+        var result = await _sales.CancelAsync(id, user, User.ChecksStaffWork(), reason);
         return RedirectToPage(new {
             id,
             msg = result.Success ? "Sale cancelled. Stock reversed." : result.Error,

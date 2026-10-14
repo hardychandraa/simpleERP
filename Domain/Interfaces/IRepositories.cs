@@ -105,6 +105,12 @@ public interface ISaleRepository {
     Task<string> GenerateInvoiceNumberAsync();
     Task AddAsync(Sale sale);
     void Update(Sale sale);
+    /// <summary>The sale posted from this New Sale form, if it was already submitted once (G9).</summary>
+    Task<Guid?> FindBySubmissionIdAsync(Guid submissionId);
+    /// <summary>Active sales still flagged Perlu dicek, oldest first.</summary>
+    Task<List<Sale>> GetNeedingReviewAsync();
+    /// <summary>Sales cancelled (including revised) since <paramref name="sinceUtc"/>, newest first.</summary>
+    Task<List<Sale>> GetCancelledSinceAsync(DateTime sinceUtc);
     /// <summary>
     /// Aggregated P&amp;L figures for [from, to), active sales only.
     /// Deliberately set-based (SUM/COUNT in SQL) rather than loading rows into
@@ -442,6 +448,8 @@ public interface ICommissionPayoutRepository {
 
 public interface ICustomerReturnRepository {
     Task<CustomerReturn?> GetByIdWithItemsAsync(Guid id);
+    /// <summary>Active returns flagged for Admin (G3).</summary>
+    Task<int> CountNeedingReviewAsync();
     Task<List<CustomerReturn>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null);
     /// <summary>Returns raised against one invoice — shown on the sale, and used to cap further returns.</summary>
     Task<List<CustomerReturn>> GetBySaleAsync(Guid saleId);
@@ -535,6 +543,8 @@ public interface ICreditNoteRepository {
     /// rather than subtracting.
     /// </summary>
     Task<decimal> GetOpenTotalAsync(CreditDebitType type);
+    /// <summary>Credit notes waiting for Admin's approval (G1 / G3).</summary>
+    Task<int> CountAwaitingApprovalAsync();
     Task AddAsync(CreditNote note);
     void Update(CreditNote note);
 }

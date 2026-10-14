@@ -253,6 +253,9 @@ builder.Services.AddRazorPages(options => {
     options.Conventions.AuthorizePage("/Products/Create",          "AdminOnly");
     options.Conventions.AuthorizePage("/Products/Edit",            "AdminOnly");
     options.Conventions.AuthorizePage("/SalesPersons/Edit",        "AdminOnly");
+    // Payment terms set every credit sale's due date: Admin's (G6, HC 2026-10-14; Staff could
+    // turn TOP 30 into 365 days for everyone). Staff still pick a term on a sale.
+    options.Conventions.AuthorizeFolder("/PaymentTerms",           "AdminOnly");
 })
 .AddMvcOptions(o => {
     // <input type="number"> always posts an invariant floating-point number, but the

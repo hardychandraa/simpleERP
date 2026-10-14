@@ -52,7 +52,7 @@ public class CreateModel : PageModel
         {
             var p = await _purchases.GetQtyDetailAsync(Edit.Value);
             if (p == null) return RedirectToPage("/GoodsIn/Index");
-            if (!p.EnteredWithoutPrice || p.Status == "Cancelled")
+            if (!p.EnteredWithoutPrice || p.Status == "Cancelled" || (p.ReviewedAt != null && !User.ChecksStaffWork()))
                 return RedirectToPage("/GoodsIn/Detail", new { id = p.Id, msg = _loc["This purchase cannot be edited here."].Value, err = true });
             EditingNumber = p.PurchaseNumber; EditingSupplier = p.SupplierName;
             SupplierId = p.SupplierId; SupplierDocumentNumber = p.SupplierDocumentNumber;

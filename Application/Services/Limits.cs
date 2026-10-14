@@ -12,4 +12,10 @@ public static class Limits
     public const decimal MaxUnitAmount = 1_000_000_000m;     // a price or cost per unit
     public const decimal MaxLineAmount = 100_000_000_000m;   // qty × price, and any single amount (a note, an expense)
     public const int     MaxLines      = 200;                // lines on one document
+
+    /// <summary>
+    /// Goods move in whole units only (HC, 2026-10-14): a 0.5 sold or received left stock
+    /// that no physical count could ever match.
+    /// </summary>
+    public static bool IsWholeUnits(decimal qty) => qty == decimal.Truncate(qty);
 }

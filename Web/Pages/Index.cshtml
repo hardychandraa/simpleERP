@@ -12,6 +12,32 @@
 }
 
 <partial name="_PendingChecks" model="Model.PendingChecks" />
+@if (Model.SalesToCheck + Model.NotesToApprove + Model.ReturnsToCheck > 0)
+{
+    <div class="alert alert-warning no-print" style="line-height:1.8">
+        ⚠ <strong>@Localizer["Staff work to check"]:</strong>
+        @if (Model.SalesToCheck > 0)   { <a href="/Sales?pending=true" style="font-weight:700;margin-left:6px">@Localizer["{0} sale(s)", Model.SalesToCheck] &rarr;</a> }
+        @if (Model.NotesToApprove > 0) { <a href="/CreditNotes" style="font-weight:700;margin-left:10px">@Localizer["{0} credit note(s) to approve", Model.NotesToApprove] &rarr;</a> }
+        @if (Model.ReturnsToCheck > 0) { <a href="/Returns" style="font-weight:700;margin-left:10px">@Localizer["{0} cash-sale return(s)", Model.ReturnsToCheck] &rarr;</a> }
+    </div>
+}
+@if (Model.CancelledToday.Any())
+{
+    <div class="card no-print" style="margin-bottom:14px">
+        <div class="card-title">⛔ @Localizer["Cancelled or revised today"]</div>
+        <table>
+            <thead><tr><th>@Localizer["Invoice"]</th><th>@Localizer["Customer"]</th><th style="text-align:right">@Localizer["Total"]</th><th>@Localizer["By"]</th><th>@Localizer["Reason"]</th></tr></thead>
+            <tbody>
+            @foreach (var c in Model.CancelledToday)
+            {
+                <tr><td><a href="/Sales/@c.Id">@c.InvoiceNumber</a> <span style="font-size:11px;color:#9ca3af">@c.CancelledAt?.ToLocalTime().ToString("HH:mm")</span></td>
+                    <td>@c.CustomerName</td><td style="text-align:right">@c.GrandTotal.ToString("N0")</td>
+                    <td style="font-size:12px">@c.CancelledBy</td><td style="font-size:12px">@(c.CancelReason ?? "—")</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
 @if (Model.PendingCounts > 0)
 {
     <div class="alert alert-warning no-print" style="line-height:1.6">

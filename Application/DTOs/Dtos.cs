@@ -455,6 +455,9 @@ public class CreateReturnItemDto {
 }
 public class CustomerReturnDto {
     public Guid      Id             { get; set; }
+    /// <summary>A Staff return on a cash sale, waiting for Admin (G3).</summary>
+    public bool      NeedsReview    { get; set; }
+    public string?   ReviewedBy     { get; set; }
     public string    ReturnNumber   { get; set; } = "";
     public DateTime  ReturnDate     { get; set; }
     public Guid      SaleId         { get; set; }
@@ -536,6 +539,7 @@ public class SupplierReturnItemDto {
 /// </summary>
 public class ReturnListDto {
     public Guid      Id               { get; set; }
+    public bool      NeedsReview      { get; set; }
     public string    ReturnNumber     { get; set; } = "";
     public DateTime  ReturnDate       { get; set; }
     public bool      IsCustomerReturn { get; set; }
@@ -553,6 +557,9 @@ public class ReturnListDto {
 // ── Credit / debit notes ──────────────────────────────────────────────────────
 public class CreditNoteDto {
     public Guid      Id             { get; set; }
+    /// <summary>Waiting for Admin's approval (G1 / G3): can't be applied, netted or settled yet.</summary>
+    public bool      NeedsApproval  { get; set; }
+    public string?   ApprovedBy     { get; set; }
     public string    DocumentNumber { get; set; } = "";
     public string    Type           { get; set; } = "";
     public bool      IsCredit       { get; set; }
@@ -855,6 +862,8 @@ public class AuthenticatedUserDto {
 // ── Sales ─────────────────────────────────────────────────────────────────────
 public class CreateSaleDto {
     public Guid        CustomerId   { get; set; }
+    /// <summary>The New Sale form's one-time id (G9): a resubmit returns the sale already made.</summary>
+    public Guid?       SubmissionId { get; set; }
     /// <summary>Business date of the sale. Null = today. May be backdated so a day's
     /// paperwork can be entered late (power outage, manual write-up); a future date is
     /// rejected — see SaleService.CreateAsync for why.</summary>
@@ -889,6 +898,15 @@ public class CreateSaleItemDto {
 }
 public class SaleDto {
     public Guid      Id            { get; set; }
+    /// <summary>Perlu dicek (G4/G5/G7). Reasons are coded (see SaleReview) and can name cost: Admin only.</summary>
+    public bool      NeedsReview   { get; set; }
+    public string?   ReviewReasons { get; set; }
+    public string?   ReviewedBy    { get; set; }
+    public DateTime? ReviewedAt    { get; set; }
+    public DateTime? CancelledAt   { get; set; }
+    public string?   CancelledBy   { get; set; }
+    public string?   CancelReason  { get; set; }
+    public DateTime  CreatedAt     { get; set; }
     public string    InvoiceNumber { get; set; } = "";
     public DateTime  SaleDate      { get; set; }
     public string    CustomerName  { get; set; } = "";
@@ -992,6 +1010,10 @@ public class InvoiceReceiptDto {
 
 public class SaleListDto {
     public Guid     Id            { get; set; }
+    public bool     NeedsReview   { get; set; }
+    public DateTime? CancelledAt  { get; set; }
+    public string?  CancelledBy   { get; set; }
+    public string?  CancelReason  { get; set; }
     public string   InvoiceNumber { get; set; } = "";
     public DateTime SaleDate      { get; set; }
     public Guid     CustomerId    { get; set; }
@@ -1450,6 +1472,8 @@ public class AppSettingsDto {
     public decimal RebateWithholdingPercent { get; set; } = 15m;
     /// <summary>Month lock, read only here: SaveAsync never writes it (see SetBooksClosedThroughAsync).</summary>
     public DateTime? BooksClosedThrough { get; set; }
+    /// <summary>A Staff sale discounted beyond this % of the master price is flagged Perlu dicek (G4).</summary>
+    public decimal StaffDiscountLimitPercent { get; set; } = 10m;
 }
 
 // ── Result wrappers ───────────────────────────────────────────────────────────

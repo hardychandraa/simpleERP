@@ -27,6 +27,7 @@ public class InventoryService : IInventoryService
     public async Task<ServiceResult> StockInAsync(StockInDto dto)
     {
         if (dto.Qty <= 0)    return _log.Refuse(_loc["Quantity must be > 0."]);
+        if (!Limits.IsWholeUnits(dto.Qty)) return _log.Refuse(_loc["Quantities must be whole units (no fractions)."]);
         if (dto.UnitCost < 0) return _log.Refuse(_loc["Cost cannot be negative."]);
         if (dto.Qty > Limits.MaxQty) return _log.Refuse(_loc["Quantity is too large (at most {0} per line).", Limits.MaxQty.ToString("N0")]);
         if (dto.UnitCost > Limits.MaxUnitAmount) return _log.Refuse(_loc["Amount is too large (at most {0}).", Limits.MaxUnitAmount.ToString("N0")]);
@@ -211,6 +212,7 @@ public class InventoryService : IInventoryService
     {
         if (string.IsNullOrWhiteSpace(dto.Reason)) return _log.Refuse(_loc["Reason is required."]);
         if (dto.QtyActual < 0) return _log.Refuse(_loc["Actual quantity cannot be negative."]);
+        if (!Limits.IsWholeUnits(dto.QtyActual)) return _log.Refuse(_loc["Quantities must be whole units (no fractions)."]);
         if (dto.QtyActual > Limits.MaxQty) return _log.Refuse(_loc["Quantity is too large (at most {0} per line).", Limits.MaxQty.ToString("N0")]);
 
         var product = await _products.GetByIdAsync(dto.ProductId);
