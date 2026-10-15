@@ -72,6 +72,7 @@ public class AppDbContext : DbContext
             e.Property(c => c.TaxId).HasMaxLength(50);
             e.Property(c => c.NationalId).HasMaxLength(20);
             e.Property(c => c.DefaultDiscountPercent).HasColumnType("decimal(18,4)");
+            e.Property(c => c.CreditLimit).HasColumnType("decimal(18,4)");   // same type as Sale.GrandTotal
             e.HasOne(c => c.SalesPerson).WithMany()
                 .HasForeignKey(c => c.SalesPersonId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(c => c.PaymentTerm).WithMany()

@@ -8,18 +8,20 @@ namespace SimpleERP.Web.Pages.Customers;
 [HandlesBindingErrors]
 public class EditModel:PageModel{
     private readonly ICustomerService _svc;    private readonly IStringLocalizer<SharedResource> _loc;
-    private readonly ISalesPersonService _people; private readonly IPaymentTermService _terms;
-public EditModel(ICustomerService s, ISalesPersonService people, IPaymentTermService terms, IStringLocalizer<SharedResource> loc)
-    { _svc=s; _people=people; _terms=terms; _loc = loc; }
+    private readonly ISalesPersonService _people; private readonly IPaymentTermService _terms; private readonly ISaleService _sales;
+public EditModel(ICustomerService s, ISalesPersonService people, IPaymentTermService terms, ISaleService sales, IStringLocalizer<SharedResource> loc)
+    { _svc=s; _people=people; _terms=terms; _sales=sales; _loc = loc; }
     [BindProperty]public UpdateCustomerDto Input{get;set;}=new();
     public string? Error{get;set;}
     public SaleDefaultsVm Defaults{get;set;}=null!;
+    public CreditLimitVm Credit{get;set;}=null!;
     public async Task<IActionResult> OnGetAsync(Guid id){
         ViewData["Title"]="Edit Customer";
         var c=await _svc.GetByIdAsync(id);if(c==null)return RedirectToPage("/Customers/Index");
         Input=new UpdateCustomerDto{Id=c.Id,Name=c.Name,Phone=c.Phone,Address=c.Address,IsActive=c.IsActive,
             TaxId=c.TaxId,NationalId=c.NationalId,
-            SalesPersonId=c.SalesPersonId,PaymentTermId=c.PaymentTermId,DefaultDiscountPercent=c.DefaultDiscountPercent};
+            SalesPersonId=c.SalesPersonId,PaymentTermId=c.PaymentTermId,DefaultDiscountPercent=c.DefaultDiscountPercent,
+            CreditLimit=c.CreditLimit};
         await LoadAsync();
         return Page();
     }
@@ -35,5 +37,7 @@ public EditModel(ICustomerService s, ISalesPersonService people, IPaymentTermSer
     private async Task LoadAsync(){
         var (people,terms)=await SaleDefaultsVm.LoadOptionsAsync(_people,_terms);
         Defaults=new(people,terms,Input.SalesPersonId,Input.PaymentTermId,Input.DefaultDiscountPercent);
+        // Receivables: computed for Admin only, never for a page Staff can open with it.
+        Credit=new(Input.CreditLimit, User.MaintainsMasterData() ? await _sales.GetCreditStatusAsync(Input.Id) : null);
     }
 }

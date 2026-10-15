@@ -14,6 +14,7 @@ public CreateModel(ICustomerService s, ISalesPersonService people, IPaymentTermS
     [BindProperty]public CreateCustomerDto Input{get;set;}=new();
     public string? Error{get;set;}
     public SaleDefaultsVm Defaults{get;set;}=null!;
+    public CreditLimitVm Credit{get;set;}=null!;
     public async Task OnGetAsync(){ViewData["Title"]="Add Customer";await LoadAsync();}
     public async Task<IActionResult> OnPostAsync(){
         ViewData["Title"]="Add Customer";
@@ -25,5 +26,6 @@ public CreateModel(ICustomerService s, ISalesPersonService people, IPaymentTermS
     private async Task LoadAsync(){
         var (people,terms)=await SaleDefaultsVm.LoadOptionsAsync(_people,_terms);
         Defaults=new(people,terms,Input.SalesPersonId,Input.PaymentTermId,Input.DefaultDiscountPercent);
+        Credit=new(Input.CreditLimit, null);
     }
 }

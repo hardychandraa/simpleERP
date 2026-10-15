@@ -15,6 +15,7 @@
   </div>
   <div class="fg"><label>@Localizer["Status"]</label><select asp-for="Input.IsActive"><option value="true">@Localizer["Active"]</option><option value="false">@Localizer["Inactive"]</option></select></div>
   <partial name="_SaleDefaults" model="Model.Defaults" />
+  @if (User.MaintainsMasterData()) { <partial name="_CreditLimit" model="Model.Credit" /> }
   <div style="display:flex;gap:10px;margin-top:6px">
     <button type="submit" class="btn btn-primary">@Localizer["Update"]</button>
     <a href="/Customers" class="btn btn-outline">@Localizer["Cancel"]</a>

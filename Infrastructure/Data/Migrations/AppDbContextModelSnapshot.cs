@@ -17,7 +17,7 @@ namespace SimpleERP.Infrastructure.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.11")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -80,6 +80,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("BooksClosedThrough")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<int>("OverdueGraceDays")
+                        .HasColumnType("integer");
+
                     b.Property<int>("PaperColumns")
                         .HasColumnType("integer");
 
@@ -130,6 +133,7 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         {
                             Id = "default",
                             AppName = "SimpleERP",
+                            OverdueGraceDays = 7,
                             PaperColumns = 96,
                             PaperLines = 33,
                             PrinterEnabled = false,
@@ -532,6 +536,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<decimal?>("CreditLimit")
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal?>("DefaultDiscountPercent")
                         .HasColumnType("decimal(18,4)");

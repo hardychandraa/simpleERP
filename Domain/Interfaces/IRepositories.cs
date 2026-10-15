@@ -102,6 +102,12 @@ public interface ISaleRepository {
     /// AmountPaid, but it does settle the balance.
     /// </summary>
     Task<List<Sale>> GetDueSalesAsync(Guid? customerId = null);
+    /// <summary>
+    /// Makes two credit sales to one customer run one after the other until the first commits,
+    /// so each one's credit-limit check sees the other's invoice. Joins (or opens) the request's
+    /// transaction; unlike IUnitOfWork.LockAsync it leaves tracked entities alone.
+    /// </summary>
+    Task LockCustomerCreditAsync(Guid customerId);
     Task<string> GenerateInvoiceNumberAsync();
     Task AddAsync(Sale sale);
     void Update(Sale sale);

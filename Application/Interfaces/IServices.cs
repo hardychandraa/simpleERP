@@ -124,6 +124,13 @@ public interface ISaleService {
     /// </summary>
     Task<InvoiceReceiptDto?> GetInvoiceReceiptAsync(Guid customerId, DateTime from, DateTime to);
     Task<List<DueCustomerDto>> GetDueSummaryAsync();
+    /// <summary>One customer's plafon, open credit balance and overdue invoices (Admin only).</summary>
+    Task<CustomerCreditDto> GetCreditStatusAsync(Guid customerId);
+    /// <summary>
+    /// The same for every active customer, by id: the New Sale page's credit panel (Admin only).
+    /// <paramref name="excludeSaleId"/> leaves out the invoice being revised, as saving does.
+    /// </summary>
+    Task<Dictionary<Guid, CustomerCreditDto>> GetCreditStatusesAsync(Guid? excludeSaleId = null);
 }
 public interface IReportService {
     Task<EndOfDayDto> GetEndOfDayAsync(DateTime date);

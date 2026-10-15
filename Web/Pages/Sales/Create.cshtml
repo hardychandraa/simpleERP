@@ -40,6 +40,11 @@
                 <select data-searchable asp-for="CustomerId" asp-items="Model.CustomerOptions" required onchange="onCustomerChange()">
                     <option value="">— @Localizer["Select customer"] —</option>
                 </select>
+                @if (Model.Credit != null)
+                {
+                    @* Admin only: the customer's plafon and overdue invoices, a warning they can go past. *@
+                    <div id="creditPanel" style="display:none;margin-top:6px;padding:8px 10px;border-radius:6px;font-size:13px;line-height:1.5"></div>
+                }
             </div>
             <div class="fg">
                 <label>@Localizer["Sale Date"] *</label>
@@ -290,7 +295,16 @@ const T = {
     offInvoice:     @Html.Raw(Json.Serialize(Localizer["off the invoice"].Value)),
     included:       @Html.Raw(Json.Serialize(Localizer["included"].Value)),
     mo:             @Html.Raw(Json.Serialize(Localizer["mo"].Value)),
-    remove:         @Html.Raw(Json.Serialize(Localizer["Remove"].Value))
+    remove:         @Html.Raw(Json.Serialize(Localizer["Remove"].Value)),
+    creditLimit:    @Html.Raw(Json.Serialize(Localizer["Credit limit"].Value)),
+    noLimit:        @Html.Raw(Json.Serialize(Localizer["No limit"].Value)),
+    cashOnly:       @Html.Raw(Json.Serialize(Localizer["0 (cash only)"].Value)),
+    owedNow:        @Html.Raw(Json.Serialize(Localizer["Owed now"].Value)),
+    afterSale:      @Html.Raw(Json.Serialize(Localizer["After this sale"].Value)),
+    overBy:         @Html.Raw(Json.Serialize(Localizer["over the limit by {0}"].Value)),
+    overdueOne:     @Html.Raw(Json.Serialize(Localizer["{0} invoice more than {1} days past due ({2}), oldest {3}, {4} days late"].Value)),
+    overdueMany:    @Html.Raw(Json.Serialize(Localizer["{0} invoices more than {1} days past due ({2}), oldest {3}, {4} days late"].Value)),
+    canProceed:     @Html.Raw(Json.Serialize(Localizer["You can still create this sale."].Value))
 };
 
 // Product data from server (master prices stored for price-override detection)
@@ -317,6 +331,42 @@ const CUSTOMER_DEFAULTS = @Html.Raw(JsonSerializer.Serialize(
 ));
 let customerDisc = 0;   // the picked customer's item discount %, re-applied after each line
 
+// ── Credit panel (Admin only; null on a Staff page) ──────────────────────────
+// Same figures the server checks on save: open credit invoices net of payments and applied
+// notes, plus this sale's total when it is a credit sale. A warning only: Admin may go ahead.
+const CREDIT = @Html.Raw(Model.Credit == null ? "null" : JsonSerializer.Serialize(
+    Model.Credit.ToDictionary(k => k.Key.ToString(), k => new {
+        limit = k.Value.CreditLimit, open = k.Value.Open, grace = k.Value.GraceDays,
+        overdue = k.Value.OverdueCount, overdueAmt = k.Value.OverdueAmount,
+        oldest = k.Value.OldestOverdueInvoice ?? "", late = k.Value.OldestDaysLate })));
+let lastGrand = 0;
+function fill(t, ...a) { return a.reduce((s, v, i) => s.split('{' + i + '}').join(String(v)), t); }
+function escHtml(s) { return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]); }
+function updateCredit() {
+    const panel = document.getElementById('creditPanel');
+    if (!CREDIT || !panel) return;
+    const c = CREDIT[document.querySelector('select[name="CustomerId"]').value];
+    if (!c) { panel.style.display = 'none'; return; }
+    const credit = document.getElementById('paymentTypeSelect').value !== '1';
+    const after  = c.open + (credit ? lastGrand : 0);
+    // Shown whenever the customer is (or would be) over the limit; red only on a credit sale,
+    // the one case where the server checks it.
+    const overAmt = c.limit !== null && after > c.limit ? after - c.limit : 0;
+    const over   = credit && overAmt > 0;
+    const late   = credit && c.overdue > 0;
+    let h = escHtml(T.creditLimit) + ': <strong>' + (c.limit === null ? escHtml(T.noLimit) : c.limit === 0 ? escHtml(T.cashOnly) : fmt(c.limit)) + '</strong>'
+          + ' · ' + escHtml(T.owedNow) + ': ' + fmt(c.open);
+    if (credit && lastGrand > 0) h += ' · ' + escHtml(T.afterSale) + ': <strong>' + fmt(after) + '</strong>';
+    if (overAmt > 0) h += '<div style="color:#b91c1c' + (over ? ';font-weight:700' : '') + '">⚠ ' + escHtml(fill(T.overBy, fmt(overAmt))) + '</div>';
+    if (c.overdue > 0) h += '<div style="color:#b91c1c' + (late ? ';font-weight:700' : '') + '">⚠ '
+          + escHtml(fill(c.overdue === 1 ? T.overdueOne : T.overdueMany, c.overdue, c.grace, fmt(c.overdueAmt), c.oldest, c.late)) + '</div>';
+    if (over || late) h += '<div style="color:#6b7280;font-size:12px">' + escHtml(T.canProceed) + '</div>';
+    panel.innerHTML = h;
+    panel.style.background = (over || late) ? '#fef2f2' : '#f9fafb';
+    panel.style.border = '1px solid ' + ((over || late) ? '#fecaca' : '#e5e7eb');
+    panel.style.display = '';
+}
+
 function onCustomerChange() {
     const d = CUSTOMER_DEFAULTS[document.querySelector('select[name="CustomerId"]').value];
     if (!d) return;
@@ -330,6 +380,7 @@ function onCustomerChange() {
     updateDueDatePreview();
     customerDisc = d.disc;
     resetLineDiscount();
+    updateCredit();
 }
 
 function resetLineDiscount() {
@@ -349,6 +400,7 @@ function onPaymentTypeChange() {
     if (isCash) document.getElementById('paymentTermSelect').value = '';
 
     updateDueDatePreview();
+    updateCredit();
 }
 
 // The selected PaymentTerm is the only source of a due date — mirrors the server.
@@ -584,6 +636,8 @@ function syncSummary(sub, disc) {
     document.getElementById('sumVatLabel').textContent =
         VAT_RATE > 0 ? '(' + (VAT_RATE * 100).toFixed(2).replace(/\.?0+$/, '') + '%' + (taxIncl ? ', ' + T.included : '') + ')' : '';
     document.getElementById('sumTotal').textContent = fmt(grand);
+    lastGrand = grand;
+    updateCredit();
 }
 
 document.getElementById('saleForm').addEventListener('submit', function(e) {
@@ -625,6 +679,7 @@ function fmt(n)    { return Math.round(n).toLocaleString(); }
 (function () {
     const d = CUSTOMER_DEFAULTS[document.querySelector('select[name="CustomerId"]').value];
     if (d) { customerDisc = d.disc; resetLineDiscount(); }
+    updateCredit();
 })();
 
 function esc(s)    { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }

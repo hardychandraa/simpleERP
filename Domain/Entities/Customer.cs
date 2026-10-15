@@ -23,6 +23,12 @@ public class Customer {
     public Guid? PaymentTermId { get; set; }
     /// <summary>Usual discount per item, in percent (2 = 2%). Null = no discount.</summary>
     public decimal? DefaultDiscountPercent { get; set; }
+    /// <summary>
+    /// Credit limit (plafon), in rupiah, incl. PPN: what this customer may owe on open credit
+    /// invoices. Null = no limit; 0 = no credit at all (cash only). Admin only, never shown to
+    /// Staff; a Staff credit sale beyond it is flagged Perlu dicek, not refused (HC, 2026-10-15).
+    /// </summary>
+    public decimal? CreditLimit { get; set; }
 
     public SalesPerson? SalesPerson { get; set; }
     public PaymentTerm? PaymentTerm { get; set; }

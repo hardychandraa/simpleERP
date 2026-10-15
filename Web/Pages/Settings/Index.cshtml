@@ -72,6 +72,13 @@
                     @Localizer["A Staff sale priced more than this below the master price, or below cost, still posts but is marked Perlu dicek for you."]
                 </div>
             </div>
+            <div class="fg" style="max-width:240px">
+                <label>@Localizer["Overdue grace days"]</label>
+                <input type="number" asp-for="Input.OverdueGraceDays" step="1" min="0" max="365" />
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+                    @Localizer["A customer counts as overdue once an invoice is more than this many days past its due date. A Staff credit sale to them is then marked Perlu dicek."]
+                </div>
+            </div>
         </div>
     </div>
 

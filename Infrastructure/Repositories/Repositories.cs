@@ -1588,6 +1588,15 @@ public class SaleRepository : ISaleRepository
            .ToListAsync();
     }
 
+    public async Task LockCustomerCreditAsync(Guid customerId)
+    {
+        if (_db.Database.CurrentTransaction == null)
+            await _db.Database.BeginTransactionAsync();
+        // Its own key ("credit:" + id), so it never queues behind a lock on the customer's id
+        // taken for some other purpose.
+        await _db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"credit:" + customerId}, 0))");
+    }
+
     public Task<List<Sale>> GetDueSalesAsync(Guid? customerId = null)
     {
         var q = _db.Sales

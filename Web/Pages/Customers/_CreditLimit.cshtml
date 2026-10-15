@@ -1,0 +1,28 @@
+@model SimpleERP.Web.Pages.Customers.CreditLimitVm
+@* The customer's plafon (HC, 2026-10-15). Admin only: the page renders this partial for Admin
+   alone, so Staff never receive the figure; the service ignores a limit Staff post anyway. *@
+@{ var inv = System.Globalization.CultureInfo.InvariantCulture; }
+<div class="card-title" style="margin-top:18px">@Localizer["Credit limit"]</div>
+<div class="fg">
+  <label>@Localizer["Credit limit (Rp, incl. PPN)"]</label>
+  <input type="number" name="Input.CreditLimit" min="0" step="1"
+         value="@(Model.Limit?.ToString("0", inv))" placeholder="@Localizer["No limit"]" />
+  <div style="font-size:11px;color:#9ca3af;margin-top:4px">
+    @Localizer["What this customer may owe on unpaid credit invoices. Empty = no limit; 0 = cash only. A Staff credit sale over it, or to a customer with overdue invoices, still posts but is marked Perlu dicek for you."]
+  </div>
+</div>
+@if (Model.Status is { } s)
+{
+  <div style="font-size:13px;margin:-4px 0 12px;padding:8px 10px;border-radius:6px;background:@(s.HasOverdue || (s.CreditLimit is { } l && s.Open > l) ? "#fef2f2" : "#f9fafb")">
+    @Localizer["Owed now: {0}", s.Open.ToString("N0")]
+    @if (s.CreditLimit is { } lim && s.Open > lim) { <strong style="color:#b91c1c"> · @Localizer["over the limit by {0}", (s.Open - lim).ToString("N0")]</strong> }
+    @if (s.HasOverdue)
+    {
+      <div style="color:#b91c1c;margin-top:2px">
+        @(s.OverdueCount == 1
+            ? Localizer["{0} invoice more than {1} days past due ({2}), oldest {3}, {4} days late", s.OverdueCount, s.GraceDays, s.OverdueAmount.ToString("N0"), s.OldestOverdueInvoice ?? "", s.OldestDaysLate]
+            : Localizer["{0} invoices more than {1} days past due ({2}), oldest {3}, {4} days late", s.OverdueCount, s.GraceDays, s.OverdueAmount.ToString("N0"), s.OldestOverdueInvoice ?? "", s.OldestDaysLate])
+      </div>
+    }
+  </div>
+}

@@ -13,6 +13,7 @@
     <div class="fg"><label>@Localizer["NIK (KTP)"]</label><input type="text" asp-for="Input.NationalId" maxlength="20" inputmode="numeric" placeholder="@Localizer["Optional, 16 digits"]"/></div>
   </div>
   <partial name="_SaleDefaults" model="Model.Defaults" />
+  @if (User.MaintainsMasterData()) { <partial name="_CreditLimit" model="Model.Credit" /> }
   <div style="display:flex;gap:10px;margin-top:6px">
     <button type="submit" class="btn btn-primary">@Localizer["Save"]</button>
     <a href="/Customers" class="btn btn-outline">@Localizer["Cancel"]</a>

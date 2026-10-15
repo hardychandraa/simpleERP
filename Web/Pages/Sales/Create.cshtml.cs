@@ -73,6 +73,11 @@ public class CreateModel : PageModel
     /// <summary>Each customer's sale defaults (salesperson, term, item discount %), by id.</summary>
     public List<CustomerDto>    Customers         { get; set; } = new();
     public List<ProductDto>     AvailableProducts { get; set; } = new();
+    /// <summary>
+    /// Each customer's plafon, open balance and overdue invoices, for Admin's credit panel
+    /// (HC, 2026-10-15). Null for Staff: receivables never reach their page, not even hidden.
+    /// </summary>
+    public Dictionary<Guid, CustomerCreditDto>? Credit { get; set; }
     public string? Error { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
@@ -183,6 +188,7 @@ public class CreateModel : PageModel
             foreach (var p in AvailableProducts)
                 p.CurrentStock += original.Items.Where(i => i.ProductId == p.Id).Sum(i => i.Qty);
         }
+        if (User.SeesBusinessTotals()) Credit = await _sales.GetCreditStatusesAsync(excludeSaleId: Revise);
         TermOptions = await _terms.GetAllAsync(activeOnly: true);
         SalesPersonOptions = await _people.GetAllAsync(activeOnly: true);
         VatRate     = (await _settings.GetAsync()).VatRatePercent / 100m;

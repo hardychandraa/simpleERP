@@ -1559,4 +1559,24 @@
   <data name="Marked as checked." xml:space="preserve"><value>Ditandai sudah dicek.</value></data>
   <data name="Return checked. Its credit note can now be used." xml:space="preserve"><value>Retur sudah dicek. Nota kreditnya sekarang dapat dipakai.</value></data>
   <data name="Return cancelled. The goods have been taken back out of stock and the credit note voided." xml:space="preserve"><value>Retur dibatalkan. Barang dikeluarkan lagi dari stok dan nota kredit dibatalkan.</value></data>
+  <data name="Overdue grace days must be between 0 and 365." xml:space="preserve"><value>Masa tenggang jatuh tempo harus antara 0 dan 365 hari.</value></data>
+  <data name="The credit limit cannot be negative." xml:space="preserve"><value>Plafon kredit tidak boleh negatif.</value></data>
+  <data name="Credit limit" xml:space="preserve"><value>Plafon kredit</value></data>
+  <data name="Credit limit (Rp, incl. PPN)" xml:space="preserve"><value>Plafon kredit (Rp, termasuk PPN)</value></data>
+  <data name="No limit" xml:space="preserve"><value>Tanpa batas</value></data>
+  <data name="What this customer may owe on unpaid credit invoices. Empty = no limit; 0 = cash only. A Staff credit sale over it, or to a customer with overdue invoices, still posts but is marked Perlu dicek for you." xml:space="preserve"><value>Batas piutang pelanggan ini atas faktur kredit yang belum lunas. Kosong = tanpa batas; 0 = hanya tunai. Penjualan kredit oleh Staff yang melewati plafon, atau ke pelanggan yang punya faktur lewat jatuh tempo, tetap tersimpan tetapi ditandai Perlu dicek untuk Anda.</value></data>
+  <data name="Owed now: {0}" xml:space="preserve"><value>Piutang saat ini: {0}</value></data>
+  <data name="over the limit by {0}" xml:space="preserve"><value>melebihi plafon sebesar {0}</value></data>
+  <data name="{0} invoice more than {1} days past due ({2}), oldest {3}, {4} days late" xml:space="preserve"><value>{0} faktur lewat jatuh tempo lebih dari {1} hari ({2}), tertua {3}, terlambat {4} hari</value></data>
+  <data name="{0} invoices more than {1} days past due ({2}), oldest {3}, {4} days late" xml:space="preserve"><value>{0} faktur lewat jatuh tempo lebih dari {1} hari ({2}), tertua {3}, terlambat {4} hari</value></data>
+  <data name="Over the credit limit: {1} owed after this sale, limit {0}" xml:space="preserve"><value>Melebihi plafon kredit: piutang {1} setelah penjualan ini, plafon {0}</value></data>
+  <data name="Customer has {0} overdue invoice: {1}, {2} days past due" xml:space="preserve"><value>Pelanggan punya {0} faktur lewat jatuh tempo: {1}, terlambat {2} hari</value></data>
+  <data name="Customer has {0} overdue invoices, oldest {1}, {2} days past due" xml:space="preserve"><value>Pelanggan punya {0} faktur lewat jatuh tempo, tertua {1}, terlambat {2} hari</value></data>
+  <data name="Overdue grace days" xml:space="preserve"><value>Masa tenggang jatuh tempo (hari)</value></data>
+  <data name="A customer counts as overdue once an invoice is more than this many days past its due date. A Staff credit sale to them is then marked Perlu dicek." xml:space="preserve"><value>Pelanggan dianggap menunggak bila ada faktur yang lewat jatuh tempo lebih dari jumlah hari ini. Penjualan kredit oleh Staff ke pelanggan itu ditandai Perlu dicek.</value></data>
+  <data name="OVER LIMIT" xml:space="preserve"><value>LEWAT PLAFON</value></data>
+  <data name="0 (cash only)" xml:space="preserve"><value>0 (hanya tunai)</value></data>
+  <data name="Owed now" xml:space="preserve"><value>Piutang saat ini</value></data>
+  <data name="After this sale" xml:space="preserve"><value>Setelah penjualan ini</value></data>
+  <data name="You can still create this sale." xml:space="preserve"><value>Penjualan ini tetap bisa dibuat.</value></data>
 </root>

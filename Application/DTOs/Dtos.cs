@@ -58,6 +58,8 @@ public class CustomerDto {
     public Guid?   SalesPersonId { get; set; }
     public Guid?   PaymentTermId { get; set; }
     public decimal? DefaultDiscountPercent { get; set; }
+    /// <summary>Plafon (see Customer.CreditLimit). Admin only.</summary>
+    public decimal? CreditLimit { get; set; }
 }
 public class CreateCustomerDto {
     public string  Name    { get; set; } = "";
@@ -71,6 +73,8 @@ public class CreateCustomerDto {
     public Guid?   SalesPersonId { get; set; }
     public Guid?   PaymentTermId { get; set; }
     public decimal? DefaultDiscountPercent { get; set; }
+    /// <summary>Plafon (see Customer.CreditLimit). Admin only.</summary>
+    public decimal? CreditLimit { get; set; }
 }
 public class UpdateCustomerDto {
     public Guid    Id       { get; set; }
@@ -86,6 +90,8 @@ public class UpdateCustomerDto {
     public Guid?   SalesPersonId { get; set; }
     public Guid?   PaymentTermId { get; set; }
     public decimal? DefaultDiscountPercent { get; set; }
+    /// <summary>Plafon (see Customer.CreditLimit). Admin only.</summary>
+    public decimal? CreditLimit { get; set; }
 }
 
 // ── Inventory ─────────────────────────────────────────────────────────────────
@@ -1209,6 +1215,30 @@ public class DueCustomerDto {
     /// <summary>This customer's receivables split by age. Sums to <see cref="TotalDue"/>.</summary>
     public AgingBucketsDto Aging { get; set; } = new();
     public bool     HasOverdue    => Aging.HasOverdue;
+    /// <summary>The customer's plafon (null = no limit). Admin pages only.</summary>
+    public decimal? CreditLimit   { get; set; }
+    public bool     OverLimit     => CreditLimit is { } l && TotalDue > l;
+}
+
+/// <summary>
+/// A customer's credit position for a new credit sale (HC, 2026-10-15): the plafon, what is
+/// owed on open credit invoices (the same net figure as the Due page) and the invoices more
+/// than the grace days past due. Admin only: it is receivables.
+/// </summary>
+public class CustomerCreditDto {
+    public Guid     CustomerId    { get; set; }
+    /// <summary>Null = no limit; 0 = no credit at all.</summary>
+    public decimal? CreditLimit   { get; set; }
+    /// <summary>Open credit invoices, net of payments and applied credit notes.</summary>
+    public decimal  Open          { get; set; }
+    public int      GraceDays     { get; set; }
+    public int      OverdueCount  { get; set; }
+    public decimal  OverdueAmount { get; set; }
+    /// <summary>The overdue invoice furthest past its due date, and by how many days.</summary>
+    public string?  OldestOverdueInvoice { get; set; }
+    public int      OldestDaysLate { get; set; }
+    public bool     HasOverdue    => OverdueCount > 0;
+    public bool     WouldExceed(decimal adding) => CreditLimit is { } l && Open + adding > l;
 }
 
 // ── Financial reports ─────────────────────────────────────────────────────────
@@ -1474,6 +1504,8 @@ public class AppSettingsDto {
     public DateTime? BooksClosedThrough { get; set; }
     /// <summary>A Staff sale discounted beyond this % of the master price is flagged Perlu dicek (G4).</summary>
     public decimal StaffDiscountLimitPercent { get; set; } = 10m;
+    /// <summary>Days past due before a customer counts as overdue on a new credit sale.</summary>
+    public int     OverdueGraceDays { get; set; } = 7;
 }
 
 // ── Result wrappers ───────────────────────────────────────────────────────────

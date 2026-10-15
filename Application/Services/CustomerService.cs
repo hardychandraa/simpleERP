@@ -31,12 +31,14 @@ public class CustomerService : ICustomerService
     /// Admin only (G6, HC 2026-10-14): a customer's default discount, term and salesperson
     /// flow into every sale, so Staff can add a customer and edit its contact details, but
     /// what they post for the defaults is ignored (new customer: none; existing: unchanged).
+    /// The credit limit (plafon, HC 2026-10-15) is Admin's in the same way.
     /// </param>
     public async Task<ServiceResult> CreateAsync(CreateCustomerDto dto, bool setsSaleDefaults)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Customer name is required."]);
-        if (!setsSaleDefaults) { dto.SalesPersonId = null; dto.PaymentTermId = null; dto.DefaultDiscountPercent = null; }
+        if (!setsSaleDefaults) { dto.SalesPersonId = null; dto.PaymentTermId = null; dto.DefaultDiscountPercent = null; dto.CreditLimit = null; }
         var invalid = ValidateTaxIds(dto.TaxId, dto.NationalId)
+                      ?? ValidateCreditLimit(dto.CreditLimit)
                       ?? await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent);
         if (invalid != null) return invalid;
         await _customers.AddAsync(new Customer {
@@ -46,6 +48,7 @@ public class CustomerService : ICustomerService
             TaxId = Blank(dto.TaxId), NationalId = Blank(dto.NationalId),
             SalesPersonId = dto.SalesPersonId, PaymentTermId = dto.PaymentTermId,
             DefaultDiscountPercent = NormaliseDiscount(dto.DefaultDiscountPercent),
+            CreditLimit = dto.CreditLimit,
             IsActive = true, CreatedAt = DateTime.UtcNow });
         await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
@@ -56,9 +59,11 @@ public class CustomerService : ICustomerService
         var c = await _customers.GetByIdAsync(dto.Id);
         if (c == null) return _log.Refuse(_loc["Customer not found."]);
         if (!setsSaleDefaults)
-        { dto.SalesPersonId = c.SalesPersonId; dto.PaymentTermId = c.PaymentTermId; dto.DefaultDiscountPercent = c.DefaultDiscountPercent; }
+        { dto.SalesPersonId = c.SalesPersonId; dto.PaymentTermId = c.PaymentTermId; dto.DefaultDiscountPercent = c.DefaultDiscountPercent;
+          dto.CreditLimit = c.CreditLimit; }
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Name is required."]);
         var invalid = ValidateTaxIds(dto.TaxId, dto.NationalId)
+                      ?? ValidateCreditLimit(dto.CreditLimit)
                       ?? await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent,
                                                      c.SalesPersonId, c.PaymentTermId);
         if (invalid != null) return invalid;
@@ -67,6 +72,7 @@ public class CustomerService : ICustomerService
         c.TaxId = Blank(dto.TaxId); c.NationalId = Blank(dto.NationalId);
         c.SalesPersonId = dto.SalesPersonId; c.PaymentTermId = dto.PaymentTermId;
         c.DefaultDiscountPercent = NormaliseDiscount(dto.DefaultDiscountPercent);
+        c.CreditLimit = dto.CreditLimit;
         _customers.Update(c); await _uow.SaveChangesAsync();
         return ServiceResult.Ok();
     }
@@ -116,6 +122,12 @@ public class CustomerService : ICustomerService
         return null;
     }
 
+    /// <summary>Empty = no limit; 0 is a real value (no credit at all), so it is kept, not blanked.</summary>
+    private ServiceResult? ValidateCreditLimit(decimal? limit) =>
+        limit is < 0m                  ? _log.Refuse(_loc["The credit limit cannot be negative."])
+        : limit > Limits.MaxLineAmount ? _log.Refuse(_loc["Amount is too large (at most {0}).", Limits.MaxLineAmount.ToString("N0")])
+        : null;
+
     private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
     /// <summary>0% is the same as no discount; stored as null so "none" has one meaning.</summary>
@@ -125,5 +137,5 @@ public class CustomerService : ICustomerService
         { Id=c.Id, Name=c.Name, Phone=c.Phone, Address=c.Address, IsActive=c.IsActive,
           TaxId=c.TaxId, NationalId=c.NationalId,
           SalesPersonId=c.SalesPersonId, PaymentTermId=c.PaymentTermId,
-          DefaultDiscountPercent=c.DefaultDiscountPercent };
+          DefaultDiscountPercent=c.DefaultDiscountPercent, CreditLimit=c.CreditLimit };
 }

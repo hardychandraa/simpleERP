@@ -17,6 +17,7 @@
 <thead><tr>
   <th>@Localizer["Customer"]</th><th>@Localizer["Phone"]</th><th>@Localizer["Open Invoices"]</th>
   <th style="text-align:right">@Localizer["Total Due"]</th>
+  <th style="text-align:right">@Localizer["Credit limit"]</th>
   <th style="text-align:right">@Localizer["Not yet due"]</th>
   <th style="text-align:right">1&ndash;30</th>
   <th style="text-align:right">31&ndash;60</th>
@@ -32,6 +33,9 @@
     @if (d.HasOverdue) {
       <span style="margin-left:6px;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;padding:2px 6px;border-radius:8px">⚠ @Localizer["OVERDUE"]</span>
     }
+    @if (d.OverLimit) {
+      <span style="margin-left:6px;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;padding:2px 6px;border-radius:8px">⚠ @Localizer["OVER LIMIT"]</span>
+    }
     @if (d.Aging.NoDueDate > 0) {
       <div style="font-size:11px;color:#9ca3af" title="@Localizer["Credit with no payment term agreed, so there is no date to be late against"]">
         @Localizer["incl. {0} with no due date", d.Aging.NoDueDate.ToString("N0")]
@@ -41,6 +45,7 @@
   <td>@(d.Phone ?? "—")</td>
   <td><span class="badge info">@d.OpenInvoices</span></td>
   <td style="text-align:right"><span style="font-weight:700;color:#dc2626">@d.TotalDue.ToString("N0")</span></td>
+  <td style="text-align:right;color:@(d.OverLimit ? "#b91c1c" : "#6b7280");font-weight:@(d.OverLimit ? "700" : "400")">@(d.CreditLimit is { } lim ? lim.ToString("N0") : "—")</td>
   <td style="text-align:right;color:#6b7280">@(d.Aging.NotYetDue  > 0 ? d.Aging.NotYetDue.ToString("N0")  : "—")</td>
   <td style="text-align:right;color:@(d.Aging.Days1To30  > 0 ? "#b45309" : "#d1d5db")">@(d.Aging.Days1To30  > 0 ? d.Aging.Days1To30.ToString("N0")  : "—")</td>
   <td style="text-align:right;color:@(d.Aging.Days31To60 > 0 ? "#c2410c" : "#d1d5db")">@(d.Aging.Days31To60 > 0 ? d.Aging.Days31To60.ToString("N0") : "—")</td>

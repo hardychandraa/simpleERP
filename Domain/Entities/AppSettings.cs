@@ -40,4 +40,9 @@ public class AppSettings {
     public DateTime? BooksClosedThrough { get; set; }
     /// <summary>A Staff sale discounted beyond this % of the master price is flagged for Admin (G4, HC 2026-10-14).</summary>
     public decimal StaffDiscountLimitPercent { get; set; } = 10m;
+    /// <summary>
+    /// Days past an invoice's due date before the customer counts as overdue (HC, 2026-10-15: 7 to
+    /// start). Covers a transfer recorded a day late, a giro still clearing, a weekly collection round.
+    /// </summary>
+    public int OverdueGraceDays { get; set; } = 7;
 }

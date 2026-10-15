@@ -375,6 +375,26 @@ public class SaleService : ISaleService
             }
         }
 
+        // ── Credit limit and overdue (HC 2026-10-15) ───────────────────────────────
+        // Credit sales only: a cash sale extends no credit. A Staff sale over the plafon, or to a
+        // customer with an invoice more than the grace days past due, still posts but is flagged
+        // for Admin; Admin was already warned on the page, so theirs posts as is and the audit
+        // line keeps the fact. Two Staff sales to one customer queue at the lock, so the second
+        // one's balance includes the first. On a revision the original is already cancelled in
+        // this transaction, so it is not counted twice.
+        var creditNotes = new List<string>();
+        if (dto.PaymentType != PaymentType.Cash)
+        {
+            if (!isAdmin) await _sales.LockCustomerCreditAsync(customer.Id);
+            var credit = await GetCreditStatusAsync(customer.Id);
+            if (credit.WouldExceed(grandTotal))
+                creditNotes.Add(SaleReview.Line(SaleReview.CreditLimit, Money(credit.CreditLimit!.Value), Money(credit.Open + grandTotal)));
+            if (credit.HasOverdue)
+                creditNotes.Add(SaleReview.Line(SaleReview.Overdue, credit.OverdueCount.ToString(),
+                    credit.OldestOverdueInvoice ?? "", credit.OldestDaysLate.ToString()));
+            if (!isAdmin) reasons.AddRange(creditNotes);
+        }
+
         // Build audit detail — note any price overrides
         var overrides = saleItems
             .Where(i => !string.IsNullOrEmpty(i.PriceReason))
@@ -422,7 +442,8 @@ public class SaleService : ISaleService
         // Audit
         var auditDetail = sale.InvoiceNumber +
             (overrides.Any() ? " | PriceOverrides: " + string.Join("; ", overrides) : "") +
-            (sale.NeedsReview ? " | Perlu dicek: " + string.Join("; ", reasons) : "");
+            (sale.NeedsReview ? " | Perlu dicek: " + string.Join("; ", reasons) : "") +
+            (isAdmin && creditNotes.Count > 0 ? " | Credit warning (Admin went ahead): " + string.Join("; ", creditNotes) : "");
         await _audit.LogAsync(user, "Sale.Create", auditDetail);
 
         _log.LogInformation(
@@ -900,6 +921,7 @@ public class SaleService : ISaleService
                 CustomerId   = g.Key,
                 CustomerName = g.First().Sale.Customer?.Name ?? "",
                 Phone        = g.First().Sale.Customer?.Phone,
+                CreditLimit  = g.First().Sale.Customer?.CreditLimit,
                 OpenInvoices = g.Count(),
                 TotalDue     = g.Sum(x => x.Net),
                 Aging        = new AgingBucketsDto {
@@ -915,6 +937,50 @@ public class SaleService : ISaleService
             .ThenByDescending(d => d.TotalDue)
             .ToList();
     }
+
+    public async Task<CustomerCreditDto> GetCreditStatusAsync(Guid customerId)
+    {
+        var limit = (await _customers.GetByIdAsync(customerId))?.CreditLimit;
+        var grace = (await _settings.GetAsync()).OverdueGraceDays;
+        var due   = await _sales.GetDueSalesAsync(customerId);
+        var applied = await _noteApplications.GetAppliedTotalsForSalesAsync(due.Select(s => s.Id));
+        return Credit(customerId, limit, grace, due, applied);
+    }
+
+    public async Task<Dictionary<Guid, CustomerCreditDto>> GetCreditStatusesAsync(Guid? excludeSaleId = null)
+    {
+        var grace = (await _settings.GetAsync()).OverdueGraceDays;
+        var due   = (await _sales.GetDueSalesAsync()).Where(s => s.Id != excludeSaleId).ToList();
+        var applied = await _noteApplications.GetAppliedTotalsForSalesAsync(due.Select(s => s.Id));
+        var byCustomer = due.ToLookup(s => s.CustomerId);
+        return (await _customers.GetAllActiveAsync())
+            .ToDictionary(c => c.Id, c => Credit(c.Id, c.CreditLimit, grace, byCustomer[c.Id], applied));
+    }
+
+    /// <summary>
+    /// Same net figure as the Due page (payments and applied credit notes off). Overdue means
+    /// more than <paramref name="grace"/> days past the due date, counted in local calendar days
+    /// like the due date itself; an invoice with no due date (open credit) is never overdue.
+    /// </summary>
+    private static CustomerCreditDto Credit(Guid customerId, decimal? limit, int grace,
+        IEnumerable<Sale> due, IReadOnlyDictionary<Guid, decimal> applied)
+    {
+        var today = DateTime.Now.Date;
+        var open  = due.Select(s => (Sale: s, Net: s.GrandTotal - s.AmountPaid - applied.GetValueOrDefault(s.Id)))
+                       .Where(x => x.Net > 0).ToList();
+        var late  = open.Where(x => x.Sale.DueDate is { } d && d.Date.AddDays(grace) < today)
+                        .OrderBy(x => x.Sale.DueDate).ToList();
+        return new CustomerCreditDto {
+            CustomerId = customerId, CreditLimit = limit, GraceDays = grace,
+            Open = open.Sum(x => x.Net),
+            OverdueCount  = late.Count,
+            OverdueAmount = late.Sum(x => x.Net),
+            OldestOverdueInvoice = late.FirstOrDefault().Sale?.InvoiceNumber,
+            OldestDaysLate = late.Count > 0 ? (today - late[0].Sale.DueDate!.Value.Date).Days : 0
+        };
+    }
+
+    private static string Money(decimal v) => v.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
