@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Application\SimpleERP.Application.csproj" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.11" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
     <!--
       Serilog core only (not the ASP.NET Core integration, which stays in Web) — just
       enough to implement ILogEventSink for AppLogSink, which writes Warning-and-above
@@ -15,7 +15,7 @@
       Infrastructure's job; it uses raw Npgsql rather than EF, so no DbContext scope is
       needed on the logging path. Version pinned to the one Serilog.AspNetCore resolves.
     -->
-    <PackageReference Include="Serilog" Version="3.1.1" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
     <!--
       PasswordHasher<T> only — not ASP.NET Core Identity itself (no UserManager,
       SignInManager, or the seven Identity tables this app has no use for). It lives here
@@ -23,10 +23,10 @@
       the interface it implements is IPasswordHasher in Application.
 
       The hash format is Identity's own, so if this app ever adopts full Identity the
-      stored hashes stay valid and only this file is replaced. Pinned to the 8.0.x line:
-      `dotnet add package` resolves 10.x, which drags .NET 10 runtime libraries into this
-      net8.0 app — the same trap already hit with Serilog.
+      stored hashes stay valid and only this file is replaced. Keep it on the same major
+      line as the target framework (10.0.x for net10.0): a newer major drags that
+      runtime's libraries into the app — the same trap already hit with Serilog.
     -->
-    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="8.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.13" />
   </ItemGroup>
 </Project>
