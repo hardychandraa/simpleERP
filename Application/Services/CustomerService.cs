@@ -31,12 +31,14 @@ public class CustomerService : ICustomerService
     /// Admin only (G6, HC 2026-10-14): a customer's default discount, term and salesperson
     /// flow into every sale, so Staff can add a customer and edit its contact details, but
     /// what they post for the defaults is ignored (new customer: none; existing: unchanged).
-    /// The credit limit (plafon, HC 2026-10-15) is Admin's in the same way.
+    /// The credit limit (plafon, HC 2026-10-15) is Admin's in the same way; a customer Staff create starts at 0.
     /// </param>
     public async Task<ServiceResult> CreateAsync(CreateCustomerDto dto, bool setsSaleDefaults)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Customer name is required."]);
-        if (!setsSaleDefaults) { dto.SalesPersonId = null; dto.PaymentTermId = null; dto.DefaultDiscountPercent = null; dto.CreditLimit = null; }
+        // A customer Staff create starts cash only (limit 0) until Admin sets a limit (R4, HC 2026-10-16):
+        // otherwise a new customer could buy on unlimited credit the moment Staff typed its name.
+        if (!setsSaleDefaults) { dto.SalesPersonId = null; dto.PaymentTermId = null; dto.DefaultDiscountPercent = null; dto.CreditLimit = 0m; }
         var invalid = ValidateTaxIds(dto.TaxId, dto.NationalId)
                       ?? ValidateCreditLimit(dto.CreditLimit)
                       ?? await ValidateDefaultsAsync(dto.SalesPersonId, dto.PaymentTermId, dto.DefaultDiscountPercent);

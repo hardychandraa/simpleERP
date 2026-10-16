@@ -1071,6 +1071,56 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SimpleERP.Domain.Entities.PendingPayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("DecidedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("PaymentRecordId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SaleId", "Status");
+
+                    b.ToTable("PendingPayments");
+                });
+
             modelBuilder.Entity("SimpleERP.Domain.Entities.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2364,6 +2414,17 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("PaymentBatch");
+
+                    b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.PendingPayment", b =>
+                {
+                    b.HasOne("SimpleERP.Domain.Entities.Sale", "Sale")
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Sale");
                 });

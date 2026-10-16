@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Sale>            Sales             => Set<Sale>();
     public DbSet<SaleItem>        SaleItems         => Set<SaleItem>();
     public DbSet<PaymentRecord>   PaymentRecords    => Set<PaymentRecord>();
+    public DbSet<PendingPayment>  PendingPayments   => Set<PendingPayment>();
     public DbSet<StockAdjustment> StockAdjustments  => Set<StockAdjustment>();
     public DbSet<AuditLog>        AuditLogs         => Set<AuditLog>();
     public DbSet<AppLog>          AppLogs           => Set<AppLog>();
@@ -160,6 +161,20 @@ public class AppDbContext : DbContext
                 .HasForeignKey(p => p.PaymentBatchId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(p => p.SaleId);
             e.HasIndex(p => p.PaymentBatchId);
+        });
+
+        // Staff-recorded payments waiting for Admin (R1, 2026-10-16). Restrict, not cascade: a
+        // sale with a payment in question is never deleted out from under it.
+        m.Entity<PendingPayment>(e => {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Amount).HasColumnType("decimal(18,4)");
+            e.Property(p => p.Notes).HasMaxLength(300);
+            e.Property(p => p.CreatedBy).HasMaxLength(100);
+            e.Property(p => p.DecidedBy).HasMaxLength(100);
+            e.Property(p => p.RejectReason).HasMaxLength(300);
+            e.HasOne(p => p.Sale).WithMany().HasForeignKey(p => p.SaleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(p => new { p.SaleId, p.Status });
+            e.HasIndex(p => p.Status);
         });
 
         m.Entity<StockAdjustment>(e => {

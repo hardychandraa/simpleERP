@@ -10,11 +10,12 @@
 {
     <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success") no-print">@Localizer[Model.Msg]</div>
 }
-@if (isActive && Model.Return.NeedsReview)
+@* Admin only (HC, 2026-10-16): Staff see no check status. *@
+@if (isActive && Model.Return.NeedsReview && User.ChecksStaffWork())
 {
-    @* A Staff return on a cash sale (G3): its note can't be used until Admin checks it. *@
+    @* Every Staff return (G3 2026-10-14, all sales since R10 2026-10-16): its note waits for Admin. *@
     <div class="alert alert-warning no-print">
-        ⚠ @Localizer["A return on a cash sale: its credit note can't be applied or refunded until an administrator checks it."]
+        ⚠ @Localizer["A return entered by staff: its credit note can't be applied or refunded until you check it."]
         @if (User.ChecksStaffWork())
         {
             <form method="post" asp-page-handler="Reviewed" asp-route-id="@Model.Return.Id" style="display:inline;margin-left:8px">

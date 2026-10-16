@@ -29,36 +29,43 @@
     <a href="/Sales/Create?revise=@Model.Sale.Id" class="btn btn-outline btn-sm"
        title="@Localizer["Opens a pre-filled copy. Saving it cancels this invoice and issues a corrected one."]">✎ @Localizer["Revise"]</a>
     }
-    @* Same condition: CancelAsync refuses a credit invoice with payments (2026-10-05). *@
+    @* Same condition: CancelAsync refuses a credit invoice with payments (2026-10-05). Admin only (R3). *@
     @if (Model.CanChange && (Model.Sale.PaymentType == "Cash" || Model.Sale.AmountPaid == 0)) {
     <form method="post" asp-page-handler="Cancel" asp-route-id="@Model.Sale.Id" style="margin-left:auto;display:flex;gap:6px;align-items:center"
           onsubmit="return confirm('@Localizer["Cancel this sale? Stock will be reversed."]')">
-      @* Staff must say why (G2). *@
-      <input type="text" name="reason" maxlength="300" required="@(!User.ChecksStaffWork())"
-             placeholder="@Localizer["Reason for cancelling"]@(User.ChecksStaffWork() ? "" : " *")" style="width:220px;font-size:12px" />
+      <input type="text" name="reason" maxlength="300"
+             placeholder="@Localizer["Reason for cancelling"]" style="width:220px;font-size:12px" />
       <button type="submit" class="btn btn-danger btn-sm">✕ @Localizer["Cancel Sale"]</button>
     </form>
+    }
+    @* Staff can't cancel or revise (R3, HC 2026-10-16): they ask Admin, who does it. *@
+    @if (!User.ChecksStaffWork()) {
+      @if (Model.ChangeRequest is { } asked) {
+        <span style="margin-left:auto;font-size:12px;color:#6b7280">⏳ @Localizer["Cancel/revise request sent: {0}", asked]</span>
+      } else {
+        <form method="post" asp-page-handler="RequestChange" asp-route-id="@Model.Sale.Id" style="margin-left:auto;display:flex;gap:6px;align-items:center">
+          <input type="text" name="changeReason" maxlength="300" required
+                 placeholder="@Localizer["What is wrong? *"]" style="width:220px;font-size:12px" />
+          <button type="submit" class="btn btn-outline btn-sm">✎ @Localizer["Request cancel / revise"]</button>
+        </form>
+      }
     }
   }
 </div>
 <div id="printStatus" class="alert" style="display:none;margin-bottom:10px"></div>
 
-@if (Model.Sale.Status == "Active" && Model.Sale.NeedsReview)
+@* Admin only, and silent for Staff (HC, 2026-10-16). Telling Staff a sale was flagged let them
+   find a product's HPP by trial: sell 1 unit at a price, see whether it is flagged below cost,
+   cancel it, halve the gap, repeat; and a customer's remaining credit the same way. *@
+@if (Model.Sale.Status == "Active" && Model.Sale.NeedsReview && User.ChecksStaffWork())
 {
   <div class="alert alert-warning no-print" style="line-height:1.6">
-    @if (User.ChecksStaffWork())
-    {
-      <strong>⚠ @Localizer["Needs checking"]</strong>
-      <partial name="_SaleReviewReasons" model="Model.Sale.ReviewReasons" />
-      <form method="post" asp-page-handler="Reviewed" asp-route-id="@Model.Sale.Id" style="margin-top:6px">
-        <button type="submit" class="btn btn-primary btn-sm">✓ @Localizer["Mark as checked"]</button>
-        <span style="font-size:12px;color:#6b7280;margin-left:6px">@Localizer["If it is wrong, revise or cancel the invoice instead."]</span>
-      </form>
-    }
-    else
-    {
-      <span>⚠ @Localizer["This sale is marked for an administrator to check."]</span>
-    }
+    <strong>⚠ @Localizer["Needs checking"]</strong>
+    <partial name="_SaleReviewReasons" model="Model.Sale.ReviewReasons" />
+    <form method="post" asp-page-handler="Reviewed" asp-route-id="@Model.Sale.Id" style="margin-top:6px">
+      <button type="submit" class="btn btn-primary btn-sm">✓ @Localizer["Mark as checked"]</button>
+      <span style="font-size:12px;color:#6b7280;margin-left:6px">@Localizer["If it is wrong, revise or cancel the invoice instead."]</span>
+    </form>
   </div>
 }
 @if (Model.Sale.Status == "Cancelled" && Model.Sale.CancelledAt is { } cAt)
@@ -266,6 +273,9 @@
       @if (Model.StillOwed <= 0) {
         <div class="alert alert-success" style="font-size:12px">✓ @Localizer["Fully paid. No balance remaining."]</div>
       } else {
+        @if (!User.ChecksStaffWork()) {
+          <div style="font-size:11px;color:#6b7280;margin-bottom:6px">@Localizer["A payment you record counts once an administrator has verified it."]</div>
+        }
         <form method="post" asp-page-handler="Payment" asp-route-id="@Model.Sale.Id">
           <div class="fg">
             <label>@Localizer["Amount to collect"]</label>
@@ -382,6 +392,45 @@
       <p style="font-size:11px;color:#9ca3af;margin-top:8px">
         @Localizer["Pay salespeople out on the"] <a href="/Commissions">@Localizer["Commissions"]</a> @Localizer["page."]
       </p>
+    </div>
+  }
+
+  <!-- Staff payments waiting for, or decided by, Admin (R1) -->
+  @if (Model.PendingPayments.Any(p => p.Status != "Verified")) {
+    <div class="card">
+      <div class="card-title">⏳ @Localizer["Payments recorded by staff"]</div>
+      <table>
+        <thead><tr><th>@Localizer["Received"]</th><th style="text-align:right">@Localizer["Amount"]</th><th>@Localizer["Status"]</th></tr></thead>
+        <tbody>
+        @foreach (var p in Model.PendingPayments.Where(p => p.Status != "Verified")) {
+          <tr>
+            <td style="font-size:12px">@p.ReceivedAt.ToLocalTime().ToString("dd-MMM-yy HH:mm")<div style="color:#9ca3af;font-size:11px">@p.CreatedBy@(string.IsNullOrEmpty(p.Notes) ? "" : " · " + p.Notes)</div></td>
+            <td style="text-align:right;font-weight:600">@p.Amount.ToString("N0")</td>
+            <td style="font-size:12px">
+              @if (p.Status == "Pending") {
+                <span class="badge warn">@Localizer["Waiting for verification"]</span>
+                @if (User.ChecksStaffWork()) {
+                  <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+                    <form method="post" asp-page-handler="VerifyPayment" asp-route-id="@Model.Sale.Id">
+                      <input type="hidden" name="pendingId" value="@p.Id" />
+                      <button type="submit" class="btn btn-success btn-sm">✓ @Localizer["Verify"]</button>
+                    </form>
+                    <form method="post" asp-page-handler="RejectPayment" asp-route-id="@Model.Sale.Id" style="display:flex;gap:4px">
+                      <input type="hidden" name="pendingId" value="@p.Id" />
+                      <input type="text" name="rejectReason" maxlength="300" required placeholder="@Localizer["Why?"]" style="width:110px;font-size:12px" />
+                      <button type="submit" class="btn btn-danger btn-sm">✕ @Localizer["Reject"]</button>
+                    </form>
+                  </div>
+                }
+              } else {
+                <span class="badge danger">@Localizer["Rejected"]</span>
+                <div style="color:#9ca3af;font-size:11px">@p.DecidedBy: @p.RejectReason</div>
+              }
+            </td>
+          </tr>
+        }
+        </tbody>
+      </table>
     </div>
   }
 

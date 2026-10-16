@@ -36,6 +36,11 @@ public class DetailModel : PageModel
     [BindProperty] public RecordPaymentDto PayInput { get; set; } = new();
     /// <summary>Staff may cancel or revise only a sale entered today (G2); Admin any.</summary>
     public bool CanChange { get; set; }
+    /// <summary>Staff payments waiting for, or decided by, Admin (R1). Shown to both: it is the Staff member's own entry.</summary>
+    public List<PendingPaymentDto> PendingPayments { get; set; } = new();
+    public decimal PendingTotal => PendingPayments.Where(p => p.Status == "Pending").Sum(p => p.Amount);
+    /// <summary>A Staff request to cancel or revise still waiting for Admin (R3): its reason, or null.</summary>
+    public string? ChangeRequest { get; set; }
     public string? Msg   { get; set; }
     public bool    IsErr { get; set; }
 
@@ -58,7 +63,14 @@ public class DetailModel : PageModel
         // will actually accept rather than inviting a refusal.
         StillOwed   = Math.Max(0, sale.NetBalanceDue);
         PayInput.SaleId = id;
-        CanChange = User.ChecksStaffWork() || sale.CreatedAt.ToLocalTime().Date == DateTime.Today;
+        // Only Admin cancels or revises (R3, HC 2026-10-16); Staff send a request.
+        CanChange = User.ChecksStaffWork();
+        PendingPayments = await _sales.GetPendingPaymentsForSaleAsync(id);
+        StillOwed = Math.Max(0, StillOwed - PendingTotal);
+        ChangeRequest = sale.NeedsReview
+            ? SimpleERP.Application.Services.SaleReview.Parse(sale.ReviewReasons)
+                .Where(r => r[0] == SimpleERP.Application.Services.SaleReview.ChangeRequest).Select(r => r.Length > 2 ? r[2] : "").FirstOrDefault()
+            : null;
         // The flag's reasons can name a product sold below cost: Admin only (G4).
         if (!User.ChecksStaffWork()) sale.ReviewReasons = null;
         Msg = msg; IsErr = err;
@@ -78,16 +90,43 @@ public class DetailModel : PageModel
         // PayInput.SaleId is Guid.Empty on POST and the service rejects it as not found.
         PayInput.SaleId = id;
         var user   = this.CurrentUserName();
-        var result = await _sales.RecordPaymentAsync(PayInput, user);
+        var result = await _sales.RecordPaymentAsync(PayInput, user, User.ChecksStaffWork());
         return RedirectToPage(new {
             id,
-            msg = result.Success ? "Payment recorded successfully." : result.Error,
+            msg = !result.Success ? result.Error
+                : result.Data!.Pending ? "Payment recorded. It counts once an administrator has verified it."
+                : "Payment recorded successfully.",
             err = !result.Success
         });
     }
 
+    /// <summary>Admin confirms a Staff payment really arrived (R1).</summary>
+    public async Task<IActionResult> OnPostVerifyPaymentAsync(Guid id, Guid pendingId)
+    {
+        if (!User.ChecksStaffWork()) return this.Refuse("verifying a payment is Admin-only");
+        var result = await _sales.VerifyPaymentAsync(pendingId, isAdmin: true, this.CurrentUserName());
+        return RedirectToPage(new { id, msg = result.Success ? "Payment verified." : result.Error, err = !result.Success });
+    }
+
+    /// <summary>Admin: the money did not arrive; the payment never counts (R1).</summary>
+    public async Task<IActionResult> OnPostRejectPaymentAsync(Guid id, Guid pendingId, string? rejectReason)
+    {
+        if (!User.ChecksStaffWork()) return this.Refuse("rejecting a payment is Admin-only");
+        var result = await _sales.RejectPaymentAsync(pendingId, rejectReason, isAdmin: true, this.CurrentUserName());
+        return RedirectToPage(new { id, msg = result.Success ? "Payment rejected." : result.Error, err = !result.Success });
+    }
+
+    /// <summary>Staff ask Admin to cancel or revise (R3).</summary>
+    public async Task<IActionResult> OnPostRequestChangeAsync(Guid id, string? changeReason)
+    {
+        var result = await _sales.RequestChangeAsync(id, changeReason, this.CurrentUserName());
+        return RedirectToPage(new { id, msg = result.Success ? "Request sent to the administrator." : result.Error, err = !result.Success });
+    }
+
     public async Task<IActionResult> OnPostCancelAsync(Guid id, string? reason)
     {
+        // Admin only (R3, HC 2026-10-16); the service refuses Staff too.
+        if (!User.ChecksStaffWork()) return this.Refuse("cancelling a sale is Admin-only; Staff send a request");
         var user   = this.CurrentUserName();
         var result = await _sales.CancelAsync(id, user, User.ChecksStaffWork(), reason);
         return RedirectToPage(new {

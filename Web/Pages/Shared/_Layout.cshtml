@@ -1,6 +1,7 @@
 @using System.Globalization
 @inject SimpleERP.Application.Interfaces.IPurchaseService PurchaseService
 @inject SimpleERP.Application.Interfaces.IStockCountService StockCountService
+@inject IConfiguration Config
 <!DOCTYPE html>
 <html lang="@CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
@@ -97,6 +98,9 @@
           <a href="/Reports/EndOfDay"   class="@(page=="/Reports/EndOfDay" ?"active":"")">📅 @Localizer["End of Day"]</a>
           <a href="/Reports/ProfitLoss" class="@(page=="/Reports/ProfitLoss"?"active":"")">📊 @Localizer["Profit & Loss"]</a>
           <a href="/Reports/Position"   class="@(page=="/Reports/Position" ?"active":"")">⚖️ @Localizer["Position Summary"]</a>
+          <a href="/Reports/SalesByProduct"  class="@(page=="/Reports/SalesByProduct" ?"active":"")">📦 @Localizer["Margin by Product"]</a>
+          <a href="/Reports/SalesByCustomer" class="@(page=="/Reports/SalesByCustomer"?"active":"")">👥 @Localizer["Sales by Customer"]</a>
+          <a href="/Reports/Ppn"             class="@(page=="/Reports/Ppn"            ?"active":"")">🧾 @Localizer["PPN Summary"]</a>
       }
       <a href="/Reports/Warranty"  class="@(page=="/Reports/Warranty" ?"active":"")">🛡 @Localizer["Warranty"]</a>
       @if (isAdmin)
@@ -270,5 +274,30 @@
   })();
 </script>
 @await RenderSectionAsync("Scripts", required: false)
+@if (isAdmin)
+{
+    @* Admin idle sign-out (R7, HC 2026-10-16): after the idle time with no mouse or keyboard the
+       page logs out by itself, so a report left open on a shared PC does not stay on screen.
+       While Admin is working, a ping every few minutes keeps the server session alive (the
+       server ends it on its own after the same idle time; Program.cs). *@
+    <script>
+    (function () {
+        const IDLE = @((int)SimpleERP.Web.Services.SessionPolicy.AdminIdle(Config).TotalMilliseconds), PING = Math.min(5 * 60 * 1000, IDLE / 3);
+        let last = Date.now(), lastPing = Date.now(), active = false;
+        ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(function (e) {
+            document.addEventListener(e, function () { last = Date.now(); active = true; }, { passive: true });
+        });
+        setInterval(function () {
+            const now = Date.now();
+            if (now - last > IDLE) {
+                const f = document.querySelector('form[action="/Account/Logout"]');
+                if (f) f.submit(); else window.location.href = '/Account/Login';
+                return;
+            }
+            if (active && now - lastPing > PING) { active = false; lastPing = now; fetch('/api/session/ping', { credentials: 'same-origin' }); }
+        }, Math.min(20000, IDLE / 6));
+    })();
+    </script>
+}
 </body>
 </html>

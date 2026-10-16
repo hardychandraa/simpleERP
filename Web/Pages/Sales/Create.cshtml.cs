@@ -82,6 +82,8 @@ public class CreateModel : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
+        // Revise is Admin's (R3, HC 2026-10-16): Staff send a request from the invoice instead.
+        if (Revise.HasValue && !User.ChecksStaffWork()) return this.Refuse("revising a sale is Admin-only; Staff send a request");
         ViewData["Title"] = "New Sale";
         SaleDate = DateTime.Now.Date;   // business-local today
         SubmissionId = Guid.NewGuid();
@@ -115,6 +117,7 @@ public class CreateModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (Revise.HasValue && !User.ChecksStaffWork()) return this.Refuse("revising a sale is Admin-only; Staff send a request");
         ViewData["Title"] = "New Sale";
         await LoadAsync();
 

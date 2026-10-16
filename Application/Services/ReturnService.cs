@@ -195,9 +195,10 @@ public class ReturnService : IReturnService
             Status         = ReturnStatus.Active,
             CreatedBy      = user,
             CreatedAt      = DateTime.UtcNow,
-            // A return on a cash sale is how a fake return becomes cash (G3, HC 2026-10-14):
-            // Staff's are flagged, and the note waits with it.
-            NeedsReview    = !isAdmin && sale.PaymentType == PaymentType.Cash,
+            // Every Staff return is flagged and its note waits with it (R10, HC 2026-10-16; cash
+            // sales only since G3, 2026-10-14): on a credit sale a fake return lowers what the
+            // customer owes and puts goods "back" into stock that never came back.
+            NeedsReview    = !isAdmin,
             Items          = items
         };
         await _customerReturns.AddAsync(ret);

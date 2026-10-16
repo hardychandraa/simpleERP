@@ -97,12 +97,21 @@ public interface ISaleService {
     /// recorded payments, paid-out commission, a return or an applied credit note.
     /// </summary>
     Task<ServiceResult<SaleDto>> ReviseAsync(Guid originalId, CreateSaleDto dto, string user, bool isAdmin, string? reason);
-    /// <summary>Staff: only a sale entered today, with a reason (G2). Admin: any open-period sale.</summary>
+    /// <summary>Admin only since R3 (HC 2026-10-16); Staff send a request (RequestChangeAsync). Admin: any open-period sale.</summary>
     Task<ServiceResult> CancelAsync(Guid saleId, string user, bool isAdmin, string? reason);
     Task<List<SaleListDto>> GetNeedingReviewAsync();
     Task<List<SaleListDto>> GetCancelledTodayAsync();
     Task<ServiceResult> MarkReviewedAsync(Guid saleId, bool isAdmin, string user);
-    Task<ServiceResult<PaymentRecordDto>> RecordPaymentAsync(RecordPaymentDto dto, string user);
+    /// <param name="isAdmin">Staff's payment is pending until Admin verifies it (R1, HC 2026-10-16): it changes nothing until then.</param>
+    Task<ServiceResult<PaymentRecordDto>> RecordPaymentAsync(RecordPaymentDto dto, string user, bool isAdmin);
+    /// <summary>Admin: the payment counts, dated when Staff received it.</summary>
+    Task<ServiceResult> VerifyPaymentAsync(Guid pendingId, bool isAdmin, string user);
+    /// <summary>Admin: the payment never counts; the reason is kept.</summary>
+    Task<ServiceResult> RejectPaymentAsync(Guid pendingId, string? reason, bool isAdmin, string user);
+    Task<List<PendingPaymentDto>> GetPendingPaymentsAsync();
+    Task<List<PendingPaymentDto>> GetPendingPaymentsForSaleAsync(Guid saleId);
+    /// <summary>Staff ask Admin to cancel or revise (R3, HC 2026-10-16).</summary>
+    Task<ServiceResult> RequestChangeAsync(Guid saleId, string? reason, string user);
     /// <summary>
     /// Settles several of one customer's open invoices in one action, optionally netting
     /// open credit notes off the cash collected. All-or-nothing: if any line or note fails
@@ -355,4 +364,15 @@ public interface IAppSettingsService {
     /// purchases waiting for Admin's check.
     /// </summary>
     Task<ServiceResult> SetBooksClosedThroughAsync(DateTime? monthEnd, string user);
+}
+
+/// <summary>Admin's analysis reports (2026-10-15): all read-only, all on the P&amp;L's basis.</summary>
+public interface ISalesAnalysisService {
+    Task<SalesAnalysisDto> GetByProductAsync(DateTime from, DateTime to);
+    Task<SalesAnalysisDto> GetByCustomerAsync(DateTime from, DateTime to);
+    Task<PpnSummaryDto> GetPpnSummaryAsync(DateTime from, DateTime to);
+    /// <summary>Every open credit invoice, oldest due first: the receivables collection list.</summary>
+    Task<List<OpenDocumentDto>> GetOpenReceivablesAsync();
+    /// <summary>Every open credit purchase, oldest due first.</summary>
+    Task<List<OpenDocumentDto>> GetOpenPayablesAsync();
 }

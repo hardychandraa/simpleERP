@@ -1,0 +1,11 @@
+@page "/Reports/SalesByCustomer"
+@model SimpleERP.Web.Pages.Reports.SalesByCustomerModel
+@{ ViewData["Title"] = Localizer["Sales by Customer"].Value; }
+<partial name="_PendingChecks" model="Model.PendingChecks" />
+<partial name="_ReportFilter" model="Model.Filter" />
+<div style="text-align:center;margin-bottom:16px">
+  <div style="font-size:22px;font-weight:800;color:#1a1a2e">@Localizer["Sales by Customer"]</div>
+  <div style="color:#6b7280;margin-top:4px">@Model.From.ToString("dd MMM yyyy") &ndash; @Model.To.ToString("dd MMM yyyy")</div>
+</div>
+<partial name="_SalesAnalysis" model="new SimpleERP.Web.Pages.Reports.SalesAnalysisVm(Model.Report, false)" />
+<div style="font-size:12px;color:#9ca3af">@Localizer["Owed now and past due are today's figures (as on Due Payments by Customer), not the period's."]</div>

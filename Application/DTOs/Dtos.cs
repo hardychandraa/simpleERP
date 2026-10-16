@@ -1052,6 +1052,25 @@ public class PaymentRecordDto {
     public decimal  Amount      { get; set; }
     public string?  Notes       { get; set; }
     public string   CreatedBy   { get; set; } = "";
+    /// <summary>Recorded by Staff and waiting for Admin to verify it (R1): it does not count yet.</summary>
+    public bool     Pending     { get; set; }
+}
+/// <summary>A Staff-recorded payment waiting for, or decided by, Admin (R1, HC 2026-10-16).</summary>
+public class PendingPaymentDto {
+    public Guid      Id            { get; set; }
+    public Guid      SaleId        { get; set; }
+    public string    InvoiceNumber { get; set; } = "";
+    public string    CustomerName  { get; set; } = "";
+    public decimal   Amount        { get; set; }
+    public string?   Notes         { get; set; }
+    public DateTime  ReceivedAt    { get; set; }
+    public string    CreatedBy     { get; set; } = "";
+    public string    Status        { get; set; } = "";
+    public string?   DecidedBy     { get; set; }
+    public DateTime? DecidedAt     { get; set; }
+    public string?   RejectReason  { get; set; }
+    /// <summary>Still owed on the invoice now (net of payments and applied notes).</summary>
+    public decimal   InvoiceOwed   { get; set; }
 }
 public class PaymentCollectionDto {
     public Guid     Id          { get; set; }
@@ -1521,4 +1540,110 @@ public class ServiceResult<T> {
     public T?      Data    { get; private set; }
     public static ServiceResult<T> Ok(T data)     => new() { Success = true,  Data = data };
     public static ServiceResult<T> Fail(string e) => new() { Success = false, Error = e   };
+}
+
+// ── Analysis reports (2026-10-15) ─────────────────────────────────────────────
+/// <summary>
+/// One product's or customer's sales in a period, net of returns, on the P&amp;L's basis:
+/// sales = the invoices' stored DPP split over their lines, returns = the returns' stored DPP
+/// split over theirs (subtracted in the period the return is dated), HPP = cost at sale time.
+/// Every column is rounded so the rows add up exactly to the totals, and the totals equal the
+/// P&amp;L's Penjualan Bersih, HPP Bersih and Laba Kotor for the same period.
+/// </summary>
+public class SalesAnalysisRowDto {
+    public Guid     Id           { get; set; }
+    public string   Name         { get; set; } = "";
+    /// <summary>Product: SKU. Customer: phone.</summary>
+    public string?  Code         { get; set; }
+    /// <summary>Product: category. Customer: unused.</summary>
+    public string?  Group        { get; set; }
+    public string?  Unit         { get; set; }
+    public int      InvoiceCount { get; set; }
+    public decimal  QtySold      { get; set; }
+    public decimal  QtyReturned  { get; set; }
+    public decimal  NetQty       => QtySold - QtyReturned;
+    public decimal  Sales        { get; set; }
+    public decimal  Returns      { get; set; }
+    public decimal  NetSales     => Sales - Returns;
+    public decimal  Cogs         { get; set; }
+    public decimal  ReturnCogs   { get; set; }
+    public decimal  NetCogs      => Cogs - ReturnCogs;
+    public decimal  Margin       => NetSales - NetCogs;
+    public decimal? MarginPercent => NetSales != 0 ? Math.Round(Margin / NetSales * 100m, 1, MidpointRounding.AwayFromZero) : null;
+    /// <summary>Share of the period's net sales, in percent.</summary>
+    public decimal  SharePercent { get; set; }
+    /// <summary>Customer only: owed now on open credit invoices (the Due page's figure), and of it what is past due.</summary>
+    public decimal  OwedNow      { get; set; }
+    public decimal  Overdue      { get; set; }
+}
+public class SalesAnalysisDto {
+    public DateTime From { get; set; }
+    public DateTime To   { get; set; }
+    public List<SalesAnalysisRowDto> Rows { get; set; } = new();
+    public int     InvoiceCount { get; set; }
+    public decimal Sales      => Rows.Sum(r => r.Sales);
+    public decimal Returns    => Rows.Sum(r => r.Returns);
+    public decimal NetSales   => Rows.Sum(r => r.NetSales);
+    public decimal Cogs       => Rows.Sum(r => r.Cogs);
+    public decimal ReturnCogs => Rows.Sum(r => r.ReturnCogs);
+    public decimal NetCogs    => Rows.Sum(r => r.NetCogs);
+    public decimal Margin     => Rows.Sum(r => r.Margin);
+    public decimal? MarginPercent => NetSales != 0 ? Math.Round(Margin / NetSales * 100m, 1, MidpointRounding.AwayFromZero) : null;
+    public decimal OwedNow    => Rows.Sum(r => r.OwedNow);
+    public decimal Overdue    => Rows.Sum(r => r.Overdue);
+    /// <summary>Purchases dated in the period still awaiting Admin's check: HPP can still change.</summary>
+    public int PendingChecks { get; set; }
+}
+
+/// <summary>One document in the PPN summary, with the stored DPP and PPN.</summary>
+public class TaxDocDto {
+    public Guid     Id         { get; set; }
+    public DateTime Date       { get; set; }
+    public string   Number     { get; set; } = "";
+    /// <summary>Sale return: the invoice. Purchase: the supplier's invoice number. Purchase return: the purchase's.</summary>
+    public string?  OtherNumber { get; set; }
+    public string   Party      { get; set; } = "";
+    public string?  TaxId      { get; set; }
+    public string?  NationalId { get; set; }
+    public decimal  TaxBase    { get; set; }
+    public decimal  TaxAmount  { get; set; }
+    public decimal  GrandTotal { get; set; }
+    /// <summary>Purchase still Perlu dicek: its amounts are provisional.</summary>
+    public bool     Unchecked  { get; set; }
+}
+/// <summary>
+/// PPN Keluaran vs Masukan for a period (HC, 2026-10-15), for the tax consultant's monthly SPT
+/// Masa PPN. Only the PPN stored on each document: nothing is recalculated. Totals equal the
+/// P&amp;L's PPN lines for the same period.
+/// </summary>
+public class PpnSummaryDto {
+    public DateTime From { get; set; }
+    public DateTime To   { get; set; }
+    public List<TaxDocDto> Sales           { get; set; } = new();
+    public List<TaxDocDto> SalesReturns    { get; set; } = new();
+    public List<TaxDocDto> Purchases       { get; set; } = new();
+    public List<TaxDocDto> PurchaseReturns { get; set; } = new();
+    public decimal OutputTax      => Sales.Sum(d => d.TaxAmount) - SalesReturns.Sum(d => d.TaxAmount);
+    public decimal InputTax       => Purchases.Sum(d => d.TaxAmount) - PurchaseReturns.Sum(d => d.TaxAmount);
+    /// <summary>Positive = more PPN collected than paid (kurang bayar); negative = lebih bayar.</summary>
+    public decimal Difference     => OutputTax - InputTax;
+    public int     UncheckedCount => Purchases.Count(p => p.Unchecked);
+    /// <summary>Sales to a customer with neither NPWP nor NIK recorded.</summary>
+    public int     NoTaxIdCount   => Sales.Count(s => string.IsNullOrWhiteSpace(s.TaxId) && string.IsNullOrWhiteSpace(s.NationalId));
+}
+
+/// <summary>One open invoice or purchase for the receivables / payables Excel (collection list).</summary>
+public class OpenDocumentDto {
+    public string    Party      { get; set; } = "";
+    public string?   Phone      { get; set; }
+    public string    Number     { get; set; } = "";
+    public string?   OtherNumber { get; set; }
+    public DateTime  Date       { get; set; }
+    public DateTime? DueDate    { get; set; }
+    /// <summary>Days past the due date today; 0 when not yet due or no due date.</summary>
+    public int       DaysLate   { get; set; }
+    public decimal   GrandTotal { get; set; }
+    public decimal   Paid       { get; set; }
+    public decimal   NotesApplied { get; set; }
+    public decimal   Owed       => GrandTotal - Paid - NotesApplied;
 }

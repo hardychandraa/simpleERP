@@ -34,6 +34,8 @@
       <td style="font-size:12px">@r.CreatedBy</td>
       <td>
         @if (r.Status == "Cancelled") { <span class="badge gray">@Localizer[EnumDisplay.Key("PurchaseStatus", r.Status)]</span> }
+        @* Check status is Admin's (HC, 2026-10-16): Staff see no "needs checking" / "checked" label anywhere. *@
+        else if (!User.ChecksStaffWork()) { }
         else if (r.NeedsReview) { <span class="badge warn">@Localizer["Needs checking"]</span> }
         else { <span class="badge ok">@Localizer["Checked"]</span> }
       </td>

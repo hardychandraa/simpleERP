@@ -26,6 +26,8 @@ public class IndexModel : PageModel
     public int SalesToCheck   { get; set; }
     public int NotesToApprove { get; set; }
     public int ReturnsToCheck { get; set; }
+    /// <summary>Staff-recorded payments waiting for Admin to confirm the money arrived (R1).</summary>
+    public int PaymentsToVerify { get; set; }
     /// <summary>Sales cancelled or revised today, by whom and why (G2).</summary>
     public List<Application.DTOs.SaleListDto> CancelledToday { get; set; } = new();
 
@@ -60,6 +62,7 @@ public class IndexModel : PageModel
             SalesToCheck   = (await _s.GetNeedingReviewAsync()).Count;
             NotesToApprove = await _notes.CountAwaitingApprovalAsync();
             ReturnsToCheck = await _returns.CountCustomerReturnsNeedingReviewAsync();
+            PaymentsToVerify = (await _s.GetPendingPaymentsAsync()).Count;
             CancelledToday = await _s.GetCancelledTodayAsync();
         }
         RecentSales = (await _s.GetAllAsync()).Take(8).ToList();

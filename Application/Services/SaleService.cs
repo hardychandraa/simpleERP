@@ -27,6 +27,7 @@ public class SaleService : ISaleService
     private readonly CommissionService          _commissions;
     private readonly IUnitOfWork                _uow;
     private readonly ICreditNoteApplicationRepository _noteApplications;
+    private readonly IPendingPaymentRepository _pending;
 
     private readonly PeriodLock _period;
     private readonly IStringLocalizer<SharedResource> _loc;
@@ -40,13 +41,14 @@ public class SaleService : ISaleService
         ICreditNoteRepository notes, ICreditNoteApplicationRepository noteApplications,
         IPaymentBatchRepository batches,
         CommissionService commissions, IUnitOfWork uow,
-        PeriodLock period, IStringLocalizer<SharedResource> loc, ILogger<SaleService> log)
+        PeriodLock period, IStringLocalizer<SharedResource> loc, ILogger<SaleService> log,
+        IPendingPaymentRepository pending)
     { _sales=sales; _products=products; _customers=customers; _branches=branches;
       _payments=payments;
       _audit=audit; _inventory=inventory; _settings=settings; _terms=terms;
       _people=people; _returns=returns; _notes=notes; _noteApplications=noteApplications;
       _batches=batches;
-      _commissions=commissions; _uow=uow;  _period = period; _loc = loc; _log = log; }
+      _commissions=commissions; _uow=uow;  _period = period; _loc = loc; _log = log; _pending = pending; }
 
     public async Task<ServiceResult<SaleDto>> CreateAsync(CreateSaleDto dto, string user, bool isAdmin)
     {
@@ -69,19 +71,43 @@ public class SaleService : ISaleService
     }
 
     /// <summary>
-    /// Staff may cancel or revise only a sale entered today, and must say why (G2, HC
-    /// 2026-10-14): a paid cash sale cancelled days later is how cash and stock vanish.
-    /// Admin is not limited (a reason is still recorded when given).
+    /// Only Admin cancels or revises a sale (R3, HC 2026-10-16). Staff could cancel today's
+    /// sales with a reason (G2, 2026-10-14), but that let a cash sale be rung up, the cash kept
+    /// and the sale cancelled; a revise is a cancel plus a new invoice, and cancelling a
+    /// delivered credit sale gives the goods away. Staff send a request instead
+    /// (<see cref="RequestChangeAsync"/>) and Admin cancels or revises.
     /// </summary>
-    private LocalizedString? StaffChangeRefusal(Sale sale, bool isAdmin, string? reason)
+    private LocalizedString? StaffChangeRefusal(Sale sale, bool isAdmin, string? reason) =>
+        isAdmin ? null
+        : _loc["Only an administrator can cancel or revise {0}. Send a request from the invoice instead.", sale.InvoiceNumber];
+
+    /// <summary>
+    /// Staff ask Admin to cancel or revise a sale (R3, HC 2026-10-16): the sale is flagged
+    /// Perlu dicek with who asked and why; nothing else changes until Admin acts.
+    /// </summary>
+    public async Task<ServiceResult> RequestChangeAsync(Guid saleId, string? reason, string user)
     {
-        if (isAdmin) return null;
-        if (PeriodLock.LocalDay(sale.CreatedAt) != DateTime.Now.Date)
-            return _loc["{0} was entered before today. Only an administrator can cancel or revise it now.", sale.InvoiceNumber];
-        if (string.IsNullOrWhiteSpace(reason))
-            return _loc["Give a reason for cancelling or revising {0}.", sale.InvoiceNumber];
-        return null;
+        var why = SanitiseText(reason, 300);
+        if (why == null) return _log.Refuse(_loc["Say what is wrong, so the administrator knows what to cancel or change."]);
+        await _uow.LockAsync(saleId);
+        var sale = await _sales.GetByIdWithItemsAsync(saleId);
+        if (sale == null) return _log.Refuse(_loc["Sale not found."]);
+        if (sale.Status == SaleStatus.Cancelled) return _log.Refuse(_loc["Sale is already cancelled."]);
+        if (PendingChangeRequest(sale) != null)
+            return _log.Refuse(_loc["A request to cancel or revise {0} is already waiting for an administrator.", sale.InvoiceNumber]);
+        var line = SaleReview.Line(SaleReview.ChangeRequest, user, why);
+        sale.ReviewReasons = string.IsNullOrEmpty(sale.ReviewReasons) || !sale.NeedsReview ? line : sale.ReviewReasons + "\n" + line;
+        sale.NeedsReview = true; sale.ReviewedBy = null; sale.ReviewedAt = null;
+        _sales.Update(sale);
+        await _audit.LogAsync(user, "Sale.ChangeRequest", $"{sale.InvoiceNumber}: {why}");
+        _log.LogInformation("Change requested on {InvoiceNumber} by {User}: {Reason}", sale.InvoiceNumber, user, why);
+        await _uow.SaveChangesAsync();
+        return ServiceResult.Ok();
     }
+
+    /// <summary>The reason of a change request still waiting for Admin, or null.</summary>
+    public static string? PendingChangeRequest(Sale sale) => !sale.NeedsReview ? null
+        : SaleReview.Parse(sale.ReviewReasons).Where(r => r[0] == SaleReview.ChangeRequest).Select(r => r.Length > 2 ? r[2] : "").FirstOrDefault();
 
     public async Task<ServiceResult<SaleDto>> ReviseAsync(Guid originalId, CreateSaleDto dto, string user, bool isAdmin, string? reason)
     {
@@ -95,6 +121,8 @@ public class SaleService : ISaleService
         if (StaffChangeRefusal(original, isAdmin, reason) is { } staffNo) return _log.Refuse<SaleDto>(staffNo);
         // Money already received belongs to this invoice; moving it is a decision, not a
         // side effect of fixing a typo.
+        if (await _pending.AnyPendingAsync(originalId))
+            return _log.Refuse<SaleDto>(_loc["A payment on {0} is waiting for verification. Verify or reject it first.", original.InvoiceNumber]);
         if (original.PaymentType == PaymentType.Due && original.AmountPaid > 0)
             return _log.Refuse<SaleDto>(_loc["Payments have been recorded against {0}, so it cannot be revised. Correct it with a return or a credit note instead.", original.InvoiceNumber]);
         // Cancelling only voids UNPAID commission, and the replacement would accrue again —
@@ -473,6 +501,8 @@ public class SaleService : ISaleService
         // Money already received belongs to this invoice. Cancelling used to go through and
         // leave the payment attached to a cancelled invoice, still counted as collected, with
         // nothing recording that it was owed back (HC, 2026-10-05). Same rule as Revise.
+        if (await _pending.AnyPendingAsync(saleId))
+            return _log.Refuse(_loc["A payment on {0} is waiting for verification. Verify or reject it first.", sale.InvoiceNumber]);
         if (sale.PaymentType == PaymentType.Due && sale.AmountPaid > 0)
             return _log.Refuse(_loc["Payments have been recorded against {0}, so it cannot be cancelled. Correct it with a return or a credit note instead.", sale.InvoiceNumber]);
 
@@ -514,7 +544,7 @@ public class SaleService : ISaleService
         return ServiceResult.Ok();
     }
 
-    public async Task<ServiceResult<PaymentRecordDto>> RecordPaymentAsync(RecordPaymentDto dto, string user)
+    public async Task<ServiceResult<PaymentRecordDto>> RecordPaymentAsync(RecordPaymentDto dto, string user, bool isAdmin)
     {
         if (dto.Amount <= 0)
             return _log.Refuse<PaymentRecordDto>(_loc["Payment amount must be > 0."]);
@@ -535,8 +565,27 @@ public class SaleService : ISaleService
         // would invite a payment bigger than the debt.
         var currentBalance = sale.GrandTotal - sale.AmountPaid
                            - await _noteApplications.GetAppliedTotalForSaleAsync(sale.Id);
-        if (dto.Amount > currentBalance)
-            return _log.Refuse<PaymentRecordDto>(_loc["Amount ({0}) exceeds balance due ({1}).", dto.Amount.ToString("N0"), currentBalance.ToString("N0")]);
+        // Payments Staff recorded and Admin hasn't verified yet are money already claimed:
+        // a second claim can't take the invoice past what is owed.
+        var pendingTotal = await _pending.GetPendingTotalAsync(sale.Id);
+        if (dto.Amount > currentBalance - pendingTotal)
+            return _log.Refuse<PaymentRecordDto>(_loc["Amount ({0}) exceeds balance due ({1}).", dto.Amount.ToString("N0"), Math.Max(0, currentBalance - pendingTotal).ToString("N0")]);
+
+        // Staff: pending until Admin verifies the money arrived (R1, HC 2026-10-16). Until then it
+        // changes nothing: not the balance, not commission, not End of Day's cash.
+        if (!isAdmin)
+        {
+            var p = new PendingPayment {
+                Id = Guid.NewGuid(), SaleId = sale.Id, Amount = dto.Amount, Notes = SanitiseText(dto.Notes, 300),
+                ReceivedAt = DateTime.UtcNow, CreatedBy = user, Status = PendingPaymentStatus.Pending };
+            await _pending.AddAsync(p);
+            await _audit.LogAsync(user, "Payment.Pending", $"{sale.InvoiceNumber} +{dto.Amount:N0} (waiting for verification)");
+            _log.LogInformation("Payment {Amount} on {InvoiceNumber} recorded by {User}, waiting for verification",
+                dto.Amount, sale.InvoiceNumber, user);
+            await _uow.SaveChangesAsync();
+            return ServiceResult<PaymentRecordDto>.Ok(new PaymentRecordDto {
+                Id = p.Id, PaymentDate = p.ReceivedAt, Amount = p.Amount, Notes = p.Notes, CreatedBy = p.CreatedBy, Pending = true });
+        }
 
         var record = await RecordPaymentCoreAsync(sale, dto.Amount, dto.Notes, batchId: null, user);
 
@@ -558,12 +607,12 @@ public class SaleService : ISaleService
     /// transaction, so a single payment and a multi-invoice settlement both commit once.
     /// </summary>
     private async Task<PaymentRecord> RecordPaymentCoreAsync(
-        Sale sale, decimal amount, string? notes, Guid? batchId, string user, decimal cashShare = 1m)
+        Sale sale, decimal amount, string? notes, Guid? batchId, string user, decimal cashShare = 1m, DateTime? paidAt = null)
     {
         var record = new PaymentRecord {
             Id             = Guid.NewGuid(),
             SaleId         = sale.Id,
-            PaymentDate    = DateTime.UtcNow,
+            PaymentDate    = paidAt ?? DateTime.UtcNow,
             Amount         = amount,
             Notes          = notes?.Trim(),
             CreatedBy      = user,
@@ -937,6 +986,67 @@ public class SaleService : ISaleService
             .ThenByDescending(d => d.TotalDue)
             .ToList();
     }
+
+    // ── Staff payments waiting for Admin (R1, HC 2026-10-16) ─────────────────
+
+    public async Task<ServiceResult> VerifyPaymentAsync(Guid pendingId, bool isAdmin, string user)
+    {
+        if (!isAdmin) return _log.Refuse(_loc["Only an administrator can verify a payment."]);
+        var p = await _pending.GetByIdAsync(pendingId);
+        if (p == null) return _log.Refuse(_loc["Payment not found."]);
+        await _uow.LockAsync(p.SaleId);
+        p = await _pending.GetByIdAsync(pendingId);
+        if (p == null) return _log.Refuse(_loc["Payment not found."]);
+        if (p.Status != PendingPaymentStatus.Pending) return _log.Refuse(_loc["This payment has already been decided."]);
+        var sale = await _sales.GetByIdWithItemsAsync(p.SaleId);
+        if (sale == null || sale.Status == SaleStatus.Cancelled)
+            return _log.Refuse(_loc["The invoice is cancelled: reject this payment instead."]);
+        var balance = sale.GrandTotal - sale.AmountPaid - await _noteApplications.GetAppliedTotalForSaleAsync(sale.Id);
+        if (p.Amount > balance)
+            return _log.Refuse(_loc["Amount ({0}) exceeds balance due ({1}).", p.Amount.ToString("N0"), balance.ToString("N0")]);
+
+        // Recorded as the Staff member's payment, dated when they received it; commission accrues now.
+        var record = await RecordPaymentCoreAsync(sale, p.Amount, p.Notes, batchId: null, p.CreatedBy, paidAt: p.ReceivedAt);
+        p.Status = PendingPaymentStatus.Verified; p.DecidedBy = user; p.DecidedAt = DateTime.UtcNow; p.PaymentRecordId = record.Id;
+        await _audit.LogAsync(user, "Payment.Verify", $"{sale.InvoiceNumber} +{p.Amount:N0} recorded by {p.CreatedBy}");
+        _log.LogInformation("Payment {Amount} on {InvoiceNumber} by {Staff} verified by {User}", p.Amount, sale.InvoiceNumber, p.CreatedBy, user);
+        await _uow.SaveChangesAsync();
+        return ServiceResult.Ok();
+    }
+
+    public async Task<ServiceResult> RejectPaymentAsync(Guid pendingId, string? reason, bool isAdmin, string user)
+    {
+        if (!isAdmin) return _log.Refuse(_loc["Only an administrator can reject a payment."]);
+        var why = SanitiseText(reason, 300);
+        if (why == null) return _log.Refuse(_loc["Give a reason for rejecting this payment."]);
+        var p = await _pending.GetByIdAsync(pendingId);
+        if (p == null) return _log.Refuse(_loc["Payment not found."]);
+        await _uow.LockAsync(p.SaleId);
+        p = await _pending.GetByIdAsync(pendingId);
+        if (p == null) return _log.Refuse(_loc["Payment not found."]);
+        if (p.Status != PendingPaymentStatus.Pending) return _log.Refuse(_loc["This payment has already been decided."]);
+        p.Status = PendingPaymentStatus.Rejected; p.DecidedBy = user; p.DecidedAt = DateTime.UtcNow; p.RejectReason = why;
+        await _audit.LogAsync(user, "Payment.Reject", $"{p.Sale?.InvoiceNumber} {p.Amount:N0} recorded by {p.CreatedBy}: {why}");
+        _log.LogWarning("Payment {Amount} on {InvoiceNumber} by {Staff} rejected by {User}: {Reason}",
+            p.Amount, p.Sale?.InvoiceNumber, p.CreatedBy, user, why);
+        await _uow.SaveChangesAsync();
+        return ServiceResult.Ok();
+    }
+
+    public async Task<List<PendingPaymentDto>> GetPendingPaymentsAsync()
+    {
+        var list = await _pending.GetPendingAsync();
+        var applied = await _noteApplications.GetAppliedTotalsForSalesAsync(list.Select(p => p.SaleId).Distinct());
+        return list.Select(p => MapPending(p, p.Sale is { } s ? s.GrandTotal - s.AmountPaid - applied.GetValueOrDefault(s.Id) : 0m)).ToList();
+    }
+
+    public async Task<List<PendingPaymentDto>> GetPendingPaymentsForSaleAsync(Guid saleId) =>
+        (await _pending.GetForSaleAsync(saleId)).Select(p => MapPending(p, 0m)).ToList();
+
+    private static PendingPaymentDto MapPending(PendingPayment p, decimal owed) => new() {
+        Id = p.Id, SaleId = p.SaleId, InvoiceNumber = p.Sale?.InvoiceNumber ?? "", CustomerName = p.Sale?.Customer?.Name ?? "",
+        Amount = p.Amount, Notes = p.Notes, ReceivedAt = p.ReceivedAt, CreatedBy = p.CreatedBy, Status = p.Status.ToString(),
+        DecidedBy = p.DecidedBy, DecidedAt = p.DecidedAt, RejectReason = p.RejectReason, InvoiceOwed = owed };
 
     public async Task<CustomerCreditDto> GetCreditStatusAsync(Guid customerId)
     {

@@ -1,0 +1,45 @@
+@page "/Reports/Ppn"
+@model SimpleERP.Web.Pages.Reports.PpnModel
+@{ ViewData["Title"] = Localizer["PPN Summary"].Value; var d = Model.Report; }
+@* PPN Keluaran / Masukan, DPP, NPWP and NIK stay bare in both languages: the consultant's terms. *@
+<partial name="_PendingChecks" model="Model.PendingChecks" />
+<partial name="_ReportFilter" model="Model.Filter" />
+<div style="text-align:center;margin-bottom:16px">
+  <div style="font-size:22px;font-weight:800;color:#1a1a2e">@Localizer["PPN Summary"]</div>
+  <div style="color:#6b7280;margin-top:4px">@Model.From.ToString("dd MMM yyyy") &ndash; @Model.To.ToString("dd MMM yyyy")</div>
+</div>
+@if (d.NoTaxIdCount > 0)
+{
+  <div class="alert alert-warning no-print">⚠ @Localizer["{0} sales are to customers with no NPWP or NIK recorded.", d.NoTaxIdCount] <a href="/Customers">@Localizer["Customers"] &rarr;</a></div>
+}
+<div class="stats" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat blue"><div class="stat-lbl">PPN Keluaran (@Localizer["Net"])</div><div class="stat-val" style="font-size:18px">@d.OutputTax.ToString("N0")</div></div>
+  <div class="stat orange"><div class="stat-lbl">PPN Masukan (@Localizer["Net"])</div><div class="stat-val" style="font-size:18px">@d.InputTax.ToString("N0")</div></div>
+  <div class="stat @(d.Difference >= 0 ? "red" : "green")"><div class="stat-lbl">@(d.Difference >= 0 ? Localizer["Keluaran minus Masukan (to pay)"] : Localizer["Keluaran minus Masukan (overpaid)"])</div><div class="stat-val" style="font-size:18px">@d.Difference.ToString("N0")</div></div>
+</div>
+<div class="card">
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th style="text-align:right">@Localizer["Documents"]</th><th style="text-align:right">DPP</th><th style="text-align:right">PPN</th></tr></thead>
+    <tbody>
+      <tr><td>PPN Keluaran (@Localizer["Sales"])</td><td style="text-align:right">@d.Sales.Count</td>
+          <td style="text-align:right">@d.Sales.Sum(x => x.TaxBase).ToString("N0")</td><td style="text-align:right">@d.Sales.Sum(x => x.TaxAmount).ToString("N0")</td></tr>
+      <tr><td>@Localizer["less sales returns"]</td><td style="text-align:right">@d.SalesReturns.Count</td>
+          <td style="text-align:right">@((-d.SalesReturns.Sum(x => x.TaxBase)).ToString("N0"))</td><td style="text-align:right">@((-d.SalesReturns.Sum(x => x.TaxAmount)).ToString("N0"))</td></tr>
+      <tr style="font-weight:700"><td>PPN Keluaran @Localizer["Net"]</td><td></td>
+          <td style="text-align:right">@((d.Sales.Sum(x => x.TaxBase) - d.SalesReturns.Sum(x => x.TaxBase)).ToString("N0"))</td><td style="text-align:right">@d.OutputTax.ToString("N0")</td></tr>
+      <tr><td>PPN Masukan (@Localizer["Purchases"])</td>
+          <td style="text-align:right">@d.Purchases.Count
+            @if (d.UncheckedCount > 0) { <span style="color:#b45309;font-size:11px">(@Localizer["{0} not yet checked", d.UncheckedCount])</span> }</td>
+          <td style="text-align:right">@d.Purchases.Sum(x => x.TaxBase).ToString("N0")</td><td style="text-align:right">@d.Purchases.Sum(x => x.TaxAmount).ToString("N0")</td></tr>
+      <tr><td>@Localizer["less purchase returns"]</td><td style="text-align:right">@d.PurchaseReturns.Count</td>
+          <td style="text-align:right">@((-d.PurchaseReturns.Sum(x => x.TaxBase)).ToString("N0"))</td><td style="text-align:right">@((-d.PurchaseReturns.Sum(x => x.TaxAmount)).ToString("N0"))</td></tr>
+      <tr style="font-weight:700"><td>PPN Masukan @Localizer["Net"]</td><td></td>
+          <td style="text-align:right">@((d.Purchases.Sum(x => x.TaxBase) - d.PurchaseReturns.Sum(x => x.TaxBase)).ToString("N0"))</td><td style="text-align:right">@d.InputTax.ToString("N0")</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div style="font-size:12px;color:#9ca3af;margin-top:8px">
+    @Localizer["The PPN stored on each invoice, return and purchase, nothing recalculated. The Excel has one sheet per list (every invoice with the customer's NPWP/NIK) for the tax consultant."]
+  </div>
+</div>

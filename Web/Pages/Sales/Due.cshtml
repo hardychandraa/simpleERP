@@ -7,7 +7,10 @@
     <span style="font-size:13px;color:#6b7280">@Localizer["Total outstanding:"] </span>
     <span style="font-size:20px;font-weight:700;color:#dc2626">@Model.TotalOutstanding.ToString("N0")</span>
   </div>
-  <a href="/Payments" class="btn btn-outline btn-sm">@Localizer["View by Invoice"] &rarr;</a>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/Sales/Due?handler=Excel" class="btn btn-outline btn-sm">⬇ @Localizer["Download Excel"]</a>
+    <a href="/Payments" class="btn btn-outline btn-sm">@Localizer["View by Invoice"] &rarr;</a>
+  </div>
 </div>
 @if (!Model.Summary.Any()) {
 <div class="card"><p style="color:#059669;font-size:14px;text-align:center;padding:20px">✓ @Localizer["No outstanding due payments!"]</p></div>

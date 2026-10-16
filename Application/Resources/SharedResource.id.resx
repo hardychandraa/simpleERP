@@ -1579,4 +1579,72 @@
   <data name="Owed now" xml:space="preserve"><value>Piutang saat ini</value></data>
   <data name="After this sale" xml:space="preserve"><value>Setelah penjualan ini</value></data>
   <data name="You can still create this sale." xml:space="preserve"><value>Penjualan ini tetap bisa dibuat.</value></data>
+  <data name="As of {0}" xml:space="preserve"><value>Per {0}</value></data>
+  <data name="By customer" xml:space="preserve"><value>Per pelanggan</value></data>
+  <data name="By invoice" xml:space="preserve"><value>Per faktur</value></data>
+  <data name="By purchase" xml:space="preserve"><value>Per pembelian</value></data>
+  <data name="By supplier" xml:space="preserve"><value>Per supplier</value></data>
+  <data name="Credit notes" xml:space="preserve"><value>Nota kredit</value></data>
+  <data name="Days late" xml:space="preserve"><value>Hari terlambat</value></data>
+  <data name="Debit notes" xml:space="preserve"><value>Nota debit</value></data>
+  <data name="Documents" xml:space="preserve"><value>Dokumen</value></data>
+  <data name="Download Excel" xml:space="preserve"><value>Unduh Excel</value></data>
+  <data name="Invoice No." xml:space="preserve"><value>No. Faktur</value></data>
+  <data name="Keluaran minus Masukan (overpaid)" xml:space="preserve"><value>Keluaran dikurangi Masukan (lebih bayar)</value></data>
+  <data name="Keluaran minus Masukan (to pay)" xml:space="preserve"><value>Keluaran dikurangi Masukan (kurang bayar)</value></data>
+  <data name="Margin by Product" xml:space="preserve"><value>Margin per Produk</value></data>
+  <data name="Net qty" xml:space="preserve"><value>Qty bersih</value></data>
+  <data name="No sales in this period." xml:space="preserve"><value>Tidak ada penjualan pada periode ini.</value></data>
+  <data name="Not yet checked" xml:space="preserve"><value>Belum dicek</value></data>
+  <data name="On the same basis as Laba Rugi: DPP excl. PPN, net of returns dated in the period, HPP at the cost when sold. Rows in red sold below cost." xml:space="preserve"><value>Dasar yang sama dengan Laba Rugi: DPP tanpa PPN, dikurangi retur yang bertanggal di periode ini, HPP sesuai harga pokok saat terjual. Baris merah terjual di bawah HPP.</value></data>
+  <data name="Owed" xml:space="preserve"><value>Sisa</value></data>
+  <data name="Owed now and past due are today&#x27;s figures (as on Due Payments by Customer), not the period&#x27;s." xml:space="preserve"><value>Piutang saat ini dan lewat jatuh tempo adalah angka hari ini (sama dengan halaman Tagihan per Pelanggan), bukan angka periode.</value></data>
+  <data name="PPN Summary" xml:space="preserve"><value>Rekap PPN</value></data>
+  <data name="Past due" xml:space="preserve"><value>Lewat jatuh tempo</value></data>
+  <data name="Period {0} – {1} · printed {2}" xml:space="preserve"><value>Periode {0} – {1} · dicetak {2}</value></data>
+  <data name="Purchase No." xml:space="preserve"><value>No. Pembelian</value></data>
+  <data name="Qty returned" xml:space="preserve"><value>Qty retur</value></data>
+  <data name="Qty sold" xml:space="preserve"><value>Qty terjual</value></data>
+  <data name="Sales by Customer" xml:space="preserve"><value>Penjualan per Pelanggan</value></data>
+  <data name="Share" xml:space="preserve"><value>Porsi</value></data>
+  <data name="Share %" xml:space="preserve"><value>Porsi %</value></data>
+  <data name="Supplier Invoice No." xml:space="preserve"><value>No. Faktur Supplier</value></data>
+  <data name="The PPN stored on each invoice, return and purchase, nothing recalculated. The Excel has one sheet per list (every invoice with the customer&#x27;s NPWP/NIK) for the tax consultant." xml:space="preserve"><value>PPN yang tersimpan di setiap faktur, retur dan pembelian, tanpa dihitung ulang. Excel-nya berisi satu sheet per daftar (setiap faktur dengan NPWP/NIK pelanggan) untuk konsultan pajak.</value></data>
+  <data name="incl. returns {0}" xml:space="preserve"><value>termasuk retur {0}</value></data>
+  <data name="less purchase returns" xml:space="preserve"><value>dikurangi retur pembelian</value></data>
+  <data name="less sales returns" xml:space="preserve"><value>dikurangi retur penjualan</value></data>
+  <data name="{0} not yet checked" xml:space="preserve"><value>{0} belum dicek</value></data>
+  <data name="{0} sales are to customers with no NPWP or NIK recorded." xml:space="preserve"><value>{0} penjualan ke pelanggan tanpa NPWP atau NIK tercatat.</value></data>
+  <data name="A payment on {0} is waiting for verification. Verify or reject it first." xml:space="preserve"><value>Ada pembayaran untuk {0} yang menunggu verifikasi. Verifikasi atau tolak dulu.</value></data>
+  <data name="A payment you record counts once an administrator has verified it." xml:space="preserve"><value>Pembayaran yang Anda catat baru dihitung setelah diverifikasi administrator.</value></data>
+  <data name="A request to cancel or revise {0} is already waiting for an administrator." xml:space="preserve"><value>Permintaan batal/revisi untuk {0} sudah menunggu administrator.</value></data>
+  <data name="A return entered by staff: its credit note can&#x27;t be applied or refunded until you check it." xml:space="preserve"><value>Retur yang diinput staf: nota kreditnya tidak dapat dipakai atau dikembalikan tunai sampai Anda mengeceknya.</value></data>
+  <data name="Cancel/revise request sent: {0}" xml:space="preserve"><value>Permintaan batal/revisi terkirim: {0}</value></data>
+  <data name="Give a reason for rejecting this payment." xml:space="preserve"><value>Isi alasan menolak pembayaran ini.</value></data>
+  <data name="Nothing to verify." xml:space="preserve"><value>Tidak ada yang perlu diverifikasi.</value></data>
+  <data name="Only an administrator can cancel or revise {0}. Send a request from the invoice instead." xml:space="preserve"><value>Hanya administrator yang dapat membatalkan atau merevisi {0}. Kirim permintaan dari halaman faktur.</value></data>
+  <data name="Only an administrator can reject a payment." xml:space="preserve"><value>Hanya administrator yang dapat menolak pembayaran.</value></data>
+  <data name="Only an administrator can verify a payment." xml:space="preserve"><value>Hanya administrator yang dapat memverifikasi pembayaran.</value></data>
+  <data name="Payment not found." xml:space="preserve"><value>Pembayaran tidak ditemukan.</value></data>
+  <data name="Payment recorded. It counts once an administrator has verified it." xml:space="preserve"><value>Pembayaran dicatat. Baru dihitung setelah diverifikasi administrator.</value></data>
+  <data name="Payment rejected." xml:space="preserve"><value>Pembayaran ditolak.</value></data>
+  <data name="Payment verified." xml:space="preserve"><value>Pembayaran diverifikasi.</value></data>
+  <data name="Payments recorded by staff" xml:space="preserve"><value>Pembayaran yang dicatat staf</value></data>
+  <data name="Payments recorded by staff. Check each against the cash drawer or the bank: verify it if the money arrived (it then counts, dated when it was received), reject it if not." xml:space="preserve"><value>Pembayaran yang dicatat staf. Cocokkan masing-masing dengan kas atau mutasi bank: verifikasi bila uangnya sudah diterima (lalu dihitung, bertanggal saat diterima), tolak bila tidak.</value></data>
+  <data name="Payments to verify" xml:space="preserve"><value>Pembayaran perlu diverifikasi</value></data>
+  <data name="Reject" xml:space="preserve"><value>Tolak</value></data>
+  <data name="Rejected" xml:space="preserve"><value>Ditolak</value></data>
+  <data name="Request cancel / revise" xml:space="preserve"><value>Minta batal / revisi</value></data>
+  <data name="Request sent to the administrator." xml:space="preserve"><value>Permintaan terkirim ke administrator.</value></data>
+  <data name="Say what is wrong, so the administrator knows what to cancel or change." xml:space="preserve"><value>Tulis apa yang salah, agar administrator tahu apa yang harus dibatalkan atau diubah.</value></data>
+  <data name="Still owed" xml:space="preserve"><value>Sisa tagihan</value></data>
+  <data name="The invoice is cancelled: reject this payment instead." xml:space="preserve"><value>Faktur sudah dibatalkan: tolak pembayaran ini.</value></data>
+  <data name="This payment has already been decided." xml:space="preserve"><value>Pembayaran ini sudah diputuskan.</value></data>
+  <data name="Verify" xml:space="preserve"><value>Verifikasi</value></data>
+  <data name="Waiting for verification" xml:space="preserve"><value>Menunggu verifikasi</value></data>
+  <data name="What is wrong? *" xml:space="preserve"><value>Apa yang salah? *</value></data>
+  <data name="Why?" xml:space="preserve"><value>Alasan?</value></data>
+  <data name="{0} asks to cancel or revise: {1}" xml:space="preserve"><value>{0} minta batal/revisi: {1}</value></data>
+  <data name="{0} payment(s) to verify" xml:space="preserve"><value>{0} pembayaran perlu diverifikasi</value></data>
+  <data name="{0} staff return(s)" xml:space="preserve"><value>{0} retur dari staf</value></data>
 </root>

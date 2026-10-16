@@ -12,13 +12,14 @@
 }
 
 <partial name="_PendingChecks" model="Model.PendingChecks" />
-@if (Model.SalesToCheck + Model.NotesToApprove + Model.ReturnsToCheck > 0)
+@if (Model.SalesToCheck + Model.NotesToApprove + Model.ReturnsToCheck + Model.PaymentsToVerify > 0)
 {
     <div class="alert alert-warning no-print" style="line-height:1.8">
         ⚠ <strong>@Localizer["Staff work to check"]:</strong>
+        @if (Model.PaymentsToVerify > 0) { <a href="/Payments/Pending" style="font-weight:700;margin-left:6px">@Localizer["{0} payment(s) to verify", Model.PaymentsToVerify] &rarr;</a> }
         @if (Model.SalesToCheck > 0)   { <a href="/Sales?pending=true" style="font-weight:700;margin-left:6px">@Localizer["{0} sale(s)", Model.SalesToCheck] &rarr;</a> }
         @if (Model.NotesToApprove > 0) { <a href="/CreditNotes" style="font-weight:700;margin-left:10px">@Localizer["{0} credit note(s) to approve", Model.NotesToApprove] &rarr;</a> }
-        @if (Model.ReturnsToCheck > 0) { <a href="/Returns" style="font-weight:700;margin-left:10px">@Localizer["{0} cash-sale return(s)", Model.ReturnsToCheck] &rarr;</a> }
+        @if (Model.ReturnsToCheck > 0) { <a href="/Returns" style="font-weight:700;margin-left:10px">@Localizer["{0} staff return(s)", Model.ReturnsToCheck] &rarr;</a> }
     </div>
 }
 @if (Model.CancelledToday.Any())

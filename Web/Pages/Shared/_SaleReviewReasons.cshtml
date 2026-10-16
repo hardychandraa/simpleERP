@@ -16,6 +16,7 @@
         SaleReview.Backdated   => Localizer["Dated {0} (yesterday)", Arg(0)],
         SaleReview.SalesPerson => Localizer["Salesperson {0} instead of the customer's {1}", Arg(0), Arg(1)],
         SaleReview.CreditLimit => Localizer["Over the credit limit: {1} owed after this sale, limit {0}", Amt(0), Amt(1)],
+        SaleReview.ChangeRequest => Localizer["{0} asks to cancel or revise: {1}", Arg(0), Arg(1)],
         SaleReview.Overdue     => Arg(0) == "1"
             ? Localizer["Customer has {0} overdue invoice: {1}, {2} days past due", Arg(0), Arg(1), Arg(2)]
             : Localizer["Customer has {0} overdue invoices, oldest {1}, {2} days past due", Arg(0), Arg(1), Arg(2)],

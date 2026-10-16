@@ -1,0 +1,73 @@
+@model SimpleERP.Web.Pages.Reports.SalesAnalysisVm
+@* The table behind Margin by product and Sales by customer (2026-10-15). Admin only: it shows
+   HPP and margin. Rows add up exactly to the totals, and the totals to Laba Rugi. *@
+@{ var d = Model.Report; var byProduct = Model.ByProduct; }
+<div class="stats" style="grid-template-columns:repeat(4,1fr)">
+  <div class="stat blue"><div class="stat-lbl">Penjualan Bersih (@Localizer["excl. PPN"])</div><div class="stat-val" style="font-size:18px">@d.NetSales.ToString("N0")</div></div>
+  <div class="stat orange"><div class="stat-lbl">HPP Bersih</div><div class="stat-val" style="font-size:18px">@d.NetCogs.ToString("N0")</div></div>
+  <div class="stat @(d.Margin >= 0 ? "green" : "red")"><div class="stat-lbl">Laba Kotor</div><div class="stat-val" style="font-size:18px">@d.Margin.ToString("N0")</div></div>
+  <div class="stat @(d.Margin >= 0 ? "green" : "red")"><div class="stat-lbl">Margin</div><div class="stat-val" style="font-size:18px">@(d.MarginPercent is { } mp ? mp.ToString("0.0") + "%" : "—")</div></div>
+</div>
+@if (!d.Rows.Any())
+{
+  <div class="card"><p style="text-align:center;color:#6b7280;padding:16px">@Localizer["No sales in this period."]</p></div>
+}
+else
+{
+<div class="card">
+  <div class="table-scroll">
+  <table>
+    <thead><tr>
+      <th>@(byProduct ? Localizer["Product"] : Localizer["Customer"])</th>
+      <th style="text-align:right">@Localizer["Invoices"]</th>
+      @if (byProduct) { <th style="text-align:right">@Localizer["Qty sold"]</th><th style="text-align:right">@Localizer["Qty returned"]</th> }
+      <th style="text-align:right">Penjualan Bersih</th>
+      <th style="text-align:right">HPP Bersih</th>
+      <th style="text-align:right">Laba Kotor</th>
+      <th style="text-align:right">Margin</th>
+      <th style="text-align:right">@Localizer["Share"]</th>
+      @if (!byProduct) { <th style="text-align:right">@Localizer["Owed now"]</th><th style="text-align:right">@Localizer["Past due"]</th> }
+    </tr></thead>
+    <tbody>
+    @foreach (var r in d.Rows)
+    {
+      var loss = r.Margin < 0;
+      <tr style="@(loss ? "background:#fef2f2" : "")">
+        <td>
+          <strong>@r.Name</strong>
+          @if (!string.IsNullOrEmpty(r.Code)) { <span style="color:#9ca3af;font-size:12px"> · @r.Code</span> }
+          @if (r.Returns != 0) { <div style="font-size:11px;color:#9ca3af">@Localizer["incl. returns {0}", r.Returns.ToString("N0")]</div> }
+        </td>
+        <td style="text-align:right">@r.InvoiceCount</td>
+        @if (byProduct) { <td style="text-align:right">@r.QtySold.ToString("N0") @r.Unit</td><td style="text-align:right;color:@(r.QtyReturned > 0 ? "#b45309" : "#d1d5db")">@(r.QtyReturned > 0 ? r.QtyReturned.ToString("N0") : "—")</td> }
+        <td style="text-align:right">@r.NetSales.ToString("N0")</td>
+        <td style="text-align:right">@r.NetCogs.ToString("N0")</td>
+        <td style="text-align:right;font-weight:600;color:@(loss ? "#b91c1c" : "#059669")">@r.Margin.ToString("N0")</td>
+        <td style="text-align:right;color:@(loss ? "#b91c1c" : "inherit")">@(r.MarginPercent is { } p ? p.ToString("0.0") + "%" : "—")</td>
+        <td style="text-align:right;color:#6b7280">@r.SharePercent.ToString("0.0")%</td>
+        @if (!byProduct)
+        {
+          <td style="text-align:right">@(r.OwedNow > 0 ? r.OwedNow.ToString("N0") : "—")</td>
+          <td style="text-align:right;color:@(r.Overdue > 0 ? "#b91c1c" : "#d1d5db");font-weight:@(r.Overdue > 0 ? "700" : "400")">@(r.Overdue > 0 ? r.Overdue.ToString("N0") : "—")</td>
+        }
+      </tr>
+    }
+    </tbody>
+    <tfoot><tr style="font-weight:700;border-top:2px solid #e5e7eb">
+      <td>@Localizer["Total"]</td>
+      <td style="text-align:right">@d.InvoiceCount</td>
+      @if (byProduct) { <td style="text-align:right">@d.Rows.Sum(r => r.QtySold).ToString("N0")</td><td style="text-align:right">@d.Rows.Sum(r => r.QtyReturned).ToString("N0")</td> }
+      <td style="text-align:right">@d.NetSales.ToString("N0")</td>
+      <td style="text-align:right">@d.NetCogs.ToString("N0")</td>
+      <td style="text-align:right">@d.Margin.ToString("N0")</td>
+      <td style="text-align:right">@(d.MarginPercent is { } tp ? tp.ToString("0.0") + "%" : "—")</td>
+      <td style="text-align:right">100%</td>
+      @if (!byProduct) { <td style="text-align:right">@d.OwedNow.ToString("N0")</td><td style="text-align:right">@d.Overdue.ToString("N0")</td> }
+    </tr></tfoot>
+  </table>
+  </div>
+  <div style="font-size:12px;color:#9ca3af;margin-top:8px">
+    @Localizer["On the same basis as Laba Rugi: DPP excl. PPN, net of returns dated in the period, HPP at the cost when sold. Rows in red sold below cost."]
+  </div>
+</div>
+}

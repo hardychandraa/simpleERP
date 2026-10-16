@@ -1703,6 +1703,25 @@ public class SaleRepository : ISaleRepository
     public void Update(Sale s) => _db.Sales.Update(s);
 }
 
+public class PendingPaymentRepository : IPendingPaymentRepository
+{
+    private readonly AppDbContext _db;
+    public PendingPaymentRepository(AppDbContext db) => _db = db;
+    public async Task AddAsync(PendingPayment p) => await _db.PendingPayments.AddAsync(p);
+    public Task<PendingPayment?> GetByIdAsync(Guid id) =>
+        _db.PendingPayments.Include(p => p.Sale!).ThenInclude(s => s.Customer).FirstOrDefaultAsync(p => p.Id == id);
+    public Task<List<PendingPayment>> GetPendingAsync() =>
+        _db.PendingPayments.Include(p => p.Sale!).ThenInclude(s => s.Customer)
+           .Where(p => p.Status == PendingPaymentStatus.Pending).OrderBy(p => p.ReceivedAt).ToListAsync();
+    public Task<List<PendingPayment>> GetForSaleAsync(Guid saleId) =>
+        _db.PendingPayments.Where(p => p.SaleId == saleId).OrderByDescending(p => p.ReceivedAt).ToListAsync();
+    public async Task<decimal> GetPendingTotalAsync(Guid saleId) =>
+        await _db.PendingPayments.Where(p => p.SaleId == saleId && p.Status == PendingPaymentStatus.Pending)
+                                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+    public Task<bool> AnyPendingAsync(Guid saleId) =>
+        _db.PendingPayments.AnyAsync(p => p.SaleId == saleId && p.Status == PendingPaymentStatus.Pending);
+}
+
 public class PaymentRecordRepository : IPaymentRecordRepository
 {
     private readonly AppDbContext _db;

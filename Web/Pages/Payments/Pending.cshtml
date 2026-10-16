@@ -1,0 +1,49 @@
+@page "/Payments/Pending"
+@model SimpleERP.Web.Pages.Payments.PendingModel
+@{ ViewData["Title"] = Localizer["Payments to verify"].Value; }
+@if (Model.Msg != null) { <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Localizer[Model.Msg]</div> }
+<div style="font-size:13px;color:#6b7280;margin-bottom:12px">
+  @Localizer["Payments recorded by staff. Check each against the cash drawer or the bank: verify it if the money arrived (it then counts, dated when it was received), reject it if not."]
+</div>
+@if (!Model.Rows.Any())
+{
+  <div class="card"><p style="color:#059669;text-align:center;padding:20px">✓ @Localizer["Nothing to verify."]</p></div>
+}
+else
+{
+<div class="card">
+  <div class="table-scroll">
+  <table>
+    <thead><tr>
+      <th>@Localizer["Received"]</th><th>@Localizer["Invoice No."]</th><th>@Localizer["Customer"]</th>
+      <th style="text-align:right">@Localizer["Amount"]</th><th style="text-align:right">@Localizer["Still owed"]</th><th></th>
+    </tr></thead>
+    <tbody>
+    @foreach (var p in Model.Rows)
+    {
+      <tr>
+        <td style="font-size:12px">@p.ReceivedAt.ToLocalTime().ToString("dd-MMM-yy HH:mm")<div style="color:#9ca3af;font-size:11px">@p.CreatedBy@(string.IsNullOrEmpty(p.Notes) ? "" : " · " + p.Notes)</div></td>
+        <td><a href="/Sales/@p.SaleId" style="color:#2563eb;font-weight:600">@p.InvoiceNumber</a></td>
+        <td>@p.CustomerName</td>
+        <td style="text-align:right;font-weight:700">@p.Amount.ToString("N0")</td>
+        <td style="text-align:right;color:#6b7280">@p.InvoiceOwed.ToString("N0")</td>
+        <td style="white-space:nowrap">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+            <form method="post" asp-page-handler="Verify">
+              <input type="hidden" name="pendingId" value="@p.Id" />
+              <button type="submit" class="btn btn-success btn-sm">✓ @Localizer["Verify"]</button>
+            </form>
+            <form method="post" asp-page-handler="Reject" style="display:flex;gap:4px">
+              <input type="hidden" name="pendingId" value="@p.Id" />
+              <input type="text" name="rejectReason" maxlength="300" required placeholder="@Localizer["Why?"]" style="width:120px;font-size:12px" />
+              <button type="submit" class="btn btn-danger btn-sm">✕ @Localizer["Reject"]</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  </div>
+</div>
+}

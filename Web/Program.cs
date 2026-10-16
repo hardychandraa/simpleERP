@@ -186,6 +186,26 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             {
                 ctx.RejectPrincipal();
                 await ctx.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return;
+            }
+
+            // Admin is signed out after AdminIdle without a request (R7, HC 2026-10-16): an Admin
+            // session left open on a shared counter PC was 12 hours of full access for whoever sat
+            // down next. Every Admin request renews the cookie, so IssuedUtc is the last activity;
+            // the page itself also goes to the login screen when idle (_Layout), so nothing stays
+            // on screen. Staff keep the 12-hour working day.
+            if (account.Role == UserRole.Admin)
+            {
+                var idle = SimpleERP.Web.Services.SessionPolicy.AdminIdle(ctx.HttpContext.RequestServices.GetRequiredService<IConfiguration>());
+                if (ctx.Properties.IssuedUtc is { } issued && DateTimeOffset.UtcNow - issued > idle)
+                {
+                    ctx.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>()
+                       .LogInformation("Admin session of {User} ended after {Minutes} minutes without activity", username, (int)idle.TotalMinutes);
+                    ctx.RejectPrincipal();
+                    await ctx.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
+                }
+                ctx.ShouldRenew = true;
             }
         };
     });
@@ -235,6 +255,10 @@ builder.Services.AddRazorPages(options => {
     options.Conventions.AuthorizePage("/Reports/ProfitLoss", "AdminOnly");
     options.Conventions.AuthorizePage("/Reports/Position",   "AdminOnly");
     options.Conventions.AuthorizePage("/Reports/EndOfDay",   "AdminOnly");
+    // Analysis reports (2026-10-15): cost, margin, PPN and totals, Admin's alone.
+    options.Conventions.AuthorizePage("/Reports/SalesByProduct",  "AdminOnly");
+    options.Conventions.AuthorizePage("/Reports/SalesByCustomer", "AdminOnly");
+    options.Conventions.AuthorizePage("/Reports/Ppn",             "AdminOnly");
     // Receivables are Admin's (HC, 2026-10-09): Due Payments, due by customer, the customer
     // statement / multi-invoice settlement, and Tanda Terima. Staff still record a payment
     // on the invoice itself.
@@ -391,6 +415,22 @@ app.UseRouting();
 // authorization can know what it protects.
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Nothing a signed-in user saw is kept by the browser (R7, HC 2026-10-16): without this, Back
+// after logout (or after the idle sign-out) on a shared PC could show the last Admin page from
+// the browser's cache. Pages and downloads alike; static files are served above and unaffected.
+app.Use(async (ctx, next) => {
+    ctx.Response.OnStarting(() => {
+        if (ctx.User.Identity?.IsAuthenticated == true)
+        {
+            ctx.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate, max-age=0";
+            ctx.Response.Headers.Pragma = "no-cache";
+            ctx.Response.Headers.Expires = "0";
+        }
+        return Task.CompletedTask;
+    });
+    await next();
+});
 
 // Inject antiforgery token into every page for use by fetch() JS calls.
 //

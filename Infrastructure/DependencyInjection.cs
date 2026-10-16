@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<ICostSnapshotRepository,     CostSnapshotRepository>();
         services.AddScoped<ISaleRepository,             SaleRepository>();
         services.AddScoped<IPaymentRecordRepository,    PaymentRecordRepository>();
+        services.AddScoped<IPendingPaymentRepository,   PendingPaymentRepository>();
         services.AddScoped<IStockAdjustmentRepository,  StockAdjustmentRepository>();
         services.AddScoped<IStockCountRepository,       StockCountRepository>();
         services.AddScoped<IAuditLogRepository,         AuditLogRepository>();
@@ -72,6 +73,8 @@ public static class DependencyInjection
         services.AddScoped<ISaleService,        SaleService>();
         services.AddScoped<IReportService,      ReportService>();
         services.AddScoped<IFinancialReportService, FinancialReportService>();
+        services.AddScoped<ISalesAnalysisService,   SalesAnalysisService>();
+        services.AddScoped<IReportRepository,       ReportRepository>();
         services.AddScoped<IPaymentTermService,  PaymentTermService>();
         services.AddScoped<ISalesPersonService,  SalesPersonService>();
         // Stateless and thread-safe; the hasher itself holds no per-request state.

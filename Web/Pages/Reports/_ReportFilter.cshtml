@@ -1,0 +1,17 @@
+@model SimpleERP.Web.Pages.Reports.ReportFilterVm
+@* Period filter + Excel / print buttons, shared by the analysis reports (2026-10-15). *@
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-bottom:18px" class="no-print">
+  <form method="get" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+    <div class="fg" style="margin:0">
+      <label>@Localizer["From"]</label>
+      <input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")"/>
+    </div>
+    <div class="fg" style="margin:0">
+      <label>@Localizer["To"]</label>
+      <input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")"/>
+    </div>
+    <button type="submit" class="btn btn-primary">@Localizer["View"]</button>
+  </form>
+  <a href="@Model.ExcelUrl" class="btn btn-outline btn-sm">⬇ @Localizer["Download Excel"]</a>
+  <button type="button" onclick="window.print()" class="btn btn-outline btn-sm">🖨 @Localizer["Print Report"]</button>
+</div>

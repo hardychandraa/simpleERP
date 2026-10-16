@@ -15,6 +15,7 @@ public static class SaleReview
     public const string SalesPerson = "salesperson";   // salesperson chosen, customer's own (or "-")
     public const string CreditLimit = "credit-limit";  // plafon, open balance after this sale (HC 2026-10-15)
     public const string Overdue     = "overdue";       // overdue invoices, oldest invoice, its days past due
+    public const string ChangeRequest = "change-request"; // Staff ask Admin to cancel or revise: who, why (R3, HC 2026-10-16)
 
     public static string Line(string code, params string[] args) =>
         string.Join('|', new[] { code }.Concat(args.Select(a => a.Replace('|', '/').Replace('\n', ' '))));

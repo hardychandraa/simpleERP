@@ -643,6 +643,18 @@ public interface IPaymentRecordRepository {
     Task<List<PaymentRecord>> GetByDateRangeAsync(DateTime from, DateTime to);
 }
 
+/// <summary>Staff-recorded payments waiting for Admin (R1, 2026-10-16).</summary>
+public interface IPendingPaymentRepository {
+    Task AddAsync(PendingPayment p);
+    Task<PendingPayment?> GetByIdAsync(Guid id);
+    /// <summary>Everything still waiting, oldest first, with the sale and customer.</summary>
+    Task<List<PendingPayment>> GetPendingAsync();
+    /// <summary>One sale's pending, verified and rejected ones, newest first.</summary>
+    Task<List<PendingPayment>> GetForSaleAsync(Guid saleId);
+    Task<decimal> GetPendingTotalAsync(Guid saleId);
+    Task<bool> AnyPendingAsync(Guid saleId);
+}
+
 public interface IStockAdjustmentRepository {
     Task AddAsync(StockAdjustment adj);
     Task<List<StockAdjustment>> GetAllAsync(DateTime? from = null, DateTime? to = null);
@@ -735,4 +747,28 @@ public interface ICostSnapshotRepository {
 public interface IAppSettingsRepository {
     Task<AppSettings> GetAsync();
     Task SaveAsync(AppSettings settings);
+}
+
+// ── Analysis reports (2026-10-15) ────────────────────────────────────────────
+/// <summary>One active sale line in a period, with its invoice's stored DPP (TaxBase) so the
+/// service can split the invoice's DPP over its lines.</summary>
+public record SaleLineFact(Guid SaleId, Guid CustomerId, Guid ProductId, decimal Qty,
+    decimal LineNet, decimal Cost, decimal SaleTaxBase);
+/// <summary>One active customer-return line in a period, with its return's stored DPP.</summary>
+public record ReturnLineFact(Guid ReturnId, Guid CustomerId, Guid ProductId, decimal Qty,
+    decimal Credit, decimal Cost, decimal ReturnTaxBase);
+/// <summary>A document for the PPN summary: stored DPP and PPN, and who it was with.</summary>
+public record TaxDocFact(Guid Id, DateTime Date, string Number, string? OtherNumber, string Party,
+    string? TaxId, string? NationalId, decimal TaxBase, decimal TaxAmount, decimal GrandTotal, bool Unchecked);
+
+/// <summary>Read-only queries behind the analysis reports. Nothing here writes.</summary>
+public interface IReportRepository {
+    /// <param name="fromUtc">Sale dates are UTC instants: pass the local days converted, as the P&amp;L does.</param>
+    Task<List<SaleLineFact>> GetSaleLinesAsync(DateTime fromUtc, DateTime toUtc);
+    /// <param name="from">Return dates are calendar days, compared as they are.</param>
+    Task<List<ReturnLineFact>> GetReturnLinesAsync(DateTime from, DateTime to);
+    Task<List<TaxDocFact>> GetSalesForTaxAsync(DateTime fromUtc, DateTime toUtc);
+    Task<List<TaxDocFact>> GetSalesReturnsForTaxAsync(DateTime from, DateTime to);
+    Task<List<TaxDocFact>> GetPurchasesForTaxAsync(DateTime from, DateTime to);
+    Task<List<TaxDocFact>> GetPurchaseReturnsForTaxAsync(DateTime from, DateTime to);
 }

@@ -8,6 +8,7 @@
     <UserSecretsId>7f7b5654-a87f-45e7-a3d5-2b96f145c295</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.13" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <ProjectReference Include="..\Application\SimpleERP.Application.csproj" />
