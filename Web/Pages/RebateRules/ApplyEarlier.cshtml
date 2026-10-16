@@ -1,0 +1,80 @@
+@page "/RebateRules/ApplyEarlier"
+@model SimpleERP.Web.Pages.RebateRules.ApplyEarlierModel
+@{ ViewData["Title"] = Localizer["Apply to earlier purchases"].Value; var r = Model.Result!; }
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+@if (Model.Applied)
+{
+    <div class="alert alert-success">@Localizer["Applied: {0} accrual(s) on {1} purchase(s), {2} in total.", r.Lines.Count, r.PurchaseCount, r.TotalAmount.ToString("N0")]</div>
+}
+
+<div class="card" style="margin-bottom:14px">
+    <div class="card-title" style="margin:0">@Localizer["Apply to earlier purchases"]: @r.RuleName</div>
+    <p style="font-size:12px;color:#6b7280;margin-top:10px;line-height:1.6">
+        @r.SupplierName ·
+        @Localizer["Period"]: @(r.PeriodStart?.ToString("dd MMM yyyy") ?? "…") – @(r.PeriodEnd?.ToString("dd MMM yyyy") ?? "…")<br />
+        @Localizer["A rule only runs when a purchase is posted. This runs it on the supplier's purchases in the rule's period that it has not run on yet, oldest first, each counted and dated as of its own day, so the rebate lands in the month of the purchase."]
+    </p>
+    <p style="font-size:12px;margin-top:6px">
+        @Localizer["Purchases checked"]: <b>@r.PurchasesChecked</b> ·
+        @Localizer["already done by this rule"]: <b>@r.PurchasesAlreadyDone</b>
+        @if (r.PurchasesInClosedPeriod > 0)
+        {
+            <text> · <span style="color:#b45309">@Localizer["skipped, in a closed period"]: <b>@r.PurchasesInClosedPeriod</b></span></text>
+        }
+    </p>
+</div>
+
+<div class="card">
+    @if (r.Lines.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">@Localizer["No earlier purchase earns a rebate under this rule."]</p>
+    }
+    else
+    {
+        <div class="card-title">@(Model.Applied ? Localizer["Accrued"] : Localizer["Would accrue"]) (@r.Lines.Count)</div>
+        <table style="width:100%">
+            <thead>
+                <tr>
+                    <th>@Localizer["Date"]</th>
+                    <th>@Localizer["Purchase"]</th>
+                    <th>@Localizer["Product"]</th>
+                    <th style="text-align:right">@Localizer["Qty"]</th>
+                    <th style="text-align:right">@Localizer["Amount"]</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var l in r.Lines)
+            {
+                <tr>
+                    <td>@l.PurchaseDate.ToString("dd MMM yyyy")</td>
+                    <td><a href="/Purchases/@l.PurchaseId">@l.PurchaseNumber</a></td>
+                    <td>@(string.IsNullOrEmpty(l.ProductName) ? Localizer["Whole purchase"].Value : l.ProductName)</td>
+                    <td style="text-align:right">@l.Qty.ToString("N0")</td>
+                    <td style="text-align:right">@l.Amount.ToString("N0")</td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" style="font-weight:600">@Localizer["Total"]</td>
+                    <td style="text-align:right;font-weight:600">@r.TotalAmount.ToString("N0")</td>
+                </tr>
+            </tfoot>
+        </table>
+    }
+</div>
+
+<div style="margin-top:14px;display:flex;gap:8px">
+    @if (!Model.Applied && r.Lines.Count > 0)
+    {
+        <form method="post" asp-route-id="@r.RuleId"
+              onsubmit="return confirm('@Localizer["Accrue {0} on {1} purchase(s)?", r.TotalAmount.ToString("N0"), r.PurchaseCount]');">
+            <button type="submit" class="btn btn-success">@Localizer["Apply"]</button>
+        </form>
+    }
+    <a href="/RebateRules" class="btn btn-outline">@Localizer["Back to rules"]</a>
+</div>

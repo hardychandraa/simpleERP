@@ -1647,4 +1647,22 @@
   <data name="{0} asks to cancel or revise: {1}" xml:space="preserve"><value>{0} minta batal/revisi: {1}</value></data>
   <data name="{0} payment(s) to verify" xml:space="preserve"><value>{0} pembayaran perlu diverifikasi</value></data>
   <data name="{0} staff return(s)" xml:space="preserve"><value>{0} retur dari staf</value></data>
+  <data name="Apply to earlier purchases" xml:space="preserve"><value>Terapkan ke pembelian sebelumnya</value></data>
+  <data name="Apply to earlier" xml:space="preserve"><value>Terapkan ke sebelumnya</value></data>
+  <data name="Run this rule on purchases posted before it existed" xml:space="preserve"><value>Jalankan aturan ini pada pembelian yang dicatat sebelum aturan dibuat</value></data>
+  <data name="Applied: {0} accrual(s) on {1} purchase(s), {2} in total." xml:space="preserve"><value>Diterapkan: {0} akrual pada {1} pembelian, total {2}.</value></data>
+  <data name="Period" xml:space="preserve"><value>Periode</value></data>
+  <data name="A rule only runs when a purchase is posted. This runs it on the supplier's purchases in the rule's period that it has not run on yet, oldest first, each counted and dated as of its own day, so the rebate lands in the month of the purchase." xml:space="preserve"><value>Aturan hanya berjalan saat pembelian dicatat. Ini menjalankannya pada pembelian pemasok dalam periode aturan yang belum diproses, dari yang terlama, masing-masing dihitung dan diberi tanggal sesuai harinya sendiri, sehingga rebat masuk ke bulan pembelian.</value></data>
+  <data name="Purchases checked" xml:space="preserve"><value>Pembelian diperiksa</value></data>
+  <data name="already done by this rule" xml:space="preserve"><value>sudah diproses aturan ini</value></data>
+  <data name="skipped, in a closed period" xml:space="preserve"><value>dilewati, di periode yang sudah ditutup</value></data>
+  <data name="No earlier purchase earns a rebate under this rule." xml:space="preserve"><value>Tidak ada pembelian sebelumnya yang mendapat rebat dari aturan ini.</value></data>
+  <data name="Accrued" xml:space="preserve"><value>Diakru</value></data>
+  <data name="Would accrue" xml:space="preserve"><value>Akan diakru</value></data>
+  <data name="Whole purchase" xml:space="preserve"><value>Seluruh pembelian</value></data>
+  <data name="Accrue {0} on {1} purchase(s)?" xml:space="preserve"><value>Akru {0} pada {1} pembelian?</value></data>
+  <data name="Back to rules" xml:space="preserve"><value>Kembali ke aturan</value></data>
+  <data name="Only an active rule can be applied to earlier purchases." xml:space="preserve"><value>Hanya aturan aktif yang dapat diterapkan ke pembelian sebelumnya.</value></data>
+  <data name="On-time payment rules apply when each purchase is paid in full, so there is nothing to apply to earlier purchases." xml:space="preserve"><value>Aturan bayar tepat waktu berlaku saat setiap pembelian dilunasi, jadi tidak ada yang perlu diterapkan ke pembelian sebelumnya.</value></data>
+  <data name="No earlier purchase earns a rebate under '{0}'. Nothing was written." xml:space="preserve"><value>Tidak ada pembelian sebelumnya yang mendapat rebat dari '{0}'. Tidak ada yang disimpan.</value></data>
 </root>

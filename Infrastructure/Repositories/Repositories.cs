@@ -435,9 +435,21 @@ public class PurchaseRepository : IPurchaseRepository
                      && (throughDay == null || p.PurchaseDate <= throughDay.Value))
             .OrderBy(p => p.PurchaseDate).ToListAsync();
 
-    public async Task<decimal> GetPurchasedQtyAsync(Guid supplierId, Guid productId, DateTime? from, DateTime? to,
-                                                    Guid? excludePurchaseId = null)
+    public Task<List<Purchase>> GetActiveForSupplierWithItemsAsync(Guid supplierId, DateTime? from, DateTime? to)
     {
+        var q = _db.Purchases.Include(p => p.PurchaseItems).ThenInclude(i => i.Product)
+                   .Where(p => p.SupplierId == supplierId && p.Status == PurchaseStatus.Active);
+        if (from.HasValue) q = q.Where(p => p.PurchaseDate >= from.Value);
+        if (to.HasValue)   q = q.Where(p => p.PurchaseDate <= to.Value);
+        return q.OrderBy(p => p.PurchaseDate).ThenBy(p => p.CreatedAt).ToListAsync();
+    }
+
+    public async Task<decimal> GetPurchasedQtyAsync(Guid supplierId, Guid productId, DateTime? from, DateTime? to,
+                                                    Guid? excludePurchaseId = null, Purchase? before = null)
+    {
+        // before: the volume a purchase had reached on its own day, not today's total.
+        var day = before?.PurchaseDate.Date;
+        var at  = before?.CreatedAt;
         // excludePurchaseId: a revision re-evaluates rebates for a purchase that is already saved,
         // so its own (old) lines must not count toward the threshold a second time.
         var q = _db.PurchaseItems
@@ -447,6 +459,9 @@ public class PurchaseRepository : IPurchaseRepository
                      && (excludePurchaseId == null || i.PurchaseId != excludePurchaseId));
         if (from.HasValue) q = q.Where(i => i.Purchase!.PurchaseDate >= from.Value);
         if (to.HasValue)   q = q.Where(i => i.Purchase!.PurchaseDate <= to.Value);
+        if (before != null)
+            q = q.Where(i => i.Purchase!.PurchaseDate < day
+                          || (i.Purchase.PurchaseDate == day && i.Purchase.CreatedAt < at));
         var purchased = await q.SumAsync(i => (decimal?)i.Qty) ?? 0m;
 
         // Returned units no longer count toward a Volume threshold (HC, 2026-07-31 — see
@@ -460,6 +475,9 @@ public class PurchaseRepository : IPurchaseRepository
                      && (excludePurchaseId == null || i.Return.PurchaseId != excludePurchaseId));
         if (from.HasValue) returnedQ = returnedQ.Where(i => i.Return!.Purchase!.PurchaseDate >= from.Value);
         if (to.HasValue)   returnedQ = returnedQ.Where(i => i.Return!.Purchase!.PurchaseDate <= to.Value);
+        if (before != null)
+            returnedQ = returnedQ.Where(i => i.Return!.Purchase!.PurchaseDate < day
+                                          || (i.Return.Purchase.PurchaseDate == day && i.Return.Purchase.CreatedAt < at));
         var returned = await returnedQ.SumAsync(i => (decimal?)i.Qty) ?? 0m;
 
         return purchased - returned;
@@ -555,6 +573,10 @@ public class RebateAccrualRepository : IRebateAccrualRepository
     public Task<List<RebateAccrual>> GetByPurchaseAsync(Guid purchaseId) =>
         WithNav.Where(a => a.PurchaseId == purchaseId)
                .OrderBy(a => a.AccrualDate).ToListAsync();
+
+    public async Task<HashSet<Guid>> GetPurchaseIdsWithAccrualAsync(Guid ruleId) =>
+        (await _db.RebateAccruals.Where(a => a.RebateRuleId == ruleId && !a.IsVoided && a.PurchaseId != null)
+                                 .Select(a => a.PurchaseId!.Value).Distinct().ToListAsync()).ToHashSet();
 
     public Task<List<RebateAccrual>> GetOutstandingBySupplierAsync(Guid supplierId) =>
         WithNav.Where(a => a.SupplierId == supplierId && a.RebateRealizationId == null && !a.IsVoided)

@@ -35,7 +35,7 @@
                     <th>@Localizer["Condition"]</th>
                     <th>@Localizer["Reward"]</th>
                     <th style="text-align:center">@Localizer["Status"]</th>
-                    <th style="width:140px"></th>
+                    <th style="width:220px"></th>
                 </tr>
             </thead>
             <tbody>
@@ -89,6 +89,11 @@
                     </td>
                     <td style="white-space:nowrap">
                         <a href="/RebateRules/Edit?id=@r.Id" class="btn btn-outline btn-sm">@Localizer["Edit"]</a>
+                        @if (r.IsActive && r.ConditionType != RebateConditionType.OnTimePayment)
+                        {
+                            <a href="/RebateRules/ApplyEarlier?id=@r.Id" class="btn btn-outline btn-sm"
+                               title="@Localizer["Run this rule on purchases posted before it existed"]">@Localizer["Apply to earlier"]</a>
+                        }
                         @if (r.InUse)
                         {
                             <span style="font-size:11px;color:#9ca3af;margin-left:6px" title="@Localizer["Has accrued rebates"]">@Localizer["in use"]</span>

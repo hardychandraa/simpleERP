@@ -270,6 +270,10 @@ public interface IRebateService {
     Task<ServiceResult> CreateRuleAsync(RebateRuleDto dto, string user);
     Task<ServiceResult> UpdateRuleAsync(RebateRuleDto dto, string user);
     Task<ServiceResult> DeleteRuleAsync(Guid id, string user);
+    /// <summary>What the rule would accrue on purchases posted before it existed. Writes nothing.</summary>
+    Task<ServiceResult<RebateBackfillDto>> PreviewApplyToEarlierAsync(Guid ruleId);
+    /// <summary>Accrues the rule on those purchases, in one transaction; the result lists what was written.</summary>
+    Task<ServiceResult<RebateBackfillDto>> ApplyToEarlierAsync(Guid ruleId, string user);
 
     // Accruals / claims
     Task<List<RebateAccrualDto>> GetAccrualsAsync(Guid? supplierId = null, bool? outstandingOnly = null);

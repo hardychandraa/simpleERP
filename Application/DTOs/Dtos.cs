@@ -785,6 +785,36 @@ public class RebateAccrualDto {
     public bool     IsSettled      { get; set; }
     public bool     IsVoided       { get; set; }
 }
+/// <summary>
+/// "Apply to earlier purchases" for one rule: what it would accrue (preview) or did accrue
+/// (apply) on purchases posted before the rule existed.
+/// </summary>
+public class RebateBackfillDto {
+    public Guid      RuleId       { get; set; }
+    public string    RuleName     { get; set; } = "";
+    public string    SupplierName { get; set; } = "";
+    public DateTime? PeriodStart  { get; set; }
+    public DateTime? PeriodEnd    { get; set; }
+    /// <summary>Purchases the rule was evaluated on.</summary>
+    public int PurchasesChecked       { get; set; }
+    /// <summary>Skipped: they already have a live accrual from this rule.</summary>
+    public int PurchasesAlreadyDone   { get; set; }
+    /// <summary>Skipped: dated in a closed month.</summary>
+    public int PurchasesInClosedPeriod { get; set; }
+    public List<RebateBackfillLineDto> Lines { get; set; } = new();
+    public decimal TotalAmount   => Lines.Sum(l => l.Amount);
+    public int     PurchaseCount => Lines.Select(l => l.PurchaseId).Distinct().Count();
+}
+public class RebateBackfillLineDto {
+    public Guid     PurchaseId     { get; set; }
+    public string   PurchaseNumber { get; set; } = "";
+    public DateTime PurchaseDate   { get; set; }
+    /// <summary>Empty for a whole-purchase (flat) reward.</summary>
+    public string   ProductName    { get; set; } = "";
+    public decimal  Qty            { get; set; }
+    public decimal  Amount         { get; set; }
+    public string   RewardType     { get; set; } = "";
+}
 /// <summary>A supplier row on the rebate-claim landing page.</summary>
 public class RebateOutstandingDto {
     public Guid    SupplierId       { get; set; }

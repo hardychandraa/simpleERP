@@ -43,6 +43,7 @@ public class RebateService : IRebateService
     private readonly InventoryService             _inventory;
     private readonly CreditNoteService            _creditNotes;
     private readonly IUnitOfWork                  _uow;
+    private readonly PeriodLock                   _period;
 
     private readonly IStringLocalizer<SharedResource> _loc;
     private readonly ILogger<RebateService> _log;
@@ -50,11 +51,11 @@ public class RebateService : IRebateService
         IRebateRealizationRepository realizations, IPurchaseRepository purchases,
         ISupplierRepository suppliers, IProductRepository products, IBranchRepository branches,
         IAppSettingsRepository settings, IAuditLogRepository audit,
-        InventoryService inventory, CreditNoteService creditNotes, IUnitOfWork uow,
+        InventoryService inventory, CreditNoteService creditNotes, IUnitOfWork uow, PeriodLock period,
         IStringLocalizer<SharedResource> loc, ILogger<RebateService> log)
     { _rules=rules; _accruals=accruals; _realizations=realizations; _purchases=purchases;
       _suppliers=suppliers; _products=products; _branches=branches; _settings=settings;
-      _audit=audit; _inventory=inventory; _creditNotes=creditNotes; _uow=uow;  _loc = loc; _log = log; }
+      _audit=audit; _inventory=inventory; _creditNotes=creditNotes; _uow=uow; _period=period;  _loc = loc; _log = log; }
 
     // ── Evaluation (called inside the PurchaseService transaction — no SaveChanges) ──
 
@@ -64,46 +65,52 @@ public class RebateService : IRebateService
     /// </summary>
     public async Task EvaluateOnPurchaseAsync(Purchase purchase, IReadOnlyList<PurchaseItem> items)
     {
-        var rules = await _rules.GetActiveForSupplierAsync(purchase.SupplierId);
-        if (rules.Count == 0) return;
+        foreach (var rule in await _rules.GetActiveForSupplierAsync(purchase.SupplierId))
+            foreach (var accrual in await AccrualsForPurchaseAsync(rule, purchase, items))
+                await _accruals.AddAsync(accrual);
+    }
+
+    /// <summary>
+    /// What one Volume or PriceDrop rule earns on one purchase, built but not added — shared by
+    /// posting/revising a purchase and by applying a rule to earlier purchases (which can preview).
+    /// </summary>
+    private async Task<List<RebateAccrual>> AccrualsForPurchaseAsync(RebateRule rule, Purchase purchase,
+        IReadOnlyList<PurchaseItem> items)
+    {
+        var earned = new List<RebateAccrual>();
+        if (!WithinPeriod(rule, purchase.PurchaseDate)) return earned;
+        switch (rule.ConditionType)
+        {
+            case RebateConditionType.Volume:    await AccrueVolumeAsync(rule, purchase, items, earned); break;
+            case RebateConditionType.PriceDrop: AccruePriceDrop(rule, purchase, items, earned);         break;
+            // OnTimePayment: evaluated at payment time, not here.
+        }
+        return earned;
+    }
+
+    private async Task AccrueVolumeAsync(RebateRule rule, Purchase purchase,
+        IReadOnlyList<PurchaseItem> items, List<RebateAccrual> earned)
+    {
+        // Lines this rule looks at: the specific product, or all of them.
+        var lines = items.Where(i => rule.ProductId == null || i.ProductId == rule.ProductId).ToList();
+        if (lines.Count == 0) return;
 
         // This purchase's own qty per product, so a product spread over two lines counts once.
         var thisPurchaseQtyByProduct = items
             .GroupBy(i => i.ProductId)
             .ToDictionary(g => g.Key, g => g.Sum(i => i.Qty));
 
-        foreach (var rule in rules)
-        {
-            if (!WithinPeriod(rule, purchase.PurchaseDate)) continue;
-
-            switch (rule.ConditionType)
-            {
-                case RebateConditionType.Volume:
-                    await AccrueVolumeAsync(rule, purchase, items, thisPurchaseQtyByProduct);
-                    break;
-                case RebateConditionType.PriceDrop:
-                    AccruePriceDrop(rule, purchase, items);
-                    break;
-                // OnTimePayment: evaluated at payment time, not here.
-            }
-        }
-    }
-
-    private async Task AccrueVolumeAsync(RebateRule rule, Purchase purchase,
-        IReadOnlyList<PurchaseItem> items, Dictionary<Guid, decimal> thisPurchaseQtyByProduct)
-    {
-        // Lines this rule looks at: the specific product, or all of them.
-        var lines = items.Where(i => rule.ProductId == null || i.ProductId == rule.ProductId).ToList();
-        if (lines.Count == 0) return;
-
-        // Which lines clear the threshold. Cumulative = prior period qty (from the DB,
-        // excluding this not-yet-saved purchase) + this purchase's qty for the product.
+        // Which lines clear the threshold. Cumulative = qty bought earlier in the period (from
+        // the DB) + this purchase's qty for the product.
         var qualifyingLines = new List<PurchaseItem>();
         foreach (var line in lines)
         {
             // Excludes this purchase: new, it isn't saved yet; revised, its old lines must not count twice.
+            // Only purchases before it count: an old purchase re-evaluated (revised, or a rule applied
+            // later) must not reach the threshold on volume bought after it.
             var prior = await _purchases.GetPurchasedQtyAsync(
-                purchase.SupplierId, line.ProductId, rule.PeriodStart, rule.PeriodEnd, excludePurchaseId: purchase.Id);
+                purchase.SupplierId, line.ProductId, rule.PeriodStart, rule.PeriodEnd,
+                excludePurchaseId: purchase.Id, before: purchase);
             var cumulative = prior + thisPurchaseQtyByProduct.GetValueOrDefault(line.ProductId, 0m);
 
             var qtyOk   = !rule.ThresholdQty.HasValue   || cumulative >= rule.ThresholdQty.Value;
@@ -115,19 +122,20 @@ public class RebateService : IRebateService
         if (IsPerLineReward(rule.RewardType))
         {
             foreach (var line in qualifyingLines)
-                await AddAccrualAsync(rule, purchase, line,
-                    line.Qty, RewardAmountForLine(rule, line, purchase));
+                earned.Add(BuildPurchaseAccrual(rule, purchase, line,
+                    line.Qty, RewardAmountForLine(rule, line, purchase)));
         }
         else
         {
             // Flat/goods reward: one accrual for the whole purchase.
             var qty = rule.RewardType == RebateRewardType.InKindGoods ? (rule.RewardQty ?? 0m)
                                                                        : qualifyingLines.Sum(l => l.Qty);
-            await AddAccrualAsync(rule, purchase, null, qty, FlatRewardAmount(rule));
+            earned.Add(BuildPurchaseAccrual(rule, purchase, null, qty, FlatRewardAmount(rule)));
         }
     }
 
-    private void AccruePriceDrop(RebateRule rule, Purchase purchase, IReadOnlyList<PurchaseItem> items)
+    private static void AccruePriceDrop(RebateRule rule, Purchase purchase, IReadOnlyList<PurchaseItem> items,
+        List<RebateAccrual> earned)
     {
         if (!rule.ReferenceCost.HasValue) return;
         var lines = items.Where(i => (rule.ProductId == null || i.ProductId == rule.ProductId)
@@ -136,8 +144,81 @@ public class RebateService : IRebateService
         {
             // The reward is the drop itself, regardless of the rule's reward fields.
             var amount = Math.Round((rule.ReferenceCost!.Value - line.UnitCost) * line.Qty, 2, MidpointRounding.AwayFromZero);
-            AddAccrual(rule, purchase, line, line.Qty, amount);
+            earned.Add(BuildPurchaseAccrual(rule, purchase, line, line.Qty, amount));
         }
+    }
+
+    // ── Applying a rule to purchases posted before it existed ──
+    // A rule only runs when a purchase is posted or re-priced, so one entered after the
+    // goods came in (October 2026: the supplier programmes were set up after the KJ import)
+    // would never see them. This runs the same evaluation over the rule's period, oldest
+    // purchase first, each dated and volume-counted as of its own day.
+
+    public Task<ServiceResult<RebateBackfillDto>> PreviewApplyToEarlierAsync(Guid ruleId)
+        => ApplyToEarlierCoreAsync(ruleId, user: null);
+
+    public Task<ServiceResult<RebateBackfillDto>> ApplyToEarlierAsync(Guid ruleId, string user)
+        => ApplyToEarlierCoreAsync(ruleId, user);
+
+    /// <summary>user == null: preview, nothing written.</summary>
+    private async Task<ServiceResult<RebateBackfillDto>> ApplyToEarlierCoreAsync(Guid ruleId, string? user)
+    {
+        var commit = user != null;
+        if (commit)
+        {
+            // Serialise per rule: a double-click (or two tabs) must not accrue the same purchases twice.
+            // Purchases are locked too, so a revision re-evaluating one of them can't interleave.
+            var head = await _rules.GetByIdAsync(ruleId);
+            var ids = head == null ? new List<Guid>()
+                : (await _purchases.GetActiveForSupplierWithItemsAsync(head.SupplierId, head.PeriodStart, head.PeriodEnd))
+                    .Select(p => p.Id).ToList();
+            await _uow.LockAsync(ids.Prepend(ruleId).ToArray());
+        }
+
+        var rule = await _rules.GetByIdAsync(ruleId);
+        if (rule == null) return _log.Refuse<RebateBackfillDto>(_loc["Rebate rule not found."]);
+        if (!rule.IsActive)
+            return _log.Refuse<RebateBackfillDto>(_loc["Only an active rule can be applied to earlier purchases."]);
+        if (rule.ConditionType == RebateConditionType.OnTimePayment)
+            return _log.Refuse<RebateBackfillDto>(_loc["On-time payment rules apply when each purchase is paid in full, so there is nothing to apply to earlier purchases."]);
+
+        var result = new RebateBackfillDto {
+            RuleId = rule.Id, RuleName = rule.Name, SupplierName = rule.Supplier?.Name ?? "",
+            PeriodStart = rule.PeriodStart, PeriodEnd = rule.PeriodEnd
+        };
+        var done = await _accruals.GetPurchaseIdsWithAccrualAsync(rule.Id);
+        var earned = new List<RebateAccrual>();
+
+        foreach (var p in await _purchases.GetActiveForSupplierWithItemsAsync(rule.SupplierId, rule.PeriodStart, rule.PeriodEnd))
+        {
+            if (done.Contains(p.Id))                   { result.PurchasesAlreadyDone++;    continue; }
+            // A closed month's P&L has been reported; its rebate figure must not move.
+            if (await _period.IsClosedAsync(p.PurchaseDate)) { result.PurchasesInClosedPeriod++; continue; }
+            result.PurchasesChecked++;
+
+            foreach (var a in await AccrualsForPurchaseAsync(rule, p, p.PurchaseItems.ToList()))
+            {
+                earned.Add(a);
+                result.Lines.Add(new RebateBackfillLineDto {
+                    PurchaseId = p.Id, PurchaseNumber = p.PurchaseNumber, PurchaseDate = p.PurchaseDate,
+                    ProductName = p.PurchaseItems.FirstOrDefault(i => i.Id == a.PurchaseItemId)?.Product?.Name ?? "",
+                    Qty = a.Qty, Amount = a.Amount, RewardType = a.RewardType.ToString()
+                });
+            }
+        }
+
+        if (!commit) return ServiceResult<RebateBackfillDto>.Ok(result);
+        if (earned.Count == 0)
+            return _log.Refuse<RebateBackfillDto>(_loc["No earlier purchase earns a rebate under '{0}'. Nothing was written.", rule.Name]);
+
+        foreach (var a in earned) await _accruals.AddAsync(a);
+        var detail = $"{rule.Name}: {earned.Count} accrual(s) on {result.PurchaseCount} purchase(s), {result.TotalAmount:N0}";
+        await _audit.LogAsync(user!, "RebateRule.ApplyToEarlier", detail);
+        await _uow.SaveChangesAsync();
+        // Rebate income appears in past months without a purchase being touched — the first
+        // thing to look for when someone asks why an earlier month's P&L changed.
+        _log.LogInformation("Rebate rule applied to earlier purchases — {Detail}, by {User}", detail, user);
+        return ServiceResult<RebateBackfillDto>.Ok(result);
     }
 
     /// <summary>
@@ -173,7 +254,7 @@ public class RebateService : IRebateService
 
             if (rule.RewardType == RebateRewardType.InKindGoods && rule.RewardProductId.HasValue)
             {
-                var accrual = BuildAccrual(rule, purchase, null, rule.RewardQty ?? 0m, 0m);
+                var accrual = BuildAccrual(rule, purchase, null, rule.RewardQty ?? 0m, 0m, paymentDate);
                 await _accruals.AddAsync(accrual);
                 await RealizeInKindCore(accrual, rule.RewardProductId.Value, rule.RewardQty ?? 0m,
                     purchase.SupplierId, null, "Auto: on-time payment", user);
@@ -181,12 +262,12 @@ public class RebateService : IRebateService
             else if (rule.RewardType == RebateRewardType.LuckyDraw)
             {
                 // Can't fabricate a value — accrue outstanding, settle later by hand.
-                await _accruals.AddAsync(BuildAccrual(rule, purchase, null, 0m, 0m));
+                await _accruals.AddAsync(BuildAccrual(rule, purchase, null, 0m, 0m, paymentDate));
             }
             else
             {
                 var gross   = FlatOrPercentRewardForPurchase(rule, purchase);
-                var accrual = BuildAccrual(rule, purchase, null, 1m, gross);
+                var accrual = BuildAccrual(rule, purchase, null, 1m, gross, paymentDate);
                 await _accruals.AddAsync(accrual);
                 await RealizeCashCore(new[] { accrual }, purchase.SupplierId, rule.RewardType,
                     gross, settings.RebateWithholdingRate, null, "Auto: on-time payment", user);
@@ -459,20 +540,21 @@ public class RebateService : IRebateService
 
     // ── Accrual builders ──
 
-    private async Task AddAccrualAsync(RebateRule rule, Purchase purchase, PurchaseItem? line,
+    /// <summary>
+    /// A Volume/PriceDrop accrual, dated on the purchase's own day: the P&amp;L reads rebate by
+    /// AccrualDate, so a backdated purchase (or a rule applied later) earns in the purchase's
+    /// month, not the month it was entered. Today keeps the clock time, as the ledger does.
+    /// </summary>
+    private static RebateAccrual BuildPurchaseAccrual(RebateRule rule, Purchase purchase, PurchaseItem? line,
         decimal qty, decimal amount)
-        => await _accruals.AddAsync(BuildAccrual(rule, purchase, line, qty, amount));
-
-    private void AddAccrual(RebateRule rule, Purchase purchase, PurchaseItem? line,
-        decimal qty, decimal amount)
-        => _accruals.AddAsync(BuildAccrual(rule, purchase, line, qty, amount));
+        => BuildAccrual(rule, purchase, line, qty, amount, LedgerDate.FromLocalDay(purchase.PurchaseDate));
 
     private static RebateAccrual BuildAccrual(RebateRule rule, Purchase purchase, PurchaseItem? line,
-        decimal qty, decimal amount) => new() {
+        decimal qty, decimal amount, DateTime accrualDate) => new() {
             Id = Guid.NewGuid(), RebateRuleId = rule.Id, SupplierId = purchase.SupplierId,
             PurchaseId = purchase.Id, PurchaseItemId = line?.Id,
             RewardType = rule.RewardType, Qty = qty, Amount = amount,
-            AccrualDate = DateTime.UtcNow
+            AccrualDate = accrualDate
         };
 
     // ── Reward-amount helpers ──

@@ -267,9 +267,16 @@ public interface IPurchaseRepository {
     /// Backs the Volume rebate threshold — the "have we bought enough this period?"
     /// check. Excludes the purchase currently being posted (not yet saved), so the
     /// caller adds the current line's qty itself.
+    /// <paramref name="before"/>: count only purchases that came before it (an earlier day, or
+    /// the same day posted earlier), so re-evaluating an old purchase doesn't count later ones.
     /// </summary>
     Task<decimal> GetPurchasedQtyAsync(Guid supplierId, Guid productId, DateTime? from, DateTime? to,
-                                       Guid? excludePurchaseId = null);
+                                       Guid? excludePurchaseId = null, Purchase? before = null);
+    /// <summary>
+    /// A supplier's active purchases dated within [from, to], with lines and products, oldest
+    /// first (day, then posting order) — the set a rebate rule is applied to after the fact.
+    /// </summary>
+    Task<List<Purchase>> GetActiveForSupplierWithItemsAsync(Guid supplierId, DateTime? from, DateTime? to);
     /// <summary>A line added to an existing purchase by a revision (its id is preset, so it must be added explicitly).</summary>
     Task AddItemAsync(PurchaseItem item);
     /// <summary>Active purchases still flagged Perlu dicek, optionally only those dated on/before a day.</summary>
@@ -336,6 +343,8 @@ public interface IRebateAccrualRepository {
     Task<RebateAccrual?> GetByIdAsync(Guid id);
     /// <summary>Accruals triggered by a purchase — used to void them when it's cancelled and to show them on its detail.</summary>
     Task<List<RebateAccrual>> GetByPurchaseAsync(Guid purchaseId);
+    /// <summary>Purchases that already have a live (not voided) accrual from this rule.</summary>
+    Task<HashSet<Guid>> GetPurchaseIdsWithAccrualAsync(Guid ruleId);
     /// <summary>Outstanding (unsettled, not voided) accruals for a supplier — the claim worklist.</summary>
     Task<List<RebateAccrual>> GetOutstandingBySupplierAsync(Guid supplierId);
     /// <summary>All accruals in a window, optionally filtered by supplier/settled-state, for the list UI.</summary>
