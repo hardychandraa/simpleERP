@@ -194,7 +194,7 @@ public class ExpenseRepository : IExpenseRepository
         if (from.HasValue)       q = q.Where(e => e.ExpenseDate >= from.Value);
         if (to.HasValue)         q = q.Where(e => e.ExpenseDate <  to.Value);
         if (categoryId.HasValue) q = q.Where(e => e.ExpenseCategoryId == categoryId.Value);
-        return q.OrderByDescending(e => e.ExpenseDate).ThenByDescending(e => e.CreatedAt).ToListAsync();
+        return q.OrderByDescending(e => e.CreatedAt).ToListAsync();
     }
 
     public Task<Expense?> GetByIdAsync(Guid id) =>
@@ -314,7 +314,7 @@ public class PurchaseRepository : IPurchaseRepository
         var q = _db.Purchases.Include(p => p.Supplier).AsQueryable();
         if (from.HasValue) q = q.Where(p => p.PurchaseDate >= from.Value);
         if (to.HasValue)   q = q.Where(p => p.PurchaseDate <= to.Value);
-        return q.OrderByDescending(p => p.PurchaseDate).ToListAsync();
+        return q.OrderByDescending(p => p.CreatedAt).ToListAsync();
     }
 
     public Task<List<Purchase>> GetByIdsWithItemsAsync(IEnumerable<Guid> ids)
@@ -588,7 +588,8 @@ public class RebateAccrualRepository : IRebateAccrualRepository
         if (supplierId.HasValue)  q = q.Where(a => a.SupplierId == supplierId.Value);
         if (outstandingOnly == true)  q = q.Where(a => a.RebateRealizationId == null);
         if (outstandingOnly == false) q = q.Where(a => a.RebateRealizationId != null);
-        return q.OrderByDescending(a => a.AccrualDate).ToListAsync();
+        // Accruals are dated on their purchase's day (no time), so same-day ones go newest purchase first.
+        return q.OrderByDescending(a => a.AccrualDate).ThenByDescending(a => a.Purchase!.CreatedAt).ToListAsync();
     }
 
     public async Task<List<RebateOutstandingBySupplier>> GetOutstandingSummaryAsync()
@@ -865,7 +866,7 @@ public class CustomerReturnRepository : ICustomerReturnRepository
                           || r.Sale!.InvoiceNumber.ToLower().Contains(s)
                           || r.Sale.Customer!.Name.ToLower().Contains(s));
         }
-        return q.OrderByDescending(r => r.ReturnDate).ThenByDescending(r => r.CreatedAt).ToListAsync();
+        return q.OrderByDescending(r => r.CreatedAt).ToListAsync();
     }
 
     public Task<List<CustomerReturn>> GetBySaleAsync(Guid saleId) =>
@@ -961,7 +962,7 @@ public class SupplierReturnRepository : ISupplierReturnRepository
                           || (r.Purchase.SupplierDocumentNumber ?? "").ToLower().Contains(s)
                           || r.Purchase.Supplier!.Name.ToLower().Contains(s));
         }
-        return q.OrderByDescending(r => r.ReturnDate).ThenByDescending(r => r.CreatedAt).ToListAsync();
+        return q.OrderByDescending(r => r.CreatedAt).ToListAsync();
     }
 
     public Task<List<SupplierReturn>> GetByPurchaseAsync(Guid purchaseId) =>
@@ -1050,7 +1051,7 @@ public class CreditNoteRepository : ICreditNoteRepository
         if (to.HasValue)         q = q.Where(n => n.NoteDate <= to.Value);
         if (customerId.HasValue) q = q.Where(n => n.CustomerId == customerId.Value);
         if (supplierId.HasValue) q = q.Where(n => n.SupplierId == supplierId.Value);
-        return q.OrderByDescending(n => n.NoteDate).ThenByDescending(n => n.CreatedAt).ToListAsync();
+        return q.OrderByDescending(n => n.CreatedAt).ToListAsync();
     }
 
     public Task<List<CreditNote>> GetByIdsAsync(IEnumerable<Guid> ids)
@@ -1210,7 +1211,7 @@ public class PaymentBatchRepository : IPaymentBatchRepository
         if (supplierId.HasValue) q = q.Where(b => b.SupplierId == supplierId.Value);
         if (from.HasValue)       q = q.Where(b => b.BatchDate >= from.Value);
         if (to.HasValue)         q = q.Where(b => b.BatchDate <= to.Value);
-        return q.OrderByDescending(b => b.BatchDate).ThenByDescending(b => b.CreatedAt).ToListAsync();
+        return q.OrderByDescending(b => b.CreatedAt).ToListAsync();
     }
 
     public async Task<string> GenerateBatchNumberAsync(PaymentBatchDirection direction)
@@ -1555,7 +1556,9 @@ public class SaleRepository : ISaleRepository
         if (from.HasValue) q = q.Where(s => s.SaleDate >= from.Value);
         if (to.HasValue)   q = q.Where(s => s.SaleDate <= to.Value);
         if (customerId.HasValue) q = q.Where(s => s.CustomerId == customerId.Value);
-        return q.OrderByDescending(s => s.SaleDate).ToListAsync();
+        // Lists show the latest entered first (HC 2026-10-17), so a backdated entry is on top
+        // where Admin sees it, not buried under its document date.
+        return q.OrderByDescending(s => s.CreatedAt).ToListAsync();
     }
 
     public async Task<SalesPeriodTotals> GetPeriodTotalsAsync(DateTime from, DateTime to)
@@ -1797,7 +1800,7 @@ public class StockCountRepository : IStockCountRepository
         if (status.HasValue)  q = q.Where(c => c.Status == status.Value);
         if (fromUtc.HasValue) q = q.Where(c => (c.SubmittedAt ?? c.CreatedAt) >= fromUtc.Value);
         if (toUtc.HasValue)   q = q.Where(c => (c.SubmittedAt ?? c.CreatedAt) <  toUtc.Value);
-        return q.OrderByDescending(c => c.SubmittedAt ?? c.CreatedAt).ToListAsync();
+        return q.OrderByDescending(c => c.CreatedAt).ToListAsync();
     }
 
     public Task<int> CountAwaitingReviewAsync() =>
