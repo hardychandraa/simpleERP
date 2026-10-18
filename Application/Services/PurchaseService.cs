@@ -971,7 +971,7 @@ public class PurchaseService : IPurchaseService
         return list.Select(p => {
             var items = withItems.TryGetValue(p.Id, out var w) ? w.PurchaseItems.ToList() : new List<PurchaseItem>();
             return new PurchaseQtyListDto {
-                Id = p.Id, PurchaseNumber = p.PurchaseNumber, SupplierDocumentNumber = p.SupplierDocumentNumber,
+                Id = p.Id, CreatedAt = p.CreatedAt, PurchaseNumber = p.PurchaseNumber, SupplierDocumentNumber = p.SupplierDocumentNumber,
                 PurchaseDate = p.PurchaseDate, SupplierName = p.Supplier?.Name ?? "", Status = p.Status.ToString(),
                 NeedsReview = p.NeedsReview, EnteredWithoutPrice = p.EnteredWithoutPrice, CreatedBy = p.CreatedBy,
                 LineCount = items.Count, TotalQty = items.Sum(i => i.Qty),
@@ -1057,6 +1057,7 @@ public class PurchaseService : IPurchaseService
 
     private static PurchaseListDto MapListDto(Purchase p) => new() {
         Id             = p.Id,
+        CreatedAt      = p.CreatedAt,
         PurchaseNumber = p.PurchaseNumber,
         SupplierDocumentNumber = p.SupplierDocumentNumber,
         PurchaseDate   = p.PurchaseDate,

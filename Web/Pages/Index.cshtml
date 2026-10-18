@@ -12,6 +12,14 @@
 }
 
 <partial name="_PendingChecks" model="Model.PendingChecks" />
+@if (Model.LateChecks > 0)
+{
+    @* R6: an unchecked Goods In has already added stock and a payable; a fake one hides until checked. *@
+    <div class="alert alert-danger no-print" style="line-height:1.6">
+        ⏰ @Localizer["{0} purchase(s) unchecked for {1}+ days (oldest {2} days). Check them against the supplier invoice.", Model.LateChecks, SimpleERP.Application.DTOs.GoodsInCheck.AlertAfterDays, Model.OldestCheckDays]
+        <a href="/Purchases?pending=true" style="font-weight:700;margin-left:6px">@Localizer["Check now"] &rarr;</a>
+    </div>
+}
 @if (Model.SalesToCheck + Model.NotesToApprove + Model.ReturnsToCheck + Model.PaymentsToVerify > 0)
 {
     <div class="alert alert-warning no-print" style="line-height:1.8">
@@ -54,7 +62,7 @@
     🚨 <strong>@Model.OverdueCount</strong>
     @(Model.OverdueCount == 1 ? Localizer["sale is"] : Localizer["sales are"])
     <strong>@Localizer["OVERDUE"]</strong> &mdash; @Localizer["payment due date has passed."]
-    <a href="/Payments" style="color:#b91c1c;font-weight:700;margin-left:6px">@Localizer["View overdue"] &rarr;</a>
+    <a href="/Sales/Due?view=invoice" style="color:#b91c1c;font-weight:700;margin-left:6px">@Localizer["View overdue"] &rarr;</a>
   </div>
 } else if (Model.OutstandingCount > 0) {
   <div class="alert alert-warning">
@@ -63,7 +71,7 @@
         ? Localizer["sale has an unpaid balance totalling"]
         : Localizer["sales have unpaid balances totalling"])
     <strong>@Model.TotalOutstanding.ToString("N0")</strong>.
-    <a href="/Payments" style="color:#92400e;font-weight:700;margin-left:6px">@Localizer["Collect now"] &rarr;</a>
+    <a href="/Sales/Due" style="color:#92400e;font-weight:700;margin-left:6px">@Localizer["Collect now"] &rarr;</a>
   </div>
 }
 

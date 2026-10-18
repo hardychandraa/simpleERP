@@ -1311,6 +1311,21 @@
   <data name="Purchase price cannot be negative." xml:space="preserve"><value>Harga beli tidak boleh negatif.</value></data>
   <data name="The usual harga beli. Shown as the default cost on a new purchase; it can be changed there." xml:space="preserve"><value>Harga beli biasa. Muncul sebagai harga bawaan di pembelian baru; tetap bisa diubah di sana.</value></data>
   <data name="Show 0 stock" xml:space="preserve"><value>Tampilkan stok 0</value></data>
+  <data name="Copy for WhatsApp" xml:space="preserve"><value>Salin untuk WhatsApp</value></data>
+  <data name="Stock {0}" xml:space="preserve"><value>Stok {0}</value></data>
+  <data name="No category" xml:space="preserve"><value>Tanpa kategori</value></data>
+  <data name="Copied. Paste it in WhatsApp." xml:space="preserve"><value>Tersalin. Tempel di WhatsApp.</value></data>
+  <data name="Copy failed." xml:space="preserve"><value>Gagal menyalin.</value></data>
+  <data name="{0}'s unpaid commission nets to {1}: clawbacks exceed what was earned, so there is nothing to pay. It carries to the next payout." xml:space="preserve"><value>Komisi belum dibayar {0} bernilai {1}: potongan (clawback) melebihi komisi yang diperoleh, jadi tidak ada yang dibayar. Dibawa ke pembayaran berikutnya.</value></data>
+  <data name="Cash only" xml:space="preserve"><value>Tunai saja</value></data>
+  <data name="Suggested" xml:space="preserve"><value>Saran</value></data>
+  <data name="Suggested plafon: {0}" xml:space="preserve"><value>Saran plafon: {0}</value></data>
+  <data name="Use suggestion" xml:space="preserve"><value>Pakai saran</value></data>
+  <data name="This customer has no usual credit term (a cash customer), so: cash only." xml:space="preserve"><value>Pelanggan ini tidak punya TOP biasa (pelanggan tunai), jadi: tunai saja.</value></data>
+  <data name="Credit buying {0} a month (last {1} days); term {2} + {3} grace days, × 1.5 headroom; biggest invoice {4}." xml:space="preserve"><value>Pembelian kredit {0} per bulan ({1} hari terakhir); TOP {2} + toleransi {3} hari, × 1,5 cadangan; faktur terbesar {4}.</value></data>
+  <data name="No credit sales in the last {0} days to suggest a plafon from." xml:space="preserve"><value>Tidak ada penjualan kredit dalam {0} hari terakhir untuk dasar saran plafon.</value></data>
+  <data name="Needs checking · {0} days" xml:space="preserve"><value>Perlu dicek · {0} hari</value></data>
+  <data name="{0} purchase(s) unchecked for {1}+ days (oldest {2} days). Check them against the supplier invoice." xml:space="preserve"><value>{0} pembelian belum dicek lebih dari {1} hari (terlama {2} hari). Cocokkan dengan faktur supplier.</value></data>
   <data name="{0} product with 0 stock hidden." xml:space="preserve"><value>{0} produk dengan stok 0 disembunyikan.</value></data>
   <data name="{0} products with 0 stock hidden." xml:space="preserve"><value>{0} produk dengan stok 0 disembunyikan.</value></data>
   <data name="No products in stock." xml:space="preserve"><value>Tidak ada produk yang masih ada stoknya.</value></data>

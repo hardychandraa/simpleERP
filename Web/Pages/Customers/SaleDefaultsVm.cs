@@ -14,4 +14,4 @@ public record SaleDefaultsVm(List<SalesPersonDto> People, List<PaymentTermDto> T
 }
 
 /// <summary>What the _CreditLimit partial needs (Admin only): the saved plafon and, on Edit, where the customer stands.</summary>
-public record CreditLimitVm(decimal? Limit, CustomerCreditDto? Status);
+public record CreditLimitVm(decimal? Limit, CustomerCreditDto? Status, CreditSuggestionDto? Suggestion = null);

@@ -48,7 +48,7 @@ public enum PaymentBatchDirection { Received = 1, Paid = 2 }
 /// <summary>
 /// Which direction a note moves money. One entity carries both rather than two
 /// near-identical ones — the codebase already has that mistake once
-/// (PaymentRecord vs. the orphaned PaymentCollection).
+/// (PaymentRecord vs. an orphaned PaymentCollection class, removed 2026-10-18).
 /// <c>Credit</c>: we owe the customer (a sales return, an overcharge we made).
 /// <c>Debit</c>: the supplier owes us (a purchase return, an overcharge they made).
 /// </summary>

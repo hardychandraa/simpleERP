@@ -240,6 +240,9 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<Guid>("CommissionRuleId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CustomerReturnId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("IsVoided")
                         .HasColumnType("boolean");
 
@@ -263,6 +266,8 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.HasIndex("CommissionPayoutId");
 
                     b.HasIndex("CommissionRuleId");
+
+                    b.HasIndex("CustomerReturnId");
 
                     b.HasIndex("SaleId");
 
@@ -2155,6 +2160,11 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                         .HasForeignKey("CommissionRuleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.CustomerReturn", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerReturnId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("SimpleERP.Domain.Entities.Sale", "Sale")
                         .WithMany()

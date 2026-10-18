@@ -1,6 +1,6 @@
 @page
 @model SimpleERP.Web.Pages.Customers.IndexModel
-@{ ViewData["Title"] = Localizer["Customers"].Value; }
+@{ ViewData["Title"] = Localizer["Customers"].Value; var admin = User.MaintainsMasterData(); }
 @if (Model.Msg != null) { <div class="alert @(Model.IsErr?"alert-danger":"alert-success")">@Model.Msg</div> }
 <div class="search-bar">
     <form method="get" style="display:contents">
@@ -14,7 +14,7 @@
 </div>
 <div class="card">
 <table>
-  <thead><tr><th>@Localizer["Name"]</th><th>@Localizer["Phone"]</th><th>@Localizer["Address"]</th><th>NPWP / NIK</th><th>@Localizer["Outstanding Due"]</th><th>@Localizer["Status"]</th><th></th></tr></thead>
+  <thead><tr><th>@Localizer["Name"]</th><th>@Localizer["Phone"]</th><th>@Localizer["Address"]</th><th>NPWP / NIK</th>@if (admin) {<th>@Localizer["Outstanding Due"]</th><th style="text-align:right">@Localizer["Credit limit"]</th><th style="text-align:right">@Localizer["Suggested"]</th>}<th>@Localizer["Status"]</th><th></th></tr></thead>
   <tbody>
   @foreach (var c in Model.Customers) {
     <tr>
@@ -22,20 +22,27 @@
       <td>@(c.Phone ?? "—")</td>
       <td style="color:#6b7280;font-size:12px">@(c.Address ?? "—")</td>
       <td style="font-size:12px;white-space:nowrap">@(c.TaxId ?? c.NationalId ?? "—")@if (c.TaxId != null && c.NationalId != null) {<br/><span style="color:#6b7280">@c.NationalId</span>}</td>
-      <td>
-        @if (c.TotalDue > 0) {
-          <span style="color:#dc2626;font-weight:700">@c.TotalDue.ToString("N0")</span>
-        } else {
-          <span style="color:#9ca3af">—</span>
-        }
-      </td>
+      @if (admin) {
+        @* Receivables are Admin's (HC, 2026-10-09; Staff column removed 2026-10-18). *@
+        <td>
+          @if (c.TotalDue > 0) {
+            <span style="color:#dc2626;font-weight:700">@c.TotalDue.ToString("N0")</span>
+          } else {
+            <span style="color:#9ca3af">—</span>
+          }
+        </td>
+        var sug = Model.Suggestions.GetValueOrDefault(c.Id)?.Suggested;
+        @* Limit blank = no limit yet; the suggestion is greyed when it already matches. *@
+        <td style="text-align:right;white-space:nowrap">@(c.CreditLimit is { } lim ? (lim == 0 ? Localizer["Cash only"].Value : lim.ToString("N0")) : "—")</td>
+        <td style="text-align:right;white-space:nowrap;color:@(sug is { } s0 && s0 == c.CreditLimit ? "#9ca3af" : "#1d4ed8")">@(sug is { } s ? (s == 0 ? Localizer["Cash only"].Value : s.ToString("N0")) : "—")</td>
+      }
       <td><span class="badge @(c.IsActive?"ok":"gray")">@(c.IsActive?Localizer["Active"]:Localizer["Inactive"])</span></td>
       <td><a href="/Customers/Edit/@c.Id" class="btn btn-outline btn-sm">@Localizer["Edit"]</a></td>
     </tr>
   }
   @if (!Model.Customers.Any()) {
   <tr>
-    <td colspan="7" style="text-align:center;color:#9ca3af;padding:28px">
+    <td colspan="9" style="text-align:center;color:#9ca3af;padding:28px">
       @(string.IsNullOrEmpty(Model.Search)
           ? Localizer["No customers yet."]
           : Localizer["No results for \"{0}\".", Model.Search])

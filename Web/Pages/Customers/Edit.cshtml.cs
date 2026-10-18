@@ -38,6 +38,9 @@ public EditModel(ICustomerService s, ISalesPersonService people, IPaymentTermSer
         var (people,terms)=await SaleDefaultsVm.LoadOptionsAsync(_people,_terms);
         Defaults=new(people,terms,Input.SalesPersonId,Input.PaymentTermId,Input.DefaultDiscountPercent);
         // Receivables: computed for Admin only, never for a page Staff can open with it.
-        Credit=new(Input.CreditLimit, User.MaintainsMasterData() ? await _sales.GetCreditStatusAsync(Input.Id) : null);
+        Credit=User.MaintainsMasterData()
+            ? new(Input.CreditLimit, await _sales.GetCreditStatusAsync(Input.Id),
+                  (await _sales.GetCreditSuggestionsAsync()).GetValueOrDefault(Input.Id))
+            : new(Input.CreditLimit, null);
     }
 }

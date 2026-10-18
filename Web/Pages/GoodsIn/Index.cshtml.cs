@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
+using SimpleERP.Web.Services;
 
 namespace SimpleERP.Web.Pages.GoodsIn;
 
@@ -24,8 +25,10 @@ public class IndexModel : PageModel
         ViewData["Title"] = "Goods In";
         var today = DateTime.Now.Date;
         From = (from ?? today.AddDays(-30)).Date; To = (to ?? today).Date;
-        Search = search; PendingOnly = pending;
+        // Check status is Admin's (HC, 2026-10-16): a Staff ?pending=true is ignored, not honoured,
+        // or the filter alone would list exactly the unchecked entries.
+        Search = search; PendingOnly = pending && User.ChecksStaffWork();
         Rows = await _purchases.GetQtyListAsync(From, To, search);
-        if (pending) Rows = Rows.Where(r => r.NeedsReview && r.Status != "Cancelled").ToList();
+        if (PendingOnly) Rows = Rows.Where(r => r.NeedsReview && r.Status != "Cancelled").ToList();
     }
 }

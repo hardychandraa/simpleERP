@@ -1,0 +1,4 @@
+# Text files are stored with LF in the repository and checked out with CRLF on every machine,
+# whatever its core.autocrlf says. Git detects binary files (dumps, images) by itself.
+* text=auto eol=crlf
+*.sh text eol=lf

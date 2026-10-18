@@ -5,12 +5,38 @@
 <div class="card-title" style="margin-top:18px">@Localizer["Credit limit"]</div>
 <div class="fg">
   <label>@Localizer["Credit limit (Rp, incl. PPN)"]</label>
-  <input type="number" name="Input.CreditLimit" min="0" step="1"
+  <input type="number" id="creditLimitInput" name="Input.CreditLimit" min="0" step="1"
          value="@(Model.Limit?.ToString("0", inv))" placeholder="@Localizer["No limit"]" />
   <div style="font-size:11px;color:#9ca3af;margin-top:4px">
     @Localizer["What this customer may owe on unpaid credit invoices. Empty = no limit; 0 = cash only. A Staff credit sale over it, or to a customer with overdue invoices, still posts but is marked Perlu dicek for you."]
   </div>
 </div>
+@if (Model.Suggestion is { } g)
+{
+  @* A starting figure from the customer's own credit buying; nothing changes until Admin saves. *@
+  <div style="font-size:13px;margin:-4px 0 12px;padding:8px 10px;border-radius:6px;background:#eff6ff">
+    @if (g.Suggested is { } sug)
+    {
+      <strong>@Localizer["Suggested plafon: {0}", sug.ToString("N0")]</strong>
+      <button type="button" class="btn btn-outline btn-sm" style="margin-left:8px"
+              onclick="document.getElementById('creditLimitInput').value='@sug.ToString("0", inv)'">@Localizer["Use suggestion"]</button>
+      <div style="font-size:11px;color:#6b7280;margin-top:4px">
+        @if (g.Basis == SimpleERP.Application.DTOs.CreditSuggestionBasis.CashCustomer)
+        {
+          @Localizer["This customer has no usual credit term (a cash customer), so: cash only."]
+        }
+        else
+        {
+          @Localizer["Credit buying {0} a month (last {1} days); term {2} + {3} grace days, × 1.5 headroom; biggest invoice {4}.", g.MonthlyCredit.ToString("N0"), g.WindowDays, g.TermDays, g.GraceDays, g.BiggestInvoice.ToString("N0")]
+        }
+      </div>
+    }
+    else
+    {
+      <span style="color:#6b7280">@Localizer["No credit sales in the last {0} days to suggest a plafon from.", g.WindowDays]</span>
+    }
+  </div>
+}
 @if (Model.Status is { } s)
 {
   <div style="font-size:13px;margin:-4px 0 12px;padding:8px 10px;border-radius:6px;background:@(s.HasOverdue || (s.CreditLimit is { } l && s.Open > l) ? "#fef2f2" : "#f9fafb")">

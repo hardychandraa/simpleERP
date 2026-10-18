@@ -36,6 +36,9 @@ public class IndexModel : PageModel
 
     /// <summary>Purchases waiting for Admin's check (Admin only; Staff never see this).</summary>
     public int PendingChecks { get; set; }
+    /// <summary>Of those, how many have waited past <see cref="Application.DTOs.GoodsInCheck.AlertAfterDays"/> (R6).</summary>
+    public int LateChecks { get; set; }
+    public int OldestCheckDays { get; set; }
 
     public int     TotalProducts     { get; set; }
     public int     TotalCustomers    { get; set; }
@@ -55,7 +58,14 @@ public class IndexModel : PageModel
     public async Task OnGetAsync()
     {
         ViewData["Title"] = "Dashboard";
-        if (User.SeesSupplierSide()) PendingChecks = (await _purchases.GetNeedingReviewAsync()).Count;
+        if (User.SeesSupplierSide())
+        {
+            var waiting = await _purchases.GetNeedingReviewAsync();
+            PendingChecks = waiting.Count;
+            var late = waiting.Where(p => p.CheckIsLate).ToList();
+            LateChecks = late.Count;
+            OldestCheckDays = late.Count > 0 ? late.Max(p => p.DaysWaiting) : 0;
+        }
         if (User.ReviewsStockCounts()) PendingCounts = await _counts.CountAwaitingReviewAsync();
         if (User.ChecksStaffWork())
         {

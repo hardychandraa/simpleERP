@@ -227,7 +227,7 @@ public class ReturnService : IReturnService
 
         // The salesperson doesn't keep commission on revenue that came back — see
         // CommissionService.ClawBackForReturnAsync for the fractional-reversal design.
-        await _commissions.ClawBackForReturnAsync(sale.Id, returnedLines, user);
+        await _commissions.ClawBackForReturnAsync(sale.Id, returnId, returnedLines, user);
 
         await _audit.LogAsync(user, "CustomerReturn.Create",
             $"{ret.ReturnNumber} | {sale.InvoiceNumber} | {items.Count} line(s) | {grandTotal:N0}");
@@ -247,6 +247,12 @@ public class ReturnService : IReturnService
     {
         // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
         await _uow.LockAsync(id);
+        var head = await _customerReturns.GetByIdWithItemsAsync(id);
+        if (head == null) return _log.Refuse(_loc["Return not found."]);
+        // And per salesperson on the sale, so a commission payout can't settle the clawback
+        // while this decides whether to void or reverse it. LockAsync forgets what was read
+        // before it, so the return is read again after.
+        await _uow.LockAsync(await _commissions.SalesPeopleForSaleAsync(head.SaleId));
         var ret = await _customerReturns.GetByIdWithItemsAsync(id);
         if (ret == null) return _log.Refuse(_loc["Return not found."]);
         if (ret.Status == ReturnStatus.Cancelled)
@@ -258,10 +264,9 @@ public class ReturnService : IReturnService
         if (note?.Status == CreditNoteStatus.Settled)
             return _log.Refuse(_loc["Credit note {0} has already been settled — the customer has had the money or the credit. Cancelling the return now would leave that settlement unsupported; raise a fresh sale or debit note instead.", note.DocumentNumber]);
 
-        // Same boundary as the settled-note check above: once commission has actually been
-        // clawed back for a line on this return, undoing the return would leave that
-        // clawback standing with nothing to justify it. See CommissionService.HasClawbackForSaleItemsAsync.
-        if (await _commissions.HasClawbackForSaleItemsAsync(ret.SaleId, ret.Items.Select(i => i.SaleItemId)))
+        // The commission the return clawed back is given back below (HC, 2026-10-18). Only a
+        // clawback from before clawbacks carried their return can't be matched to this one.
+        if (await _commissions.HasUnlinkedClawbackForSaleItemsAsync(ret.SaleId, ret.Items.Select(i => i.SaleItemId)))
             return _log.Refuse(_loc["Commission has already been clawed back against this return — cancelling it now would leave that clawback standing with nothing to justify it. Raise a fresh sale instead if this return was a mistake."]);
 
         var branch = await _branches.GetDefaultAsync();
@@ -277,6 +282,7 @@ public class ReturnService : IReturnService
         ret.Status = ReturnStatus.Cancelled;
         _customerReturns.Update(ret);
         if (note != null) note.Status = CreditNoteStatus.Cancelled;   // tracked mutation
+        await _commissions.ReverseClawBackForReturnAsync(ret.SaleId, ret.Id, user);
 
         await _audit.LogAsync(user, "CustomerReturn.Cancel", ret.ReturnNumber);
         _log.LogInformation(

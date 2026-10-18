@@ -19,6 +19,7 @@
     </form>
     <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       @if (seesCost) {<span><strong>@Localizer["Total Stock Value:"] </strong><span style="font-size:18px;font-weight:700;color:#059669">@Model.TotalStockValue.ToString("N0")</span></span>}
+      <button type="button" id="waCopy" class="btn btn-outline">📋 @Localizer["Copy for WhatsApp"]</button>
       <a href="/Inventory/Ledger" class="btn btn-outline">📒 @Localizer["Ledger"]</a>
       @if (maintains) {
       <a href="/Products/Create" class="btn btn-primary">＋ @Localizer["Add Product"]</a>
@@ -73,3 +74,57 @@
   </div>
 }
 </div>
+@{
+    // The stock message copies what the table shows (search and "Show 0 stock" apply), active products
+    // only, never a negative figure, grouped by category. Stock only, no prices (HC, 2026-10-17).
+    var noCategory = Localizer["No category"].Value;
+    var waGroups = Model.Products
+        .Where(p => p.IsActive && p.CurrentStock >= 0)
+        .GroupBy(p => string.IsNullOrWhiteSpace(p.Category) ? noCategory : p.Category!.Trim())
+        .OrderBy(g => g.Key == noCategory ? 1 : 0).ThenBy(g => g.Key)
+        .Select(g => new { c = g.Key, items = g.OrderBy(p => p.Name).Select(p => new {
+            n = p.Name, q = p.CurrentStock.ToString("N0"), u = p.Unit }) });
+    var waData = new {
+        title = Localizer["Stock {0}", Model.StoreName].Value,
+        at = DateTime.Now.ToString("d MMM yyyy, HH:mm"),
+        groups = waGroups,
+        copied = Localizer["Copied. Paste it in WhatsApp."].Value,
+        failed = Localizer["Copy failed."].Value,
+        empty = Localizer["No products in stock."].Value,
+    };
+}
+<script type="application/json" id="waData">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(waData))</script>
+<script>
+(function () {
+  var btn = document.getElementById('waCopy'); if (!btn) return;
+  var d = JSON.parse(document.getElementById('waData').textContent);
+  function text() {
+    // WhatsApp formatting: *bold*, _italic_.
+    var out = ['*' + d.title + '*', '_' + d.at + '_'];
+    d.groups.forEach(function (g) {
+      out.push('', '*' + g.c + '*');
+      g.items.forEach(function (i) {
+        out.push('• ' + i.n + ' — ' + i.q + ' ' + i.u);
+      });
+    });
+    return out.join('\n');
+  }
+  function fallback(t) {
+    var ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta); return ok;
+  }
+  function done(ok) {
+    var old = btn.textContent; btn.textContent = ok ? '✓ ' + d.copied : d.failed;
+    setTimeout(function () { btn.textContent = old; }, 2500);
+  }
+  btn.addEventListener('click', function () {
+    if (!d.groups.length) { alert(d.empty); return; }
+    var t = text();
+    if (navigator.clipboard && window.isSecureContext)
+      navigator.clipboard.writeText(t).then(function () { done(true); }, function () { done(fallback(t)); });
+    else done(fallback(t));
+  });
+})();
+</script>

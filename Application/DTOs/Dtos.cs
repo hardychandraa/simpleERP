@@ -313,8 +313,21 @@ public class UnpricedPurchaseLineDto {
     public string? Notes          { get; set; }
 }
 /// <summary>A purchase as Staff may see it: quantities only. Deliberately has no amount fields.</summary>
+/// <summary>
+/// R6 (HC, 2026-10-18): a Goods In posts stock and the payable before Admin checks it, so one left
+/// unchecked hides a fake entry. Waiting is counted from when it was entered, not its document date.
+/// </summary>
+public static class GoodsInCheck {
+    public const int AlertAfterDays = 2;
+    public static int DaysWaiting(DateTime createdAtUtc) => Math.Max(0, (int)(DateTime.UtcNow - createdAtUtc).TotalDays);
+    public static bool IsLate(bool needsReview, string status, DateTime createdAtUtc) =>
+        needsReview && status == "Active" && DaysWaiting(createdAtUtc) >= AlertAfterDays;
+}
 public class PurchaseQtyListDto {
     public Guid      Id                     { get; set; }
+    public DateTime  CreatedAt              { get; set; }
+    public int       DaysWaiting            => GoodsInCheck.DaysWaiting(CreatedAt);
+    public bool      CheckIsLate            => GoodsInCheck.IsLate(NeedsReview, Status, CreatedAt);
     public string    PurchaseNumber         { get; set; } = "";
     public string?   SupplierDocumentNumber { get; set; }
     public DateTime  PurchaseDate           { get; set; }
@@ -357,6 +370,9 @@ public class PurchaseQtyLineDto {
 public class PurchaseListDto {
     public Guid      SupplierId    { get; set; }
     public bool      NeedsReview   { get; set; }
+    public DateTime  CreatedAt     { get; set; }
+    public int       DaysWaiting   => GoodsInCheck.DaysWaiting(CreatedAt);
+    public bool      CheckIsLate   => GoodsInCheck.IsLate(NeedsReview, Status, CreatedAt);
     public bool      EnteredWithoutPrice { get; set; }
     public Guid     Id             { get; set; }
     public string   PurchaseNumber { get; set; } = "";
@@ -1102,14 +1118,6 @@ public class PendingPaymentDto {
     /// <summary>Still owed on the invoice now (net of payments and applied notes).</summary>
     public decimal   InvoiceOwed   { get; set; }
 }
-public class PaymentCollectionDto {
-    public Guid     Id          { get; set; }
-    public DateTime PaymentDate { get; set; }
-    public decimal  Amount      { get; set; }
-    public string?  Notes       { get; set; }
-    public string   CreatedBy   { get; set; } = "";
-}
-
 // ── Statements & multi-document settlement ────────────────────────────────────
 /// <summary>One open document on a statement of account, with what's still owed on it.</summary>
 public class StatementLineDto {
@@ -1274,6 +1282,24 @@ public class DueCustomerDto {
 /// owed on open credit invoices (the same net figure as the Due page) and the invoices more
 /// than the grace days past due. Admin only: it is receivables.
 /// </summary>
+/// <summary>
+/// A starting plafon worked out from what the customer actually buys on credit (HC, 2026-10-18):
+/// one payment cycle of their usual buying, plus half again as headroom, rounded to a tidy figure.
+/// A suggestion only: nothing is set until Admin saves it on the customer.
+/// </summary>
+public class CreditSuggestionDto {
+    public Guid     CustomerId    { get; set; }
+    /// <summary>Null = no credit buying in the window to base it on: Admin decides.</summary>
+    public decimal? Suggested     { get; set; }
+    public CreditSuggestionBasis Basis { get; set; }
+    /// <summary>Credit sales in the window, scaled to 30 days.</summary>
+    public decimal  MonthlyCredit { get; set; }
+    public decimal  BiggestInvoice { get; set; }
+    public int      TermDays      { get; set; }
+    public int      GraceDays     { get; set; }
+    public int      WindowDays    { get; set; }
+}
+public enum CreditSuggestionBasis { Formula, CashCustomer, NoHistory }
 public class CustomerCreditDto {
     public Guid     CustomerId    { get; set; }
     /// <summary>Null = no limit; 0 = no credit at all.</summary>

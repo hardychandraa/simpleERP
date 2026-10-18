@@ -6,13 +6,63 @@
   <div>
     <span style="font-size:13px;color:#6b7280">@Localizer["Total outstanding:"] </span>
     <span style="font-size:20px;font-weight:700;color:#dc2626">@Model.TotalOutstanding.ToString("N0")</span>
+    @if (Model.ByInvoice && Model.OverdueCount > 0) {
+      <span style="margin-left:12px;background:#fee2e2;color:#b91c1c;font-size:12px;font-weight:700;padding:3px 8px;border-radius:12px">
+        ⚠ @Localizer["{0} overdue", Model.OverdueCount]
+      </span>
+    }
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/Sales/Due" class="btn btn-sm @(Model.ByInvoice ? "btn-outline" : "btn-primary")">@Localizer["By customer"]</a>
+    <a href="/Sales/Due?view=invoice" class="btn btn-sm @(Model.ByInvoice ? "btn-primary" : "btn-outline")">@Localizer["By invoice"]</a>
     <a href="/Sales/Due?handler=Excel" class="btn btn-outline btn-sm">⬇ @Localizer["Download Excel"]</a>
-    <a href="/Payments" class="btn btn-outline btn-sm">@Localizer["View by Invoice"] &rarr;</a>
   </div>
 </div>
-@if (!Model.Summary.Any()) {
+@if (Model.ByInvoice) {
+<div class="card">
+  <div class="card-title">@Localizer["Outstanding Credit Sales — click View to record a payment"]</div>
+  <table>
+    <thead>
+      <tr>
+        <th>@Localizer["Invoice"]</th>
+        <th>@Localizer["Date"]</th>
+        <th>@Localizer["Customer"]</th>
+        <th>@Localizer["Term"]</th>
+        <th>@Localizer["Due Date"]</th>
+        <th>@Localizer["Total"]</th>
+        <th>@Localizer["Paid"]</th>
+        <th style="color:#dc2626">@Localizer["Balance Due"]</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    @foreach (var s in Model.Outstanding) {
+      <tr style="@(s.IsOverdue ? "background:#fff7f7" : "")">
+        <td><strong>@s.InvoiceNumber</strong></td>
+        <td style="font-size:12px">@s.SaleDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+        <td>@s.CustomerName</td>
+        @* The term name is the real information here; "open credit" is what a credit sale with no agreed term looks like. *@
+        <td><span style="font-size:12px;color:#374151">@(string.IsNullOrEmpty(s.PaymentTermName) ? Localizer["Open credit"].Value : s.PaymentTermName)</span></td>
+        <td style="font-size:12px">
+          @if (s.DueDate.HasValue) {
+            if (s.IsOverdue) { <span style="color:#dc2626;font-weight:700">⚠ @s.DueDate.Value.ToString("dd-MMM-yy")</span> }
+            else { <span style="color:#d97706">@s.DueDate.Value.ToString("dd-MMM-yy")</span> }
+          } else { <span style="color:#9ca3af">—</span> }
+        </td>
+        <td>@s.GrandTotal.ToString("N0")</td>
+        @* Paid includes applied credit notes, so Total − Paid = Balance on every row. *@
+        <td>@((s.AmountPaid + s.AppliedNotesTotal).ToString("N0"))</td>
+        <td><span style="color:#dc2626;font-weight:700;font-size:14px">@s.NetBalanceDue.ToString("N0")</span></td>
+        <td><a href="/Sales/@s.Id" class="btn btn-primary btn-sm">@Localizer["View & Pay"]</a></td>
+      </tr>
+    }
+    @if (!Model.Outstanding.Any()) {
+      <tr><td colspan="9" style="text-align:center;color:#059669;padding:28px;font-weight:600">✓ @Localizer["No outstanding dues! All customers are settled."]</td></tr>
+    }
+    </tbody>
+  </table>
+</div>
+} else if (!Model.Summary.Any()) {
 <div class="card"><p style="color:#059669;font-size:14px;text-align:center;padding:20px">✓ @Localizer["No outstanding due payments!"]</p></div>
 } else {
 <div class="card">

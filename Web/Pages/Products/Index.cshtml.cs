@@ -7,7 +7,10 @@ namespace SimpleERP.Web.Pages.Products;
 public class IndexModel : PageModel {
     private readonly IProductService _svc;
     private readonly IInventoryService _inv;
-    public IndexModel(IProductService svc, IInventoryService inv) { _svc = svc; _inv = inv; }
+    private readonly IAppSettingsService _settings;
+    public IndexModel(IProductService svc, IInventoryService inv, IAppSettingsService settings) { _svc = svc; _inv = inv; _settings = settings; }
+    /// <summary>Heading of the "Copy for WhatsApp" stock message.</summary>
+    public string StoreName { get; set; } = "";
     public List<ProductDto> Products { get; set; } = new();
     public string? Search   { get; set; }
     public string? Msg      { get; set; }
@@ -45,6 +48,7 @@ public class IndexModel : PageModel {
             TotalStockValue = levels.Sum(l => l.StockValue);   // the whole stock, not just this filter
         }
         Products = all;
+        StoreName = (await _settings.GetAsync()).StoreName;
     }
     public async Task<IActionResult> OnPostDeactivateAsync(Guid id, string? search, bool showEmpty = false) {
         if (!User.MaintainsMasterData()) return this.Refuse("product master is Admin-only");

@@ -94,16 +94,59 @@ public class CommissionService : ICommissionService
         }
     }
 
-    /// <summary>Voids (never deletes) a sale's unpaid accruals on cancellation. No SaveChanges.</summary>
     /// <summary>True when any of this sale's commission has already been paid to the salesperson.</summary>
     public async Task<bool> HasPaidOutForSaleAsync(Guid saleId) =>
         (await _accruals.GetBySaleAsync(saleId)).Any(a => a.CommissionPayoutId != null && !a.IsVoided && a.Amount > 0);
 
+    /// <summary>Voids (never deletes) a sale's unpaid accruals on cancellation. No SaveChanges.</summary>
     public async Task VoidForSaleAsync(Guid saleId)
     {
         var list = await _accruals.GetBySaleAsync(saleId);
         foreach (var a in list.Where(a => a.CommissionPayoutId == null && !a.IsVoided))
             a.IsVoided = true;   // tracked mutation — no Update() on possibly-Added entities
+    }
+
+    /// <summary>
+    /// The salespeople with commission on this sale. A caller that is about to change what is
+    /// paid or unpaid locks them (IUnitOfWork.LockAsync) so a payout for the same person waits
+    /// instead of settling rows mid-change; PayoutAsync takes the same lock.
+    /// </summary>
+    public async Task<Guid[]> SalesPeopleForSaleAsync(Guid saleId) =>
+        (await _accruals.GetBySaleAsync(saleId)).Select(a => a.SalesPersonId).Distinct().ToArray();
+
+    /// <summary>
+    /// A cancelled sale keeps no commission (HC, 2026-10-18). VoidForSaleAsync voids what is
+    /// still unpaid; what was already paid out can't be touched, so this adds one negative row
+    /// per line, salesperson and rule for the net paid amount. It starts unpaid, so it comes
+    /// off the salesperson's next payout, the same way a return's clawback does. Before this a
+    /// cancel kept the paid part with the salesperson and nothing recorded it was owed back.
+    /// Call after VoidForSaleAsync, inside the cancel's transaction, with the salespeople
+    /// locked. No SaveChanges.
+    /// </summary>
+    public async Task ClawBackPaidForCancelledSaleAsync(Guid saleId, string user)
+    {
+        var paid = (await _accruals.GetBySaleAsync(saleId))
+            .Where(a => !a.IsVoided && a.CommissionPayoutId != null)
+            .GroupBy(a => (a.SaleItemId, a.SalesPersonId, a.CommissionRuleId));
+        decimal total = 0m; var rows = 0;
+        foreach (var g in paid)
+        {
+            var net = g.Sum(a => a.Amount);
+            if (net == 0m) continue;
+            var first = g.First();
+            await _accruals.AddAsync(new CommissionAccrual {
+                Id = Guid.NewGuid(), SaleId = saleId, SaleItemId = g.Key.SaleItemId, PaymentRecordId = null,
+                SalesPersonId = g.Key.SalesPersonId, CommissionRuleId = g.Key.CommissionRuleId,
+                BaseAmount = -g.Sum(a => a.BaseAmount), Rate = first.Rate, Amount = -net,
+                AccrualDate = DateTime.UtcNow
+            });
+            total += net; rows++;
+        }
+        if (rows == 0) return;
+        await _audit.LogAsync(user, "Commission.ClawBackForCancel", $"sale {saleId}: {total:N0} already paid, {rows} row(s)");
+        _log.LogInformation(
+            "Commission already paid on cancelled sale {SaleId} clawed back: {Amount} in {Rows} row(s), by {User}",
+            saleId, total, rows, user);
     }
 
     /// <summary>
@@ -122,9 +165,12 @@ public class CommissionService : ICommissionService
     /// the line's current running total — that keeps repeated partial returns of the same
     /// line correct without double-clawing: two returns each taking back 30% of a line
     /// correctly claw back 30% + 30% = 60% of what was originally earned, not 30% of a
-    /// shrinking remainder. No SaveChanges — runs inside ReturnService's transaction.
+    /// shrinking remainder. "Original" = a positive row with no return: a reversal written when
+    /// an earlier return was cancelled is positive too, and must not raise the basis. Each
+    /// clawback carries its return's id so cancelling that return can undo exactly it.
+    /// No SaveChanges — runs inside ReturnService's transaction.
     /// </summary>
-    public async Task ClawBackForReturnAsync(Guid saleId,
+    public async Task ClawBackForReturnAsync(Guid saleId, Guid returnId,
         IReadOnlyDictionary<Guid, (decimal CreditAmount, decimal NetLineTotal)> returnedLines, string user)
     {
         if (returnedLines.Count == 0) return;
@@ -138,7 +184,7 @@ public class CommissionService : ICommissionService
             var fraction = ret.CreditAmount / ret.NetLineTotal;
             if (fraction <= 0m) continue;
 
-            foreach (var original in group.Where(a => a.Amount > 0m))
+            foreach (var original in group.Where(a => a.Amount > 0m && a.CustomerReturnId == null))
             {
                 var clawback = Math.Round(original.Amount * fraction, 2, MidpointRounding.AwayFromZero);
                 if (clawback <= 0m) continue;
@@ -148,7 +194,8 @@ public class CommissionService : ICommissionService
                     PaymentRecordId = null, SalesPersonId = original.SalesPersonId,
                     CommissionRuleId = original.CommissionRuleId,
                     BaseAmount = -Math.Round(original.BaseAmount * fraction, 2, MidpointRounding.AwayFromZero),
-                    Rate = original.Rate, Amount = -clawback, AccrualDate = DateTime.UtcNow
+                    Rate = original.Rate, Amount = -clawback, AccrualDate = DateTime.UtcNow,
+                    CustomerReturnId = returnId
                 });
                 clawedBack++;
             }
@@ -167,18 +214,46 @@ public class CommissionService : ICommissionService
     }
 
     /// <summary>
-    /// True if any of the given sale lines already has a commission clawback reversal (a
-    /// negative-Amount accrual — no accrual is ever created with a negative amount except by
-    /// <see cref="ClawBackForReturnAsync"/>, so the sign alone is an unambiguous marker).
-    /// Used to block cancelling a return once its clawback has taken effect — the same
-    /// "don't unwind a real consequence" boundary <c>CancelCustomerReturnAsync</c> already
-    /// applies to a settled credit note.
+    /// True if one of these lines has a clawback written before clawbacks carried their return
+    /// (2026-10-18), so it can't be told which return it belongs to. Such a return still can't be
+    /// cancelled; on prod there were none (0 returns), so this only guards old test data.
     /// </summary>
-    public async Task<bool> HasClawbackForSaleItemsAsync(Guid saleId, IEnumerable<Guid> saleItemIds)
+    public async Task<bool> HasUnlinkedClawbackForSaleItemsAsync(Guid saleId, IEnumerable<Guid> saleItemIds)
     {
         var ids = saleItemIds.ToHashSet();
         var accruals = await _accruals.GetBySaleAsync(saleId);
-        return accruals.Any(a => ids.Contains(a.SaleItemId) && a.Amount < 0m);
+        return accruals.Any(a => ids.Contains(a.SaleItemId) && a.Amount < 0m && a.CustomerReturnId == null && !a.IsVoided);
+    }
+
+    /// <summary>
+    /// Cancelling a return gives back the commission its clawback took (HC, 2026-10-18): a
+    /// clawback still unpaid is voided; one already netted off a payout gets a positive row for
+    /// the same amount, unpaid, so the next payout pays it back. Was: such a return could not be
+    /// cancelled at all. Call inside the cancel's transaction with the salespeople locked.
+    /// No SaveChanges.
+    /// </summary>
+    public async Task ReverseClawBackForReturnAsync(Guid saleId, Guid returnId, string user)
+    {
+        var clawbacks = (await _accruals.GetBySaleAsync(saleId))
+            .Where(a => a.CustomerReturnId == returnId && a.Amount < 0m && !a.IsVoided).ToList();
+        int voided = 0, reversed = 0;
+        foreach (var c in clawbacks)
+        {
+            if (c.CommissionPayoutId == null) { c.IsVoided = true; voided++; continue; }   // tracked mutation
+            await _accruals.AddAsync(new CommissionAccrual {
+                Id = Guid.NewGuid(), SaleId = c.SaleId, SaleItemId = c.SaleItemId, PaymentRecordId = null,
+                SalesPersonId = c.SalesPersonId, CommissionRuleId = c.CommissionRuleId,
+                BaseAmount = -c.BaseAmount, Rate = c.Rate, Amount = -c.Amount,
+                AccrualDate = DateTime.UtcNow, CustomerReturnId = returnId
+            });
+            reversed++;
+        }
+        if (voided + reversed == 0) return;
+        await _audit.LogAsync(user, "Commission.ReverseClawBack",
+            $"return {returnId}: {voided} unpaid clawback(s) voided, {reversed} paid one(s) reversed");
+        _log.LogInformation(
+            "Return {ReturnId} cancelled: commission clawback undone ({Voided} voided, {Reversed} reversed), by {User}",
+            returnId, voided, reversed, user);
     }
 
     /// <summary>
@@ -208,6 +283,9 @@ public class CommissionService : ICommissionService
 
     public async Task<ServiceResult> PayoutAsync(PayoutCommissionDto dto, string user)
     {
+        // Same lock a sale or return cancel takes on its salespeople: one waits for the other,
+        // so a row can't be voided as unpaid while this payout settles it (HC, 2026-10-18).
+        await _uow.LockAsync(dto.SalesPersonId);
         var person = await _people.GetByIdAsync(dto.SalesPersonId);
         if (person == null) return _log.Refuse(_loc["Sales person not found."]);
 
@@ -216,6 +294,10 @@ public class CommissionService : ICommissionService
             return _log.Refuse(_loc["{0} has no unpaid commission to pay out.", person.Name]);
 
         var total = unpaid.Sum(a => a.Amount);
+        // Clawbacks can exceed new earnings; a payout of zero or less would record the
+        // salesperson paying the shop. It waits until new commission covers it.
+        if (total <= 0m)
+            return _log.Refuse(_loc["{0}'s unpaid commission nets to {1}: clawbacks exceed what was earned, so there is nothing to pay. It carries to the next payout.", person.Name, total.ToString("N0")]);
         var payout = new CommissionPayout {
             Id = Guid.NewGuid(), SalesPersonId = dto.SalesPersonId,
             PayoutDate = DateTime.UtcNow, Amount = total,

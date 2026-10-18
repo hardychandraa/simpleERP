@@ -47,7 +47,7 @@
       @if (isAdmin)
       {
           @* Receivables are Admin's (HC, 2026-10-09). *@
-          <a href="/Payments"     class="@(page.StartsWith("/Payments")||page=="/Sales/Due"?"active":"")">💳 @Localizer["Due Payments"]</a>
+          <a href="/Sales/Due"    class="@(page.StartsWith("/Payments")||page=="/Sales/Due"?"active":"")">💳 @Localizer["Due Payments"]</a>
           <a href="/Sales/TandaTerima" class="@(page=="/Sales/TandaTerima"?"active":"")">🗂 @Localizer["Tanda Terima"]</a>
       }
       <a href="/Returns"     class="@(page.StartsWith("/Returns")?"active":"")">↩ @Localizer["Returns"]</a>

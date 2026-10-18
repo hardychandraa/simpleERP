@@ -488,8 +488,11 @@ public class SaleService : ISaleService
 
     public async Task<ServiceResult> CancelAsync(Guid saleId, string user, bool isAdmin, string? reason)
     {
-        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1).
+        // One request at a time per document (see IUnitOfWork.LockAsync; security review R1),
+        // and per salesperson with commission on it, so a payout can't settle rows while this
+        // voids or claws them back. Both before any read: LockAsync forgets what was read before.
         await _uow.LockAsync(saleId);
+        await _uow.LockAsync(await _commissions.SalesPeopleForSaleAsync(saleId));
         var sale = await _sales.GetByIdWithItemsAsync(saleId);
         if (sale == null) return _log.Refuse(_loc["Sale not found."]);
         if (sale.Status == SaleStatus.Cancelled) return _log.Refuse(_loc["Sale is already cancelled."]);
@@ -530,8 +533,10 @@ public class SaleService : ISaleService
         sale.CancelReason = Sanitise(reason, 500);
         _sales.Update(sale);
 
-        // Void (never delete) any unpaid commission this sale accrued.
+        // Void (never delete) any unpaid commission this sale accrued, and claw back what was
+        // already paid out from the salesperson's next payout (HC, 2026-10-18).
         await _commissions.VoidForSaleAsync(saleId);
+        await _commissions.ClawBackPaidForCancelledSaleAsync(saleId, user);
 
         await _audit.LogAsync(user, "Sale.Cancel", sale.InvoiceNumber + (sale.CancelReason is { } why ? $" | {why}" : ""));
         // Worth Information rather than Debug: a cancellation reverses stock and voids
@@ -1065,6 +1070,56 @@ public class SaleService : ISaleService
         var byCustomer = due.ToLookup(s => s.CustomerId);
         return (await _customers.GetAllActiveAsync())
             .ToDictionary(c => c.Id, c => Credit(c.Id, c.CreditLimit, grace, byCustomer[c.Id], applied));
+    }
+
+    /// <summary>
+    /// plafon ≈ monthly credit buying × (term days + grace days) / 30 × 1.5, never below 1.2 × the
+    /// biggest credit invoice (so one normal order doesn't trip it), rounded up to 5 / 10 / 25 million.
+    /// The window is the last 90 days, or less while the app has less history (from the first sale),
+    /// scaled to 30 days. Only a customer with no usual term (a cash customer) gets 0 = cash only. COD
+    /// is short credit, not cash (HC, 2026-10-18: usually paid on delivery, sometimes held 1-2 days), so
+    /// it goes through the formula with its 0 days + grace. Only active credit invoices count.
+    /// </summary>
+    public async Task<Dictionary<Guid, CreditSuggestionDto>> GetCreditSuggestionsAsync()
+    {
+        const int MaxWindow = 90;
+        var grace = (await _settings.GetAsync()).OverdueGraceDays;
+        var now = DateTime.UtcNow;
+        var sales = (await _sales.GetAllAsync(now.AddDays(-MaxWindow), null))
+            .Where(s => s.Status == SaleStatus.Active && s.PaymentType != PaymentType.Cash).ToList();
+        var first = sales.Count > 0 ? sales.Min(s => s.SaleDate) : now;
+        var window = Math.Clamp((int)Math.Ceiling((now - first).TotalDays), 7, MaxWindow);
+        var termDays = (await _terms.GetAllAsync()).ToDictionary(t => t.Id, t => t.DueDays);
+        var byCustomer = sales.ToLookup(s => s.CustomerId);
+
+        var result = new Dictionary<Guid, CreditSuggestionDto>();
+        foreach (var c in await _customers.GetAllActiveAsync())
+        {
+            var mine = byCustomer[c.Id].ToList();
+            var term = c.PaymentTermId is { } t ? termDays.GetValueOrDefault(t) : 0;
+            var dto = new CreditSuggestionDto {
+                CustomerId = c.Id, TermDays = term, GraceDays = grace, WindowDays = window,
+                MonthlyCredit = Math.Round(mine.Sum(s => s.GrandTotal) * 30m / window, 0),
+                BiggestInvoice = mine.Count > 0 ? mine.Max(s => s.GrandTotal) : 0m
+            };
+            if (c.PaymentTermId is null) { dto.Basis = CreditSuggestionBasis.CashCustomer; dto.Suggested = 0m; }
+            else if (mine.Count == 0) dto.Basis = CreditSuggestionBasis.NoHistory;
+            else
+            {
+                dto.Basis = CreditSuggestionBasis.Formula;
+                var raw = Math.Max(dto.MonthlyCredit * (term + grace) / 30m * 1.5m, dto.BiggestInvoice * 1.2m);
+                dto.Suggested = RoundUpTidy(raw);
+            }
+            result[c.Id] = dto;
+        }
+        return result;
+    }
+
+    /// <summary>Up to the next 5 million below 50 million, 10 million below 200 million, else 25 million.</summary>
+    internal static decimal RoundUpTidy(decimal v)
+    {
+        var step = v <= 50_000_000m ? 5_000_000m : v <= 200_000_000m ? 10_000_000m : 25_000_000m;
+        return Math.Max(step, Math.Ceiling(v / step) * step);
     }
 
     /// <summary>

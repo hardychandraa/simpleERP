@@ -9,7 +9,8 @@ namespace SimpleERP.Domain.Entities;
 ///
 /// One entity carries both directions via <see cref="PaymentBatchDirection"/> rather than
 /// two near-identical types, the same call CreditNote made — and for the same reason, the
-/// PaymentRecord/PaymentCollection duplication this codebase already paid for once.
+/// PaymentRecord/PaymentCollection duplication this codebase already paid for once (the
+/// unused PaymentCollection class was removed 2026-10-18; it never had a table).
 ///
 /// The individual <see cref="PaymentRecord"/> / <see cref="SupplierPayment"/> rows stay
 /// exactly as they are for a single-document payment; this batch is the envelope around

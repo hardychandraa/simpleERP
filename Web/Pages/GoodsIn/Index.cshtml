@@ -7,9 +7,12 @@
         <div class="fg" style="margin:0;flex:1;min-width:130px"><label>@Localizer["From"]</label><input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" /></div>
         <div class="fg" style="margin:0;flex:1;min-width:130px"><label>@Localizer["To"]</label><input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" /></div>
         <div class="fg" style="margin:0;flex:1.5;min-width:160px"><label>@Localizer["Search"]</label><input type="text" name="search" value="@Model.Search" placeholder="@Localizer["PO no., supplier doc, supplier..."]" /></div>
+        @* Admin only: for Staff the filter itself would reveal which entries are still unchecked. *@
+        @if (User.ChecksStaffWork()) {
         <label style="display:inline-flex;align-items:center;gap:8px;margin:0 0 9px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500">
             <input type="checkbox" name="pending" value="true" checked="@Model.PendingOnly" style="width:18px;height:18px" /> @Localizer["Needs checking only"]
         </label>
+        }
         <button type="submit" class="btn btn-primary">@Localizer["Filter"]</button>
         <a href="/GoodsIn/Create" class="btn btn-success" style="margin-left:auto">＋ @Localizer["New Goods In"]</a>
     </form>
@@ -36,6 +39,7 @@
         @if (r.Status == "Cancelled") { <span class="badge gray">@Localizer[EnumDisplay.Key("PurchaseStatus", r.Status)]</span> }
         @* Check status is Admin's (HC, 2026-10-16): Staff see no "needs checking" / "checked" label anywhere. *@
         else if (!User.ChecksStaffWork()) { }
+        else if (r.CheckIsLate) { <span class="badge err">⏰ @Localizer["Needs checking · {0} days", r.DaysWaiting]</span> }
         else if (r.NeedsReview) { <span class="badge warn">@Localizer["Needs checking"]</span> }
         else { <span class="badge ok">@Localizer["Checked"]</span> }
       </td>

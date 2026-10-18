@@ -16,11 +16,32 @@ public class DueModel : PageModel {
     public List<DueCustomerDto> Summary { get; set; } = new();
     public decimal TotalOutstanding { get; set; }
     public string? Msg { get; set; }
-    public async Task OnGetAsync(string? msg) {
+    /// <summary>
+    /// One Due Payments page with two views (S3, HC 2026-10-18): by customer (default) and by invoice,
+    /// which was the separate /Payments page (that URL now redirects here).
+    /// </summary>
+    public bool ByInvoice { get; set; }
+    public List<SaleListDto> Outstanding { get; set; } = new();
+    public int OverdueCount { get; set; }
+    public async Task OnGetAsync(string? msg, string? view) {
         ViewData["Title"] = "Due Payments";
         Msg = msg;
-        Summary = await _svc.GetDueSummaryAsync();
-        TotalOutstanding = Summary.Sum(d => d.TotalDue);
+        ByInvoice = view == "invoice";
+        if (!ByInvoice) {
+            Summary = await _svc.GetDueSummaryAsync();
+            TotalOutstanding = Summary.Sum(d => d.TotalDue);
+            return;
+        }
+        // Net of credit notes applied to each invoice, like the by-customer view and the ageing
+        // report. On the gross BalanceDue an invoice fully covered by a note stayed on this
+        // list as owing its whole amount, and the total disagreed with the customer view (2026-10-05).
+        Outstanding = (await _svc.GetAllAsync())
+            .Where(s => s.Status == "Active" && s.NetBalanceDue > 0 && s.PaymentType != "Cash")
+            .OrderBy(s => s.IsOverdue ? 0 : 1)
+            .ThenBy(s => s.DueDate ?? DateTime.MaxValue)
+            .ToList();
+        TotalOutstanding = Outstanding.Sum(s => s.NetBalanceDue);
+        OverdueCount     = Outstanding.Count(s => s.IsOverdue);
     }
 
     /// <summary>

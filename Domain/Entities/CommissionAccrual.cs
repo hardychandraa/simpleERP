@@ -38,6 +38,12 @@ public class CommissionAccrual
     public Guid? CommissionPayoutId { get; set; }
     /// <summary>Voided when the sale is cancelled. Never deleted.</summary>
     public bool  IsVoided     { get; set; }
+    /// <summary>
+    /// The customer return a clawback (negative row) was taken for, or whose cancellation a
+    /// reversal (positive row) undoes (HC, 2026-10-18). Null on an ordinary accrual and on the
+    /// clawback of a cancelled sale; so "original earnings" = Amount &gt; 0 and no return.
+    /// </summary>
+    public Guid? CustomerReturnId { get; set; }
     public DateTime AccrualDate { get; set; } = DateTime.UtcNow;
 
     public Sale?             Sale        { get; set; }

@@ -140,6 +140,8 @@ public interface ISaleService {
     /// <paramref name="excludeSaleId"/> leaves out the invoice being revised, as saving does.
     /// </summary>
     Task<Dictionary<Guid, CustomerCreditDto>> GetCreditStatusesAsync(Guid? excludeSaleId = null);
+    /// <summary>A suggested plafon per active customer, from their last 90 days of credit sales (Admin only).</summary>
+    Task<Dictionary<Guid, CreditSuggestionDto>> GetCreditSuggestionsAsync();
 }
 public interface IReportService {
     Task<EndOfDayDto> GetEndOfDayAsync(DateTime date);

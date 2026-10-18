@@ -450,6 +450,10 @@ public class AppDbContext : DbContext
             // Payout worklist: unpaid, not-voided, per salesperson.
             e.HasIndex(a => new { a.SalesPersonId, a.CommissionPayoutId, a.IsVoided });
             e.HasIndex(a => a.SaleId);
+            // A return is cancelled, never deleted; Restrict keeps a clawback from losing its return.
+            e.HasOne<CustomerReturn>().WithMany()
+                .HasForeignKey(a => a.CustomerReturnId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(a => a.CustomerReturnId);
         });
 
         m.Entity<CommissionPayout>(e => {

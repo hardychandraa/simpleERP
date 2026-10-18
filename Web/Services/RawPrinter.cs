@@ -59,7 +59,8 @@ public static class RawPrinter
     public static List<string> GetInstalledPrinters(ILogger? logger = null)
     {
         var list = new List<string>();
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return list;
+        // The form the analyzer recognises (CA1416); PrinterSettings needs Windows 7 (6.1) or later.
+        if (!OperatingSystem.IsWindowsVersionAtLeast(6, 1)) return list;
         try { foreach (string p in System.Drawing.Printing.PrinterSettings.InstalledPrinters) list.Add(p); }
         catch (Exception ex)
         {
