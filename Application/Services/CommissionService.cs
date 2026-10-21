@@ -55,10 +55,11 @@ public class CommissionService : ICommissionService
     /// by credit notes in a settlement (that part earns nothing: G7, HC 2026-10-14).
     /// </summary>
     public Task AccrueForPaymentAsync(Sale sale, PaymentRecord payment, decimal? cashCollected = null)
-        => AccrueAsync(sale, sale.SaleItems.ToList(), cashCollected ?? payment.Amount, payment.Id);
+        // Dated when the money arrived, not when it was typed in (HC, 2026-10-21).
+        => AccrueAsync(sale, sale.SaleItems.ToList(), cashCollected ?? payment.Amount, payment.Id, payment.PaymentDate);
 
     private async Task AccrueAsync(Sale sale, IReadOnlyList<SaleItem> items,
-        decimal collectedAmount, Guid? paymentRecordId)
+        decimal collectedAmount, Guid? paymentRecordId, DateTime? accrualDate = null)
     {
         if (sale.SalesPersonId == null) return;              // unattributed — no commission
         if (sale.GrandTotal <= 0 || collectedAmount <= 0) return;
@@ -89,7 +90,7 @@ public class CommissionService : ICommissionService
                 Id = Guid.NewGuid(), SaleId = sale.Id, SaleItemId = item.Id,
                 PaymentRecordId = paymentRecordId, SalesPersonId = sale.SalesPersonId.Value,
                 CommissionRuleId = rule.Id, BaseAmount = baseAmount, Rate = rule.Rate,
-                Amount = amount, AccrualDate = DateTime.UtcNow
+                Amount = amount, AccrualDate = accrualDate ?? DateTime.UtcNow
             });
         }
     }
@@ -177,8 +178,11 @@ public class CommissionService : ICommissionService
 
         var accruals = await _accruals.GetBySaleAsync(saleId);
         var clawedBack = 0;
+        // Earnings whose payment was reversed after being paid out are already being clawed
+        // back by that reversal; counting them here would take the same commission twice.
+        var reversed = ReversedPaymentIds(accruals);
 
-        foreach (var group in accruals.Where(a => !a.IsVoided).GroupBy(a => a.SaleItemId))
+        foreach (var group in accruals.Where(a => !a.IsVoided && !(a.PaymentRecordId is { } pid && reversed.Contains(pid))).GroupBy(a => a.SaleItemId))
         {
             if (!returnedLines.TryGetValue(group.Key, out var ret) || ret.NetLineTotal <= 0m) continue;
             var fraction = ret.CreditAmount / ret.NetLineTotal;
@@ -222,7 +226,50 @@ public class CommissionService : ICommissionService
     {
         var ids = saleItemIds.ToHashSet();
         var accruals = await _accruals.GetBySaleAsync(saleId);
-        return accruals.Any(a => ids.Contains(a.SaleItemId) && a.Amount < 0m && a.CustomerReturnId == null && !a.IsVoided);
+        // A payment reversal's clawback carries its payment, so it is not one of those.
+        return accruals.Any(a => ids.Contains(a.SaleItemId) && a.Amount < 0m && a.CustomerReturnId == null
+                              && a.PaymentRecordId == null && !a.IsVoided);
+    }
+
+    /// <summary>Payments with a reversal clawback: a negative row carrying the payment's id.</summary>
+    private static HashSet<Guid> ReversedPaymentIds(IEnumerable<CommissionAccrual> accruals) =>
+        accruals.Where(a => a.Amount < 0m && a.PaymentRecordId != null && a.CustomerReturnId == null && !a.IsVoided)
+                .Select(a => a.PaymentRecordId!.Value).ToHashSet();
+
+    /// <summary>
+    /// A payment was reversed (HC, 2026-10-21): the commission it earned goes. Rows still unpaid
+    /// are voided; rows already paid out can't be touched, so one negative row per line,
+    /// salesperson and rule takes the paid part off the next payout. The negative row carries
+    /// the payment's id (PaymentRecordId), which is how a later return knows those earnings
+    /// are already being taken back. Call inside the reversal's transaction with the
+    /// salespeople locked. No SaveChanges.
+    /// </summary>
+    public async Task ReverseForPaymentAsync(Guid saleId, Guid paymentId, string user)
+    {
+        var rows = (await _accruals.GetBySaleAsync(saleId))
+            .Where(a => a.PaymentRecordId == paymentId && !a.IsVoided && a.Amount > 0m).ToList();
+        var voided = 0;
+        foreach (var a in rows.Where(a => a.CommissionPayoutId == null)) { a.IsVoided = true; voided++; }
+
+        decimal clawed = 0m; var added = 0;
+        foreach (var g in rows.Where(a => a.CommissionPayoutId != null)
+                              .GroupBy(a => (a.SaleItemId, a.SalesPersonId, a.CommissionRuleId)))
+        {
+            var paid = g.Sum(a => a.Amount);
+            await _accruals.AddAsync(new CommissionAccrual {
+                Id = Guid.NewGuid(), SaleId = saleId, SaleItemId = g.Key.SaleItemId, PaymentRecordId = paymentId,
+                SalesPersonId = g.Key.SalesPersonId, CommissionRuleId = g.Key.CommissionRuleId,
+                BaseAmount = -g.Sum(a => a.BaseAmount), Rate = g.First().Rate, Amount = -paid,
+                AccrualDate = DateTime.UtcNow
+            });
+            clawed += paid; added++;
+        }
+        if (voided + added == 0) return;
+        await _audit.LogAsync(user, "Commission.ReverseForPayment",
+            $"sale {saleId} payment {paymentId}: {voided} unpaid row(s) voided, {clawed:N0} already paid clawed back in {added} row(s)");
+        _log.LogInformation(
+            "Commission on reversed payment {PaymentId} (sale {SaleId}): {Voided} unpaid row(s) voided, {Clawed} paid clawed back, by {User}",
+            paymentId, saleId, voided, clawed, user);
     }
 
     /// <summary>

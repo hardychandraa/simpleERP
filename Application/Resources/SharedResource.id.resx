@@ -1680,4 +1680,24 @@
   <data name="Only an active rule can be applied to earlier purchases." xml:space="preserve"><value>Hanya aturan aktif yang dapat diterapkan ke pembelian sebelumnya.</value></data>
   <data name="On-time payment rules apply when each purchase is paid in full, so there is nothing to apply to earlier purchases." xml:space="preserve"><value>Aturan bayar tepat waktu berlaku saat setiap pembelian dilunasi, jadi tidak ada yang perlu diterapkan ke pembelian sebelumnya.</value></data>
   <data name="No earlier purchase earns a rebate under '{0}'. Nothing was written." xml:space="preserve"><value>Tidak ada pembelian sebelumnya yang mendapat rebat dari '{0}'. Tidak ada yang disimpan.</value></data>
+  <data name="The date received can't be in the future." xml:space="preserve"><value>Tanggal terima tidak boleh di masa depan.</value></data>
+  <data name="{0} is dated {1}: the money can't have been received before the invoice." xml:space="preserve"><value>{0} bertanggal {1}: uang tidak mungkin diterima sebelum fakturnya.</value></data>
+  <data name="Only an administrator can reverse a payment." xml:space="preserve"><value>Hanya administrator yang dapat membatalkan pembayaran.</value></data>
+  <data name="Say why the payment is being reversed." xml:space="preserve"><value>Tuliskan alasan pembayaran ini dibatalkan.</value></data>
+  <data name="This payment has already been reversed." xml:space="preserve"><value>Pembayaran ini sudah dibatalkan.</value></data>
+  <data name="The payment of {0}" xml:space="preserve"><value>Pembayaran {0}</value></data>
+  <data name="This invoice has a sales return against it. Cancel the return first, then reverse the payment." xml:space="preserve"><value>Faktur ini memiliki retur penjualan. Batalkan returnya dulu, lalu batalkan pembayarannya.</value></data>
+  <data name="This payment is part of settlement {0}, which netted credit notes, so it can't be reversed on its own." xml:space="preserve"><value>Pembayaran ini bagian dari pelunasan {0} yang memotong nota kredit, jadi tidak bisa dibatalkan sendiri.</value></data>
+  <data name="The invoice's paid amount ({0}) is less than this payment ({1}). Nothing was changed; check the invoice." xml:space="preserve"><value>Jumlah terbayar faktur ({0}) lebih kecil dari pembayaran ini ({1}). Tidak ada yang diubah; periksa fakturnya.</value></data>
+  <data name="Payment reversed. The invoice owes that amount again." xml:space="preserve"><value>Pembayaran dibatalkan. Faktur kembali terutang sebesar jumlah itu.</value></data>
+  <data name="Reversed {0} by {1}: {2}" xml:space="preserve"><value>Dibatalkan {0} oleh {1}: {2}</value></data>
+  <data name="Reverse this payment? The invoice will owe this amount again." xml:space="preserve"><value>Batalkan pembayaran ini? Faktur akan kembali terutang sebesar jumlah ini.</value></data>
+  <data name="Why? *" xml:space="preserve"><value>Alasan? *</value></data>
+  <data name="Settlements" xml:space="preserve"><value>Pelunasan</value></data>
+  <data name="Settlements received" xml:space="preserve"><value>Pelunasan diterima</value></data>
+  <data name="Settlement" xml:space="preserve"><value>Pelunasan</value></data>
+  <data name="No settlements in this period." xml:space="preserve"><value>Tidak ada pelunasan pada periode ini.</value></data>
+  <data name="by {0}, entered {1}" xml:space="preserve"><value>oleh {0}, diinput {1}</value></data>
+  <data name="Reversed" xml:space="preserve"><value>Dibatalkan</value></data>
+  <data name="A reversed payment is struck through and no longer counts in its settlement's totals." xml:space="preserve"><value>Pembayaran yang dibatalkan dicoret dan tidak lagi dihitung dalam total pelunasannya.</value></data>
 </root>

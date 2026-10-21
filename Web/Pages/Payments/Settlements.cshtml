@@ -1,0 +1,64 @@
+@page
+@model SimpleERP.Web.Pages.Payments.SettlementsModel
+@{ ViewData["Title"] = Localizer["Settlements"].Value; }
+
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+  <a href="/Sales/Due" class="btn btn-outline btn-sm">&larr; @Localizer["Due Payments"]</a>
+  <form method="get" style="display:flex;gap:8px;align-items:flex-end">
+    <div class="fg" style="margin:0">
+      <label>@Localizer["From"]</label>
+      <input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <div class="fg" style="margin:0">
+      <label>@Localizer["To"]</label>
+      <input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">@Localizer["Filter"]</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-title">🧾 @Localizer["Settlements received"]</div>
+  @if (!Model.Rows.Any()) {
+    <p style="color:#9ca3af;font-size:13px">@Localizer["No settlements in this period."]</p>
+  } else {
+  <table>
+    <thead>
+      <tr>
+        <th>@Localizer["Settlement"]</th>
+        <th>@Localizer["Date received"]</th>
+        <th>@Localizer["Customer"]</th>
+        <th>@Localizer["Invoices"]</th>
+        <th style="text-align:right">@Localizer["Gross"]</th>
+        <th style="text-align:right">@Localizer["Less credit notes"]</th>
+        <th style="text-align:right">@Localizer["Net received"]</th>
+      </tr>
+    </thead>
+    <tbody>
+    @foreach (var b in Model.Rows) {
+      <tr id="@b.BatchNumber">
+        <td style="font-weight:600;white-space:nowrap">@b.BatchNumber
+          <div style="font-size:11px;color:#9ca3af;font-weight:400">@Localizer["by {0}, entered {1}", b.CreatedBy, b.CreatedAt.ToLocalTime().ToString("dd-MMM-yy HH:mm")]</div>
+        </td>
+        <td style="white-space:nowrap">@b.BatchDate.ToLocalTime().ToString("dd MMM yyyy")</td>
+        <td>@b.CounterpartyName
+          @if (!string.IsNullOrEmpty(b.Notes)) { <div style="font-size:11px;color:#6b7280">📝 @b.Notes</div> }
+        </td>
+        <td style="font-size:12px">
+          @foreach (var l in b.Lines) {
+            <div style="@(l.IsReversed ? "text-decoration:line-through;color:#9ca3af" : "")">
+              <a href="/Sales/@l.SaleId" style="color:#2563eb">@l.InvoiceNumber</a> · @l.Amount.ToString("N0")
+              @if (l.IsReversed) { <span class="badge gray" style="text-decoration:none">@Localizer["Reversed"]</span> }
+            </div>
+          }
+        </td>
+        <td style="text-align:right">@b.GrossAmount.ToString("N0")</td>
+        <td style="text-align:right;color:#059669">@(b.NotesAppliedAmount > 0 ? b.NotesAppliedAmount.ToString("N0") : "—")</td>
+        <td style="text-align:right;font-weight:700">@b.NetAmount.ToString("N0")</td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  <p style="font-size:11px;color:#9ca3af;margin-top:8px">@Localizer["A reversed payment is struck through and no longer counts in its settlement's totals."]</p>
+  }
+</div>

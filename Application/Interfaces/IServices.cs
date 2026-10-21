@@ -108,6 +108,13 @@ public interface ISaleService {
     Task<ServiceResult> VerifyPaymentAsync(Guid pendingId, bool isAdmin, string user);
     /// <summary>Admin: the payment never counts; the reason is kept.</summary>
     Task<ServiceResult> RejectPaymentAsync(Guid pendingId, string? reason, bool isAdmin, string user);
+    /// <summary>
+    /// Admin takes back a payment entered wrong (HC, 2026-10-21): the row stays, marked reversed;
+    /// the invoice owes it again; its commission is voided, or clawed back if already paid out.
+    /// </summary>
+    Task<ServiceResult> ReversePaymentAsync(Guid paymentId, string? reason, bool isAdmin, string user);
+    /// <summary>Received settlements (STL-R-…), newest first, with their lines.</summary>
+    Task<List<PaymentBatchDto>> GetReceivedSettlementsAsync(DateTime? from = null, DateTime? to = null, Guid? customerId = null);
     Task<List<PendingPaymentDto>> GetPendingPaymentsAsync();
     Task<List<PendingPaymentDto>> GetPendingPaymentsForSaleAsync(Guid saleId);
     /// <summary>Staff ask Admin to cancel or revise (R3, HC 2026-10-16).</summary>

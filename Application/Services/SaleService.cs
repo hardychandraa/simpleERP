@@ -576,13 +576,16 @@ public class SaleService : ISaleService
         if (dto.Amount > currentBalance - pendingTotal)
             return _log.Refuse<PaymentRecordDto>(_loc["Amount ({0}) exceeds balance due ({1}).", dto.Amount.ToString("N0"), Math.Max(0, currentBalance - pendingTotal).ToString("N0")]);
 
+        var (receivedAt, dateNo) = await ReceivedAtAsync(dto.ReceivedOn, new[] { sale });
+        if (dateNo != null) return _log.Refuse<PaymentRecordDto>(dateNo);
+
         // Staff: pending until Admin verifies the money arrived (R1, HC 2026-10-16). Until then it
         // changes nothing: not the balance, not commission, not End of Day's cash.
         if (!isAdmin)
         {
             var p = new PendingPayment {
                 Id = Guid.NewGuid(), SaleId = sale.Id, Amount = dto.Amount, Notes = SanitiseText(dto.Notes, 300),
-                ReceivedAt = DateTime.UtcNow, CreatedBy = user, Status = PendingPaymentStatus.Pending };
+                ReceivedAt = receivedAt, CreatedBy = user, Status = PendingPaymentStatus.Pending };
             await _pending.AddAsync(p);
             await _audit.LogAsync(user, "Payment.Pending", $"{sale.InvoiceNumber} +{dto.Amount:N0} (waiting for verification)");
             _log.LogInformation("Payment {Amount} on {InvoiceNumber} recorded by {User}, waiting for verification",
@@ -592,9 +595,9 @@ public class SaleService : ISaleService
                 Id = p.Id, PaymentDate = p.ReceivedAt, Amount = p.Amount, Notes = p.Notes, CreatedBy = p.CreatedBy, Pending = true });
         }
 
-        var record = await RecordPaymentCoreAsync(sale, dto.Amount, dto.Notes, batchId: null, user);
+        var record = await RecordPaymentCoreAsync(sale, dto.Amount, dto.Notes, batchId: null, user, paidAt: receivedAt);
 
-        await _audit.LogAsync(user, "Payment.Record", $"{sale.InvoiceNumber} +{dto.Amount:N0}");
+        await _audit.LogAsync(user, "Payment.Record", $"{sale.InvoiceNumber} +{dto.Amount:N0}{ReceivedNote(receivedAt)}");
         _log.LogInformation(
             "Payment {Amount} received against {InvoiceNumber} — paid {AmountPaid} of {GrandTotal}, by {User}",
             dto.Amount, sale.InvoiceNumber, sale.AmountPaid, sale.GrandTotal, user);
@@ -633,6 +636,33 @@ public class SaleService : ISaleService
         // notes, the note-funded part earns nothing, the same as applying the note directly.
         await _commissions.AccrueForPaymentAsync(sale, record, Math.Round(amount * cashShare, 2, MidpointRounding.AwayFromZero));
         return record;
+    }
+
+    /// <summary>
+    /// When the money arrived (HC, 2026-10-21). Payments used to be dated the moment they were
+    /// typed in, so a week of transfers entered on one afternoon all landed on that day: End of
+    /// Day, commission dates and how late each customer really paid were all wrong. Today keeps
+    /// the clock time; an earlier day is that day's local midnight (LedgerDate, as sales do).
+    /// Not in the future, not before any invoice it pays, not in a closed month.
+    /// </summary>
+    private async Task<(DateTime At, string? Error)> ReceivedAtAsync(DateTime? localDay, IEnumerable<Sale> sales)
+    {
+        if (localDay is not { } day || day.Date == DateTime.Now.Date) return (DateTime.UtcNow, null);
+        day = day.Date;
+        if (day > DateTime.Now.Date)
+            return (default, _loc["The date received can't be in the future."]);
+        foreach (var s in sales)
+            if (day < PeriodLock.LocalDay(s.SaleDate))
+                return (default, _loc["{0} is dated {1}: the money can't have been received before the invoice.", s.InvoiceNumber, PeriodLock.LocalDay(s.SaleDate).ToString("dd MMM yyyy")]);
+        if (await _period.NewDateAsync(day) is { } closed) return (default, closed);
+        return (LedgerDate.FromLocalDay(day), null);
+    }
+
+    /// <summary>" (received 13 Oct 2026)" for the audit line when the date isn't today.</summary>
+    private static string ReceivedNote(DateTime receivedAtUtc)
+    {
+        var day = PeriodLock.LocalDay(receivedAtUtc);
+        return day == DateTime.Now.Date ? "" : $" (received {day:dd MMM yyyy})";
     }
 
     public async Task<ServiceResult<PaymentBatchDto>> RecordBatchPaymentAsync(
@@ -679,6 +709,9 @@ public class SaleService : ISaleService
                 return _log.Refuse<PaymentBatchDto>(_loc["Invoice {0}: {1} exceeds its balance of {2}.", sale.InvoiceNumber, line.Amount.ToString("N0"), balance.ToString("N0")]);
         }
 
+        var (receivedAt, dateNo) = await ReceivedAtAsync(dto.ReceivedOn, lines.Select(l => byId[l.SaleId]));
+        if (dateNo != null) return _log.Refuse<PaymentBatchDto>(dateNo);
+
         // ── Validate every note before anything is written ────────────────────────
         var notes = noteIds.Count == 0 ? new List<CreditNote>() : await _notes.GetByIdsAsync(noteIds);
         if (notes.Count != noteIds.Count)
@@ -716,7 +749,7 @@ public class SaleService : ISaleService
             Id                 = Guid.NewGuid(),
             BatchNumber        = await _batches.GenerateBatchNumberAsync(PaymentBatchDirection.Received),
             Direction          = PaymentBatchDirection.Received,
-            BatchDate          = DateTime.UtcNow,
+            BatchDate          = receivedAt,
             CustomerId         = dto.CustomerId,
             GrossAmount        = gross,
             NotesAppliedAmount = notesApplied,
@@ -731,7 +764,7 @@ public class SaleService : ISaleService
         // cash collected, so it earns no commission (G7).
         var cashShare = gross > 0 ? (gross - notesApplied) / gross : 0m;
         foreach (var line in lines)
-            await RecordPaymentCoreAsync(byId[line.SaleId], line.Amount, batchNotes, batch.Id, user, cashShare);
+            await RecordPaymentCoreAsync(byId[line.SaleId], line.Amount, batchNotes, batch.Id, user, cashShare, receivedAt);
 
         // Tracked mutation — no Update() on entities EF is already following.
         foreach (var note in notes)
@@ -744,7 +777,7 @@ public class SaleService : ISaleService
 
         await _audit.LogAsync(user, "PaymentBatch.Record",
             $"{batch.BatchNumber} | {customer.Name} | net {batch.NetAmount:N0} " +
-            $"({gross:N0} gross − {notesApplied:N0} notes) across {lines.Count} invoice(s)");
+            $"({gross:N0} gross − {notesApplied:N0} notes) across {lines.Count} invoice(s){ReceivedNote(receivedAt)}");
         _log.LogInformation(
             "Settlement {BatchNumber} received from {Customer} — {NetAmount} net " +
             "({Gross} gross less {NotesApplied} in notes) across {InvoiceCount} invoice(s) " +
@@ -990,6 +1023,84 @@ public class SaleService : ISaleService
             .OrderByDescending(d => d.HasOverdue)
             .ThenByDescending(d => d.TotalDue)
             .ToList();
+    }
+
+    // ── Reversing a payment entered wrong (HC, 2026-10-21) ───────────────────
+
+    public async Task<ServiceResult> ReversePaymentAsync(Guid paymentId, string? reason, bool isAdmin, string user)
+    {
+        if (!isAdmin) return _log.Refuse(_loc["Only an administrator can reverse a payment."]);
+        var why = SanitiseText(reason, 300);
+        if (string.IsNullOrWhiteSpace(why)) return _log.Refuse(_loc["Say why the payment is being reversed."]);
+
+        var first = await _payments.GetByIdAsync(paymentId);
+        if (first == null) return _log.Refuse(_loc["Payment not found."]);
+        // The invoice, the settlement it may belong to (two lines of one settlement change the
+        // same totals) and the salespeople (so a payout can't settle the rows mid-change).
+        // LockAsync forgets what was read before it, so everything is read again below.
+        await _uow.LockAsync(first.SaleId, first.PaymentBatchId ?? Guid.Empty);
+        await _uow.LockAsync(await _commissions.SalesPeopleForSaleAsync(first.SaleId));
+
+        var payment = await _payments.GetByIdAsync(paymentId);
+        if (payment == null) return _log.Refuse(_loc["Payment not found."]);
+        if (payment.IsReversed) return _log.Refuse(_loc["This payment has already been reversed."]);
+        var sale = await _sales.GetByIdWithItemsAsync(payment.SaleId);
+        if (sale == null) return _log.Refuse(_loc["Sale not found."]);
+        if (sale.Status == SaleStatus.Cancelled) return _log.Refuse(_loc["Sale is already cancelled."]);
+
+        var paidDay = PeriodLock.LocalDay(payment.PaymentDate);
+        if (await _period.ExistingAsync(_loc["The payment of {0}", sale.InvoiceNumber].Value, paidDay) is { } closed)
+            return _log.Refuse(closed);
+        // A return's commission clawback was figured on what this payment earned; taking the
+        // payment away under it would leave that clawback too big. Same order as cancelling.
+        if (await _returns.HasActiveReturnAsync(sale.Id))
+            return _log.Refuse(_loc["This invoice has a sales return against it. Cancel the return first, then reverse the payment."]);
+        // A settlement that netted credit notes settled those notes with this money: taking one
+        // line back would leave notes settled by cash that never came. Without notes, the
+        // settlement's totals simply go down by this line.
+        if (payment.PaymentBatch is { NotesAppliedAmount: > 0 } nb)
+            return _log.Refuse(_loc["This payment is part of settlement {0}, which netted credit notes, so it can't be reversed on its own.", nb.BatchNumber]);
+        if (sale.AmountPaid < payment.Amount)
+            return _log.Refuse(_loc["The invoice's paid amount ({0}) is less than this payment ({1}). Nothing was changed; check the invoice.", sale.AmountPaid.ToString("N0"), payment.Amount.ToString("N0")]);
+
+        payment.ReversedAt    = DateTime.UtcNow;
+        payment.ReversedBy    = user;
+        payment.ReverseReason = why;
+        sale.AmountPaid      -= payment.Amount;
+        _sales.Update(sale);
+        if (payment.PaymentBatch is { } b)
+        {
+            b.GrossAmount -= payment.Amount;
+            b.NetAmount   -= payment.Amount;
+        }
+        await _commissions.ReverseForPaymentAsync(sale.Id, payment.Id, user);
+
+        await _audit.LogAsync(user, "Payment.Reverse",
+            $"{sale.InvoiceNumber} -{payment.Amount:N0} (received {paidDay:dd MMM yyyy}, by {payment.CreatedBy})"
+            + (payment.PaymentBatch is { } bb ? $" in {bb.BatchNumber}" : "") + $" | {why}");
+        _log.LogInformation(
+            "Payment {Amount} on {InvoiceNumber} reversed — paid now {AmountPaid} of {GrandTotal}, by {User}: {Reason}",
+            payment.Amount, sale.InvoiceNumber, sale.AmountPaid, sale.GrandTotal, user, why);
+        await _uow.SaveChangesAsync();
+        return ServiceResult.Ok();
+    }
+
+    public async Task<List<PaymentBatchDto>> GetReceivedSettlementsAsync(DateTime? from = null, DateTime? to = null, Guid? customerId = null)
+    {
+        // The page filters by local days; BatchDate is a UTC instant.
+        DateTime? fromUtc = from is { } f ? DateTime.SpecifyKind(f.Date, DateTimeKind.Local).ToUniversalTime() : null;
+        DateTime? toUtc   = to   is { } t ? DateTime.SpecifyKind(t.Date.AddDays(1), DateTimeKind.Local).ToUniversalTime().AddTicks(-1) : null;
+        var batches = await _batches.GetAllAsync(PaymentBatchDirection.Received, customerId: customerId, from: fromUtc, to: toUtc);
+        return batches.OrderByDescending(b => b.BatchDate).ThenByDescending(b => b.CreatedAt).Select(b =>
+        {
+            var dto = MapBatch(b, b.Customer?.Name ?? "", b.Payments.Count(p => !p.IsReversed), b.AppliedNotes.Count);
+            dto.CreatedAt = b.CreatedAt;
+            dto.Lines = b.Payments.OrderBy(p => p.Sale?.InvoiceNumber).Select(p => new PaymentBatchLineDto {
+                PaymentId = p.Id, SaleId = p.SaleId, InvoiceNumber = p.Sale?.InvoiceNumber ?? "",
+                Amount = p.Amount, IsReversed = p.IsReversed, ReverseReason = p.ReverseReason
+            }).ToList();
+            return dto;
+        }).ToList();
     }
 
     // ── Staff payments waiting for Admin (R1, HC 2026-10-16) ─────────────────
@@ -1250,7 +1361,9 @@ public class SaleService : ISaleService
         }).ToList(),
         PaymentHistory = s.PaymentRecords?.Select(p => new PaymentRecordDto {
             Id = p.Id, PaymentDate = p.PaymentDate, Amount = p.Amount,
-            Notes = p.Notes, CreatedBy = p.CreatedBy
+            Notes = p.Notes, CreatedBy = p.CreatedBy,
+            BatchId = p.PaymentBatchId, BatchNumber = p.PaymentBatch?.BatchNumber,
+            IsReversed = p.IsReversed, ReversedAt = p.ReversedAt, ReversedBy = p.ReversedBy, ReverseReason = p.ReverseReason
         }).OrderBy(p => p.PaymentDate).ToList() ?? new()
     };
 }

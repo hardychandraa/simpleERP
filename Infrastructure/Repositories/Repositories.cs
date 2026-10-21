@@ -1193,7 +1193,8 @@ public class PaymentBatchRepository : IPaymentBatchRepository
 
     private IQueryable<PaymentBatch> WithNav => _db.PaymentBatches
         .Include(b => b.Customer).Include(b => b.Supplier)
-        .Include(b => b.Payments).Include(b => b.SupplierPayments)
+        .Include(b => b.Payments).ThenInclude(p => p.Sale)
+        .Include(b => b.SupplierPayments)
         .Include(b => b.AppliedNotes);
 
     public async Task AddAsync(PaymentBatch batch) => await _db.PaymentBatches.AddAsync(batch);
@@ -1543,7 +1544,7 @@ public class SaleRepository : ISaleRepository
            .Include(s => s.PaymentTerm)
            .Include(s => s.SalesPerson)
            .Include(s => s.SaleItems).ThenInclude(i => i.Product)
-           .Include(s => s.PaymentRecords)
+           .Include(s => s.PaymentRecords).ThenInclude(p => p.PaymentBatch)
            .FirstOrDefaultAsync(s => s.Id == id);
 
     public Task<List<Sale>> GetAllAsync(DateTime? from = null, DateTime? to = null, Guid? customerId = null)
@@ -1754,16 +1755,20 @@ public class PaymentRecordRepository : IPaymentRecordRepository
 
     public async Task AddAsync(PaymentRecord r) => await _db.PaymentRecords.AddAsync(r);
 
+    public Task<PaymentRecord?> GetByIdAsync(Guid id) =>
+        _db.PaymentRecords.Include(p => p.PaymentBatch).FirstOrDefaultAsync(p => p.Id == id);
+
+    // A reversed payment (ReversedAt set) is kept for the audit trail but counts nowhere.
     public Task<List<PaymentRecord>> GetBySaleAsync(Guid saleId) =>
-        _db.PaymentRecords.Where(p => p.SaleId == saleId)
+        _db.PaymentRecords.Where(p => p.SaleId == saleId && p.ReversedAt == null)
                           .OrderByDescending(p => p.PaymentDate).ToListAsync();
 
     public async Task<decimal> GetTotalPaidAsync(Guid saleId) =>
-        await _db.PaymentRecords.Where(p => p.SaleId == saleId).SumAsync(p => p.Amount);
+        await _db.PaymentRecords.Where(p => p.SaleId == saleId && p.ReversedAt == null).SumAsync(p => p.Amount);
 
     public Task<List<PaymentRecord>> GetByDateRangeAsync(DateTime from, DateTime to) =>
         _db.PaymentRecords.Include(p => p.Sale!).ThenInclude(s => s.Customer)
-                          .Where(p => p.PaymentDate >= from && p.PaymentDate < to)
+                          .Where(p => p.PaymentDate >= from && p.PaymentDate < to && p.ReversedAt == null)
                           .OrderByDescending(p => p.PaymentDate).ToListAsync();
 }
 

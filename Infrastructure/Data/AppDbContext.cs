@@ -153,6 +153,9 @@ public class AppDbContext : DbContext
             e.Property(p => p.Amount).HasColumnType("decimal(18,4)");
             e.Property(p => p.Notes).HasMaxLength(300);
             e.Property(p => p.CreatedBy).HasMaxLength(100);
+            e.Property(p => p.ReversedBy).HasMaxLength(100);
+            e.Property(p => p.ReverseReason).HasMaxLength(300);
+            e.Ignore(p => p.IsReversed);
             e.HasOne(p => p.Sale).WithMany(s => s.PaymentRecords)
                 .HasForeignKey(p => p.SaleId).OnDelete(DeleteBehavior.Cascade);
             // SetNull mirrors CommissionAccrual→Payout: the batch is an envelope, and a

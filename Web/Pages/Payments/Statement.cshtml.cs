@@ -2,6 +2,7 @@ using Microsoft.Extensions.Localization;
 using SimpleERP.Application.Resources;
 using SimpleERP.Application.DTOs;
 using SimpleERP.Application.Interfaces;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SimpleERP.Web.Services;
@@ -24,6 +25,8 @@ public class StatementModel : PageModel
     [BindProperty(SupportsGet = true)] public DateTime? To   { get; set; }
 
     [BindProperty] public string? Notes { get; set; }
+    /// <summary>The local day the money arrived; the form starts at today.</summary>
+    [BindProperty, DataType(DataType.Date)] public DateTime? ReceivedOn { get; set; } = DateTime.Now.Date;
     [BindProperty] public List<StatementLineInput> Lines { get; set; } = new();
     /// <summary>Ids of the credit notes ticked to net off this settlement.</summary>
     [BindProperty] public List<Guid> ApplyNoteIds { get; set; } = new();
@@ -62,6 +65,7 @@ public class StatementModel : PageModel
         var result = await _sales.RecordBatchPaymentAsync(new RecordSaleBatchPaymentDto {
             CustomerId         = customerId,
             Notes              = Notes,
+            ReceivedOn         = ReceivedOn,
             Lines              = lines,
             ApplyCreditNoteIds = ApplyNoteIds
         }, this.CurrentUserName());

@@ -15,6 +15,7 @@
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <a href="/Sales/Due" class="btn btn-sm @(Model.ByInvoice ? "btn-outline" : "btn-primary")">@Localizer["By customer"]</a>
     <a href="/Sales/Due?view=invoice" class="btn btn-sm @(Model.ByInvoice ? "btn-primary" : "btn-outline")">@Localizer["By invoice"]</a>
+    <a href="/Payments/Settlements" class="btn btn-outline btn-sm">🧾 @Localizer["Settlements"]</a>
     <a href="/Sales/Due?handler=Excel" class="btn btn-outline btn-sm">⬇ @Localizer["Download Excel"]</a>
   </div>
 </div>

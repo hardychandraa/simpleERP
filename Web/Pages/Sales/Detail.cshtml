@@ -286,6 +286,11 @@
             </div>
             <div style="font-size:11px;color:#6b7280;margin-top:3px">@Localizer["Outstanding:"] @Model.StillOwed.ToString("N0")</div>
           </div>
+          @* The day the money arrived, not the day it is typed in (HC, 2026-10-21). *@
+          <div class="fg">
+            <label>@Localizer["Date received"]</label>
+            <input type="date" name="PayInput.ReceivedOn" value="@(Model.PayInput.ReceivedOn?.ToString("yyyy-MM-dd"))" max="@DateTime.Now.ToString("yyyy-MM-dd")" required/>
+          </div>
           <div class="fg">
             <label>@Localizer["Notes (optional)"]</label>
             <input type="text" asp-for="PayInput.Notes" placeholder="@Localizer["e.g. Cash, transfer..."]"/>
@@ -442,10 +447,27 @@
         <thead><tr><th>@Localizer["Date"]</th><th style="text-align:right">@Localizer["Amount"]</th><th>@Localizer["Notes"]</th></tr></thead>
         <tbody>
         @foreach (var p in Model.Payments) {
-          <tr>
-            <td style="font-size:12px">@p.PaymentDate.ToLocalTime().ToString("dd-MMM-yy HH:mm")</td>
-            <td style="text-align:right;font-weight:600;color:#059669">@p.Amount.ToString("N0")</td>
-            <td style="color:#9ca3af;font-size:12px">@(p.Notes ?? "—")</td>
+          <tr style="@(p.IsReversed ? "color:#9ca3af" : "")">
+            <td style="font-size:12px;@(p.IsReversed ? "text-decoration:line-through" : "")">@p.PaymentDate.ToLocalTime().ToString("dd-MMM-yy")</td>
+            <td style="text-align:right;font-weight:600;@(p.IsReversed ? "text-decoration:line-through" : "color:#059669")">@p.Amount.ToString("N0")</td>
+            <td style="color:#9ca3af;font-size:12px">
+              @(p.Notes ?? "—")
+              @if (p.BatchNumber != null) {
+                <div><a href="/Payments/Settlements#@p.BatchNumber" style="color:#2563eb">@p.BatchNumber</a></div>
+              }
+              @if (p.IsReversed) {
+                <div style="color:#b91c1c">⛔ @Localizer["Reversed {0} by {1}: {2}", p.ReversedAt!.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm"), p.ReversedBy ?? "", p.ReverseReason ?? ""]</div>
+              } else if (User.ChecksStaffWork() && Model.Sale.Status == "Active") {
+                @* Admin only (HC, 2026-10-21). The service refuses what it must (closed month, a
+                   return on the invoice, a settlement that netted credit notes) and says why. *@
+                <form method="post" asp-page-handler="ReversePayment" asp-route-id="@Model.Sale.Id" style="display:flex;gap:4px;margin-top:4px"
+                      onsubmit="return confirm('@Localizer["Reverse this payment? The invoice will owe this amount again."]')">
+                  <input type="hidden" name="paymentId" value="@p.Id" />
+                  <input type="text" name="reverseReason" maxlength="300" required placeholder="@Localizer["Why? *"]" style="flex:1;min-width:0;font-size:11px" />
+                  <button type="submit" class="btn btn-outline btn-sm" style="font-size:11px">✕ @Localizer["Reverse"]</button>
+                </form>
+              }
+            </td>
           </tr>
         }
         <tr style="background:#f9fafb">

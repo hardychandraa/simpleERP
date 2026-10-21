@@ -1091,6 +1091,11 @@ public class RecordPaymentDto {
     public Guid    SaleId  { get; set; }
     public decimal Amount  { get; set; }
     public string? Notes   { get; set; }
+    /// <summary>
+    /// The local day the money arrived (HC, 2026-10-21: payments were typed in days late and all
+    /// landed on the day of entry). Null = today.
+    /// </summary>
+    public DateTime? ReceivedOn { get; set; }
 }
 public class PaymentRecordDto {
     public Guid     Id          { get; set; }
@@ -1100,6 +1105,14 @@ public class PaymentRecordDto {
     public string   CreatedBy   { get; set; } = "";
     /// <summary>Recorded by Staff and waiting for Admin to verify it (R1): it does not count yet.</summary>
     public bool     Pending     { get; set; }
+    /// <summary>The settlement (STL-R-…) this payment was one line of, if any.</summary>
+    public Guid?    BatchId     { get; set; }
+    public string?  BatchNumber { get; set; }
+    /// <summary>Reversed by Admin (HC, 2026-10-21): shown struck through, counted nowhere.</summary>
+    public bool      IsReversed    { get; set; }
+    public DateTime? ReversedAt    { get; set; }
+    public string?   ReversedBy    { get; set; }
+    public string?   ReverseReason { get; set; }
 }
 /// <summary>A Staff-recorded payment waiting for, or decided by, Admin (R1, HC 2026-10-16).</summary>
 public class PendingPaymentDto {
@@ -1184,6 +1197,8 @@ public class PaymentStatementDto {
 public class RecordSaleBatchPaymentDto {
     public Guid    CustomerId { get; set; }
     public string? Notes      { get; set; }
+    /// <summary>The local day the transfer arrived; null = today. Dates every payment in it.</summary>
+    public DateTime? ReceivedOn { get; set; }
     public List<SaleBatchPaymentLineDto> Lines { get; set; } = new();
     /// <summary>Open credit notes to net off this settlement. Applied in full or not at all.</summary>
     public List<Guid> ApplyCreditNoteIds { get; set; } = new();
@@ -1218,6 +1233,17 @@ public class PaymentBatchDto {
     public int       NoteCount          { get; set; }
     public string?   Notes              { get; set; }
     public string    CreatedBy          { get; set; } = "";
+    public DateTime  CreatedAt          { get; set; }
+    /// <summary>The settlement's payments, reversed ones included (filled by the settlements list only).</summary>
+    public List<PaymentBatchLineDto> Lines { get; set; } = new();
+}
+public class PaymentBatchLineDto {
+    public Guid      PaymentId     { get; set; }
+    public Guid      SaleId        { get; set; }
+    public string    InvoiceNumber { get; set; } = "";
+    public decimal   Amount        { get; set; }
+    public bool      IsReversed    { get; set; }
+    public string?   ReverseReason { get; set; }
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────

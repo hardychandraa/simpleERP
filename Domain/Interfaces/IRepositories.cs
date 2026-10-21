@@ -646,6 +646,9 @@ public interface IUserRepository {
 
 public interface IPaymentRecordRepository {
     Task AddAsync(PaymentRecord record);
+    /// <summary>Tracked, with its settlement; reversed or not.</summary>
+    Task<PaymentRecord?> GetByIdAsync(Guid id);
+    /// <summary>Live payments only (not reversed), like the two below.</summary>
     Task<List<PaymentRecord>> GetBySaleAsync(Guid saleId);
     Task<decimal> GetTotalPaidAsync(Guid saleId);
     /// <summary>Payments collected within [from, to), regardless of the sale's own date.</summary>

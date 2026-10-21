@@ -15,6 +15,16 @@ public class PaymentRecord
     /// </summary>
     public Guid?    PaymentBatchId { get; set; }
 
+    /// <summary>
+    /// Set when Admin reversed this payment (HC, 2026-10-21): it was entered wrong (amount,
+    /// invoice or date). The row is kept for the audit trail but no longer counts anywhere —
+    /// not in the invoice's paid amount, End of Day or commission. Null = a live payment.
+    /// </summary>
+    public DateTime? ReversedAt    { get; set; }
+    public string?   ReversedBy    { get; set; }
+    public string?   ReverseReason { get; set; }
+    public bool      IsReversed => ReversedAt != null;
+
     // Navigation
     public Sale? Sale { get; set; }
     public PaymentBatch? PaymentBatch { get; set; }

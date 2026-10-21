@@ -58,11 +58,12 @@ public class DetailModel : PageModel
             Commissions = await _commissions.GetAccrualsForSaleAsync(id);
         Returns     = await _returns.GetReturnsForSaleAsync(id);
         NoteApplications = await _notes.GetApplicationsForSaleAsync(id);
-        TotalCollected = Payments.Sum(p => p.Amount);
+        TotalCollected = Payments.Where(p => !p.IsReversed).Sum(p => p.Amount);
         // Net of applied credit notes, so the payment form's cap matches what the service
         // will actually accept rather than inviting a refusal.
         StillOwed   = Math.Max(0, sale.NetBalanceDue);
         PayInput.SaleId = id;
+        PayInput.ReceivedOn = DateTime.Now.Date;
         // Only Admin cancels or revises (R3, HC 2026-10-16); Staff send a request.
         CanChange = User.ChecksStaffWork();
         PendingPayments = await _sales.GetPendingPaymentsForSaleAsync(id);
@@ -114,6 +115,18 @@ public class DetailModel : PageModel
         if (!User.ChecksStaffWork()) return this.Refuse("rejecting a payment is Admin-only");
         var result = await _sales.RejectPaymentAsync(pendingId, rejectReason, isAdmin: true, this.CurrentUserName());
         return RedirectToPage(new { id, msg = result.Success ? "Payment rejected." : result.Error, err = !result.Success });
+    }
+
+    /// <summary>Admin takes back a payment entered wrong (HC, 2026-10-21).</summary>
+    public async Task<IActionResult> OnPostReversePaymentAsync(Guid id, Guid paymentId, string? reverseReason)
+    {
+        if (!User.ChecksStaffWork()) return this.Refuse("reversing a payment is Admin-only");
+        // Only a payment on THIS invoice: the service takes any payment id.
+        var sale = await _sales.GetByIdAsync(id);
+        if (sale == null || !sale.PaymentHistory.Any(p => p.Id == paymentId))
+            return this.Refuse("payment does not belong to this invoice");
+        var result = await _sales.ReversePaymentAsync(paymentId, reverseReason, isAdmin: true, this.CurrentUserName());
+        return RedirectToPage(new { id, msg = result.Success ? "Payment reversed. The invoice owes that amount again." : result.Error, err = !result.Success });
     }
 
     /// <summary>Staff ask Admin to cancel or revise (R3).</summary>
