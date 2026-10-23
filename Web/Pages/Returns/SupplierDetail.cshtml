@@ -96,7 +96,7 @@
             </div>
             <div style="display:flex;justify-content:space-between;padding:4px 0">
                 <span style="color:#6b7280">
-                    PPN @((Model.Return.TaxRate * 100).ToString("0.##"))% @Localizer["reversed"]
+                    @Localizer["PPN {0}% reversed", (Model.Return.TaxRate * 100).ToString("0.##")]
                     @if (Model.Return.IsTaxInclusive) { <span style="font-size:11px;color:#9ca3af">(@Localizer["included"])</span> }
                 </span>
                 <span>@Model.Return.TaxAmount.ToString("N0")</span>

@@ -19,6 +19,7 @@
   <div class="fg" style="margin:0;flex:1"><label>@Localizer["To"]</label><input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")"/></div>
   <button type="submit" class="btn btn-primary">@Localizer["Filter"]</button>
   <a href="/Inventory/Ledger" class="btn btn-outline">@Localizer["Reset"]</a>
+  @if (seesCost) { <a href="/Inventory/Ledger?handler=Excel&productId=@Model.ProductId&from=@Model.From.ToString("yyyy-MM-dd")&to=@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline">⬇ @Localizer["Download Excel"]</a> }
 </form></div>
 <div class="card"><table><thead><tr>
   <th>@Localizer["Date"]</th><th>@Localizer["Document"]</th><th>@Localizer["Type"]</th><th>@Localizer["Customer / Supplier"]</th>
@@ -29,7 +30,7 @@
 </tr></thead><tbody>
 @foreach (var e in Model.Card.Rows)
 {
-    var bc = e.ReferenceType switch { "Purchase" or "PurchaseOrder" => "ok", "Sale" => "info", "Cancel" => "warn", _ => "gray" };
+    var bc = e.ReferenceType switch { "Purchase" or "PurchaseOrder" => "ok", "Sale" => "info", "Cancel" or "Exchange" => "warn", _ => "gray" };
 <tr><td style="white-space:nowrap">@e.TransactionDate.ToLocalTime().ToString("dd-MMM-yy")</td>
 <td style="white-space:nowrap">@if (e.Link != null) { <a href="@e.Link">@e.DocumentNumber</a> } else { @(e.DocumentNumber ?? "—") }</td>
 <td><span class="badge @bc">@Localizer[EnumDisplay.Key("ReferenceType", e.ReferenceType)]</span></td>

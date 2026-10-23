@@ -21,6 +21,7 @@
       @if (seesCost) {<span><strong>@Localizer["Total Stock Value:"] </strong><span style="font-size:18px;font-weight:700;color:#059669">@Model.TotalStockValue.ToString("N0")</span></span>}
       <button type="button" id="waCopy" class="btn btn-outline">📋 @Localizer["Copy for WhatsApp"]</button>
       <a href="/Inventory/Ledger" class="btn btn-outline">📒 @Localizer["Ledger"]</a>
+      @if (seesCost) {<a href="/Reports/StockList" class="btn btn-outline">🗃 @Localizer["Stock List"]</a>}
       @if (maintains) {
       <a href="/Products/Create" class="btn btn-primary">＋ @Localizer["Add Product"]</a>
       }

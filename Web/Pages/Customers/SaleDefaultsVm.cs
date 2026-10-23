@@ -15,3 +15,6 @@ public record SaleDefaultsVm(List<SalesPersonDto> People, List<PaymentTermDto> T
 
 /// <summary>What the _CreditLimit partial needs (Admin only): the saved plafon and, on Edit, where the customer stands.</summary>
 public record CreditLimitVm(decimal? Limit, CustomerCreditDto? Status, CreditSuggestionDto? Suggestion = null);
+
+/// <summary>The _TaxIdentity partial: NPWP / NIK and, when not the customer's own, whose name and address they carry.</summary>
+public record TaxIdentityVm(string? TaxId, string? NationalId, string? TaxName, string? TaxAddress);

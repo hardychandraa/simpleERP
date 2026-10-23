@@ -25,6 +25,9 @@ public class StatementModel : PageModel
     [BindProperty(SupportsGet = true)] public DateTime? To   { get; set; }
 
     [BindProperty] public string? Notes { get; set; }
+    /// <summary>The local day the money went out (HC, 2026-10-21); the form starts at today.</summary>
+    [BindProperty, System.ComponentModel.DataAnnotations.DataType(System.ComponentModel.DataAnnotations.DataType.Date)]
+    public DateTime? PaidOn { get; set; } = DateTime.Now.Date;
     [BindProperty] public List<StatementLineInput> Lines { get; set; } = new();
     /// <summary>Ids of the debit notes ticked to net off this settlement.</summary>
     [BindProperty] public List<Guid> ApplyNoteIds { get; set; } = new();
@@ -68,6 +71,7 @@ public class StatementModel : PageModel
         var result = await _purchases.RecordBatchPaymentAsync(new RecordSupplierBatchPaymentDto {
             SupplierId         = supplierId,
             Notes              = Notes,
+            PaidOn             = PaidOn,
             Lines              = lines,
             ApplyCreditNoteIds = ApplyNoteIds
         }, this.CurrentUserName());

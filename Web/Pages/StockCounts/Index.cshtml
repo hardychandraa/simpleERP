@@ -15,7 +15,7 @@
   <form method="post" asp-page-handler="Create">
     <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;font-size:14px">
       <label style="display:inline-flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500">
-        <input type="radio" name="scope" value="@((int)StockCountScope.MovedToday)" checked onchange="pickToggle()"/> @Localizer["Products that moved today"] <span style="color:#6b7280;font-size:12px">(@Localizer["daily"])</span></label>
+        <input type="radio" name="scope" value="@((int)StockCountScope.MovedToday)" checked onchange="pickToggle()"/> @Localizer["Products that moved today"] <span style="color:#6b7280;font-size:12px">@Localizer["(daily)"]</span></label>
       <label style="display:inline-flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500">
         <input type="radio" name="scope" value="@((int)StockCountScope.All)" onchange="pickToggle()"/> @Localizer["All products"] <span style="color:#6b7280;font-size:12px">(@Localizer["weekly / month-end"])</span></label>
       <label style="display:inline-flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500">

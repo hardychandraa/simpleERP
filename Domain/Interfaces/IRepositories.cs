@@ -10,6 +10,8 @@ public interface IProductRepository {
     /// <summary>SKU is uniquely indexed in the database; check here first so a duplicate
     /// returns a readable message instead of surfacing as a constraint violation.</summary>
     Task<bool> SkuExistsAsync(string sku, Guid? excludeId = null);
+    /// <summary>Every SKU starting with <paramref name="prefix"/>, for numbering the next one.</summary>
+    Task<List<string>> GetSkusStartingWithAsync(string prefix);
     Task AddAsync(Product product);
     void Update(Product product);
 }
@@ -318,8 +320,26 @@ public record PurchasePeriodTotals(
     decimal TaxPaid,
     decimal GrossPurchases);
 
+/// <summary>Tukar barang (HC, 2026-10-22). See Exchange.</summary>
+public interface IExchangeRepository {
+    Task AddAsync(Exchange exchange);
+    void Update(Exchange exchange);
+    /// <summary>With the sale and its customer, the lines and their products; tracked.</summary>
+    Task<Exchange?> GetByIdWithItemsAsync(Guid id);
+    Task<List<Exchange>> GetBySaleAsync(Guid saleId);
+    /// <summary>Newest first; dates are the exchange's local day, inclusive.</summary>
+    Task<List<Exchange>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null);
+    /// <summary>TKR-yyMM-nnnn.</summary>
+    Task<string> GenerateNumberAsync();
+    /// <summary>Units of each invoice line exchanged by active exchanges.</summary>
+    Task<Dictionary<Guid, decimal>> GetExchangedQtyBySaleItemAsync(Guid saleId);
+    Task<int> CountNeedingReviewAsync();
+}
+
 public interface ISupplierPaymentRepository {
     Task AddAsync(SupplierPayment payment);
+    /// <summary>With its settlement (PaymentBatch), tracked: a reversal changes both.</summary>
+    Task<SupplierPayment?> GetByIdAsync(Guid id);
     Task<List<SupplierPayment>> GetByPurchaseAsync(Guid purchaseId);
     Task<List<SupplierPayment>> GetByDateRangeAsync(DateTime from, DateTime to);
 }
@@ -771,7 +791,8 @@ public record ReturnLineFact(Guid ReturnId, Guid CustomerId, Guid ProductId, dec
     decimal Credit, decimal Cost, decimal ReturnTaxBase);
 /// <summary>A document for the PPN summary: stored DPP and PPN, and who it was with.</summary>
 public record TaxDocFact(Guid Id, DateTime Date, string Number, string? OtherNumber, string Party,
-    string? TaxId, string? NationalId, decimal TaxBase, decimal TaxAmount, decimal GrandTotal, bool Unchecked);
+    string? TaxId, string? NationalId, decimal TaxBase, decimal TaxAmount, decimal GrandTotal, bool Unchecked,
+    string? TaxName = null, string? TaxAddress = null);
 
 /// <summary>Read-only queries behind the analysis reports. Nothing here writes.</summary>
 public interface IReportRepository {
@@ -783,4 +804,8 @@ public interface IReportRepository {
     Task<List<TaxDocFact>> GetSalesReturnsForTaxAsync(DateTime from, DateTime to);
     Task<List<TaxDocFact>> GetPurchasesForTaxAsync(DateTime from, DateTime to);
     Task<List<TaxDocFact>> GetPurchaseReturnsForTaxAsync(DateTime from, DateTime to);
+    /// <summary>Per product, its newest active sale (UTC instant): how long the stock has gone unsold.</summary>
+    Task<Dictionary<Guid, DateTime>> GetLastSaleDatesAsync();
+    /// <summary>Per product, its newest active purchase or Goods In (calendar day).</summary>
+    Task<Dictionary<Guid, DateTime>> GetLastPurchaseDatesAsync();
 }

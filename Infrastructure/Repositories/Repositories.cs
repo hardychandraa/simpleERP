@@ -306,7 +306,7 @@ public class PurchaseRepository : IPurchaseRepository
            .Include(p => p.Branch)
            .Include(p => p.PaymentTerm)
            .Include(p => p.PurchaseItems).ThenInclude(i => i.Product)
-           .Include(p => p.SupplierPayments)
+           .Include(p => p.SupplierPayments).ThenInclude(sp => sp.PaymentBatch)
            .FirstOrDefaultAsync(p => p.Id == id);
 
     public Task<List<Purchase>> GetAllAsync(DateTime? from = null, DateTime? to = null)
@@ -507,12 +507,61 @@ public class PurchaseRepository : IPurchaseRepository
     }
 }
 
+public class ExchangeRepository : IExchangeRepository
+{
+    private readonly AppDbContext _db;
+    public ExchangeRepository(AppDbContext db) => _db = db;
+
+    public async Task AddAsync(Exchange x) => await _db.Exchanges.AddAsync(x);
+    public void Update(Exchange x) => _db.Exchanges.Update(x);
+
+    public Task<Exchange?> GetByIdWithItemsAsync(Guid id) =>
+        _db.Exchanges.Include(x => x.Sale!).ThenInclude(s => s.Customer)
+                     .Include(x => x.Items).ThenInclude(i => i.Product)
+                     .FirstOrDefaultAsync(x => x.Id == id);
+
+    public Task<List<Exchange>> GetBySaleAsync(Guid saleId) =>
+        _db.Exchanges.AsNoTracking().Include(x => x.Items).ThenInclude(i => i.Product)
+                     .Where(x => x.SaleId == saleId)
+                     .OrderByDescending(x => x.CreatedAt).ToListAsync();
+
+    public Task<List<Exchange>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null)
+    {
+        var q = _db.Exchanges.AsNoTracking().Include(x => x.Sale!).ThenInclude(s => s.Customer)
+                             .Include(x => x.Items).ThenInclude(i => i.Product).AsQueryable();
+        if (from.HasValue) q = q.Where(x => x.ExchangeDate >= from.Value.Date);
+        if (to.HasValue)   q = q.Where(x => x.ExchangeDate < to.Value.Date.AddDays(1));
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            q = q.Where(x => x.ExchangeNumber.ToLower().Contains(s) || x.Sale!.InvoiceNumber.ToLower().Contains(s)
+                          || x.Sale.Customer!.Name.ToLower().Contains(s) || x.Reason.ToLower().Contains(s));
+        }
+        return q.OrderByDescending(x => x.CreatedAt).ToListAsync();
+    }
+
+    public Task<string> GenerateNumberAsync() =>
+        DocumentNumber.NextAsync(_db, $"TKR-{DocumentNumber.MonthStamp()}", _db.Exchanges.Select(x => x.ExchangeNumber));
+
+    public Task<Dictionary<Guid, decimal>> GetExchangedQtyBySaleItemAsync(Guid saleId) =>
+        _db.ExchangeItems.Where(i => i.Exchange!.SaleId == saleId && i.Exchange.Status == ReturnStatus.Active)
+                         .GroupBy(i => i.SaleItemId)
+                         .Select(g => new { g.Key, Qty = g.Sum(i => i.Qty) })
+                         .ToDictionaryAsync(x => x.Key, x => x.Qty);
+
+    public Task<int> CountNeedingReviewAsync() =>
+        _db.Exchanges.CountAsync(x => x.NeedsReview && x.Status == ReturnStatus.Active);
+}
+
 public class SupplierPaymentRepository : ISupplierPaymentRepository
 {
     private readonly AppDbContext _db;
     public SupplierPaymentRepository(AppDbContext db) => _db = db;
 
     public async Task AddAsync(SupplierPayment p) => await _db.SupplierPayments.AddAsync(p);
+
+    public Task<SupplierPayment?> GetByIdAsync(Guid id) =>
+        _db.SupplierPayments.Include(p => p.PaymentBatch).FirstOrDefaultAsync(p => p.Id == id);
 
     public Task<List<SupplierPayment>> GetByPurchaseAsync(Guid purchaseId) =>
         _db.SupplierPayments.Where(p => p.PurchaseId == purchaseId)
@@ -1316,6 +1365,8 @@ public class ProductRepository : IProductRepository
     public Task<bool> SkuExistsAsync(string sku, Guid? excludeId = null) =>
         _db.Products.AnyAsync(p => p.SKU.ToLower() == sku.ToLower()
                                 && (excludeId == null || p.Id != excludeId));
+    public Task<List<string>> GetSkusStartingWithAsync(string prefix) =>
+        _db.Products.Where(p => p.SKU.StartsWith(prefix)).Select(p => p.SKU).ToListAsync();
     public async Task AddAsync(Product p) => await _db.Products.AddAsync(p);
     public void Update(Product p) => _db.Products.Update(p);
 }
@@ -1457,6 +1508,9 @@ public class InventoryLedgerRepository : IInventoryLedgerRepository
         foreach (var r in await _db.CustomerReturns.Where(x => ids.Contains(x.Id))
                      .Select(x => new { x.Id, x.ReturnNumber, Party = x.Sale!.Customer!.Name }).ToListAsync())
             map[r.Id] = new(r.ReturnNumber, r.Party, $"/Returns/Customer/{r.Id}");
+        foreach (var x in await _db.Exchanges.Where(x => ids.Contains(x.Id))
+                     .Select(x => new { x.Id, x.ExchangeNumber, Party = x.Sale!.Customer!.Name }).ToListAsync())
+            map[x.Id] = new(x.ExchangeNumber, x.Party, $"/Returns/Exchange/{x.Id}");
         foreach (var r in await _db.SupplierReturns.Where(x => ids.Contains(x.Id))
                      .Select(x => new { x.Id, x.ReturnNumber, Party = x.Purchase!.Supplier!.Name }).ToListAsync())
             map[r.Id] = new(r.ReturnNumber, r.Party, $"/Returns/Supplier/{r.Id}");

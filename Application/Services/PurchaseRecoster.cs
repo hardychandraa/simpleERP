@@ -178,6 +178,8 @@ public sealed class PurchaseRecoster
         {
             case ReferenceType.Adjustment:
                 return curA;   // a count correction comes in at the current average
+            case ReferenceType.Exchange:
+                return curA;   // Tukar barang: the faulty unit comes back at the replacement's cost
 
             case ReferenceType.PurchaseOrder:
                 var lines = purItems[r.ReferenceId].ToList();

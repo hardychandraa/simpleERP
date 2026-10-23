@@ -248,7 +248,9 @@ public class RebateService : IRebateService
 
             var graceDays = rule.OnTimePaymentDays ?? 0;
             var deadline  = purchase.DueDate.Value.Date.AddDays(graceDays);
-            if (paymentDate.Date > deadline) continue;   // paid late — no reward
+            // The payment is a UTC instant: a back-dated one is local midnight, i.e. the
+            // evening before in UTC, so compare its local day (2026-10-21).
+            if (PeriodLock.LocalDay(paymentDate) > deadline) continue;   // paid late — no reward
 
             var settings = await _settings.GetAsync();
 

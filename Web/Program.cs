@@ -12,6 +12,11 @@ using Serilog;
 using Serilog.Events;
 using Microsoft.AspNetCore.DataProtection;
 
+// `SimpleERP.Web.exe decrypt-backup <file.dump.enc> <out.dump>` (and encrypt-backup): a
+// command-line tool for restores, before anything else starts — no database, no web server.
+if (args.Length > 0 && args[0] is "decrypt-backup" or "encrypt-backup")
+    Environment.Exit(BackupCrypto.RunCli(args));
+
 // Npgsql maps DateTime to `timestamp with time zone` by default and throws at runtime on
 // any DateTime whose Kind isn't Utc. This codebase mixes DateTime.UtcNow, DateTime.Now and
 // form-bound dates (Kind=Unspecified), so opt into the legacy mapping
@@ -259,6 +264,8 @@ builder.Services.AddRazorPages(options => {
     options.Conventions.AuthorizePage("/Reports/SalesByProduct",  "AdminOnly");
     options.Conventions.AuthorizePage("/Reports/SalesByCustomer", "AdminOnly");
     options.Conventions.AuthorizePage("/Reports/Ppn",             "AdminOnly");
+    options.Conventions.AuthorizePage("/Reports/StockList",       "AdminOnly");   // cost and stock value (2026-10-21)
+    options.Conventions.AuthorizePage("/Reports/Index",           "AdminOnly");   // the Reports page (2026-10-22); Staff keep their Warranty link
     // Receivables are Admin's (HC, 2026-10-09): Due Payments, due by customer, the customer
     // statement / multi-invoice settlement, and Tanda Terima. Staff still record a payment
     // on the invoice itself.
@@ -268,7 +275,6 @@ builder.Services.AddRazorPages(options => {
     // The supplier side is built on harga beli, so it is Admin's alone (2026-10-08).
     options.Conventions.AuthorizeFolder("/Purchases",              "AdminOnly");
     options.Conventions.AuthorizeFolder("/Suppliers",              "AdminOnly");
-    options.Conventions.AuthorizePage("/Inventory/StockIn",        "AdminOnly");
     options.Conventions.AuthorizePage("/Returns/CreateSupplier",   "AdminOnly");
     options.Conventions.AuthorizePage("/Returns/SupplierDetail",   "AdminOnly");
     // Control actions: a stock adjustment books value on or off at average cost; product
@@ -320,6 +326,12 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<SimpleERP.Web.Serv
 // nightly pg_dump.
 builder.Services.AddHostedService<LogRetentionService>();
 
+// ── DB init ──────────────────────────────────────────────────────────────────
+// Waits for PostgreSQL and applies pending EF Core migrations in StartingAsync, so before
+// Kestrel or the startup backup start, but after Windows knows the service is running
+// (DatabaseStartupService explains why that matters for restarts at boot).
+builder.Services.AddHostedService<DatabaseStartupService>();
+
 var app = builder.Build();
 
 // ── Startup diagnostics ───────────────────────────────────────────────────────
@@ -338,21 +350,6 @@ startupLog.Information(
     "id", LogRetainedFileCount, logDirectory,
     Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService() ? "Windows Service" : "console",
     keysDirectory);
-
-// ── DB init ──────────────────────────────────────────────────────────────────
-// Applies pending EF Core migrations.
-try
-{
-    await DependencyInjection.InitDatabaseAsync(app.Services);
-    startupLog.Information("Database migrations applied.");
-}
-catch (Exception ex)
-{
-    // A failed migration leaves the app running against a schema it does not expect, so
-    // it must be recorded loudly rather than surfacing later as a column-not-found.
-    startupLog.Fatal(ex, "Database migration failed — the application cannot serve requests reliably.");
-    throw;
-}
 
 // ── Middleware pipeline ───────────────────────────────────────────────────────
 // Registered in every environment now, not just Production. In Development the framework
@@ -487,12 +484,23 @@ try
     app.Run();
     startupLog.Information("SimpleERP stopped cleanly.");
 }
+catch (OperationCanceledException) when (app.Lifetime.ApplicationStopping.IsCancellationRequested)
+{
+    // Stopped while still waiting for the database: asked for, so no failure exit code
+    // (that would make Windows restart a service someone just stopped).
+    startupLog.Information("SimpleERP stopped while starting.");
+}
 catch (Exception ex)
 {
-    // The host itself fell over — a port already in use, a bad certificate. Without this
-    // the process would simply vanish, which is the single most confusing failure mode.
+    // The host itself fell over — the database never came, a migration failed, a port
+    // already in use, a bad certificate. Without this the process would simply vanish,
+    // which is the single most confusing failure mode.
     startupLog.Fatal(ex, "SimpleERP terminated unexpectedly.");
-    throw;
+    // Exit code 1 without reporting "stopped" to Windows: only then do the service's
+    // recovery actions (restart after 60 s, three times a day) apply. finally doesn't run
+    // after Environment.Exit, so flush here.
+    Log.CloseAndFlush();
+    Environment.Exit(1);
 }
 finally
 {

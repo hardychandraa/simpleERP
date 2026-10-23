@@ -190,6 +190,11 @@ else
 
     <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;margin-top:16px">
         <div class="no-print">
+            @* The day the money went out, not the day it is typed in (HC, 2026-10-21). *@
+            <div class="fg" style="max-width:200px">
+                <label>@Localizer["Date paid"]</label>
+                <input type="date" asp-for="PaidOn" max="@DateTime.Now.ToString("yyyy-MM-dd")" required />
+            </div>
             <div class="fg">
                 <label>@Localizer["Payment notes (optional)"]</label>
                 <input type="text" asp-for="Notes" maxlength="500"

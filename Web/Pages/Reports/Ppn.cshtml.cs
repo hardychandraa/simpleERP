@@ -46,16 +46,19 @@ public class PpnModel : PeriodReportModel
             new object?[] { (d.Difference >= 0 ? L["Keluaran minus Masukan (to pay)"] : L["Keluaran minus Masukan (overpaid)"]).Value, null, null, d.Difference });
 
         var sales = new XlSheet("PPN Keluaran",
-            new List<XlColumn> { new(L["Date"], XlKind.Date), new(L["Invoice No."]), new(L["Customer"]), new("NPWP"), new("NIK"),
+            // The NPWP / NIK holder's name and address for e-Faktur, the trading name beside it (HC, 2026-10-22).
+            new List<XlColumn> { new(L["Date"], XlKind.Date), new(L["Invoice No."]), new(L["Customer"]), new(L["Tax name (NPWP/NIK)"]),
+                new(L["Tax address"]), new("NPWP"), new("NIK"),
                 new("DPP", XlKind.Number), new("PPN", XlKind.Number), new(L["Total"], XlKind.Number) },
-            d.Sales.Select(x => new object?[] { x.Date, x.Number, x.Party, x.TaxId, x.NationalId, x.TaxBase, x.TaxAmount, x.GrandTotal }),
-            new object?[] { total, null, null, null, null, Sum(d.Sales, x => x.TaxBase), Sum(d.Sales, x => x.TaxAmount), Sum(d.Sales, x => x.GrandTotal) });
+            d.Sales.Select(x => new object?[] { x.Date, x.Number, x.Party, x.TaxName, x.TaxAddress, x.TaxId, x.NationalId, x.TaxBase, x.TaxAmount, x.GrandTotal }),
+            new object?[] { total, null, null, null, null, null, null, Sum(d.Sales, x => x.TaxBase), Sum(d.Sales, x => x.TaxAmount), Sum(d.Sales, x => x.GrandTotal) });
 
         var salesReturns = new XlSheet(L["Sales Returns"],
-            new List<XlColumn> { new(L["Date"], XlKind.Date), new(L["Return No."]), new(L["Invoice No."]), new(L["Customer"]), new("NPWP"), new("NIK"),
+            new List<XlColumn> { new(L["Date"], XlKind.Date), new(L["Return No."]), new(L["Invoice No."]), new(L["Customer"]),
+                new(L["Tax name (NPWP/NIK)"]), new(L["Tax address"]), new("NPWP"), new("NIK"),
                 new("DPP", XlKind.Number), new("PPN", XlKind.Number), new(L["Total"], XlKind.Number) },
-            d.SalesReturns.Select(x => new object?[] { x.Date, x.Number, x.OtherNumber, x.Party, x.TaxId, x.NationalId, x.TaxBase, x.TaxAmount, x.GrandTotal }),
-            new object?[] { total, null, null, null, null, null, Sum(d.SalesReturns, x => x.TaxBase), Sum(d.SalesReturns, x => x.TaxAmount), Sum(d.SalesReturns, x => x.GrandTotal) });
+            d.SalesReturns.Select(x => new object?[] { x.Date, x.Number, x.OtherNumber, x.Party, x.TaxName, x.TaxAddress, x.TaxId, x.NationalId, x.TaxBase, x.TaxAmount, x.GrandTotal }),
+            new object?[] { total, null, null, null, null, null, null, null, Sum(d.SalesReturns, x => x.TaxBase), Sum(d.SalesReturns, x => x.TaxAmount), Sum(d.SalesReturns, x => x.GrandTotal) });
 
         var purchases = new XlSheet("PPN Masukan",
             new List<XlColumn> { new(L["Date"], XlKind.Date), new(L["Purchase No."]), new(L["Supplier Invoice No."]), new(L["Supplier"]), new("NPWP"),

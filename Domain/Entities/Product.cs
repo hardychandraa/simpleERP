@@ -8,8 +8,8 @@ public class Product
     public decimal  UnitPrice             { get; set; }
     /// <summary>Usual purchase price (harga beli): the default cost on a new purchase. 0 = not set.</summary>
     public decimal  PurchasePrice         { get; set; }
-    /// <summary>Unit of sale printed on the invoice ("PCS", "UNIT", "SET"). Stored upper-case.</summary>
-    public string   Unit                  { get; set; } = "PCS";
+    /// <summary>Unit of sale printed on the invoice ("UNIT", "PCS", "SET"). Stored upper-case; "UNIT" by default (HC, 2026-10-23).</summary>
+    public string   Unit                  { get; set; } = "UNIT";
     public string?  Category              { get; set; }
     public int?     DefaultWarrantyMonths { get; set; }
     public int      LowStockThreshold     { get; set; } = 2;

@@ -1310,6 +1310,7 @@ public class SaleService : ISaleService
         CustomerAddress = s.Customer?.Address,
         CustomerTaxId = s.Customer?.TaxId,
         CustomerNationalId = s.Customer?.NationalId,
+        CustomerTaxName = s.Customer?.TaxName,
         CustomerId    = s.CustomerId,
         PaymentTermId = s.PaymentTermId,
         SalesPersonId = s.SalesPersonId,

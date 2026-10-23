@@ -570,9 +570,17 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<Guid?>("SalesPersonId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("TaxAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("TaxId")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("TaxName")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.HasKey("Id");
 
@@ -707,6 +715,105 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.HasIndex("SaleItemId");
 
                     b.ToTable("CustomerReturnItems");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.Exchange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("ExchangeDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ExchangeNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("NeedsReview")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("ExchangeDate");
+
+                    b.HasIndex("ExchangeNumber")
+                        .IsUnique();
+
+                    b.HasIndex("NeedsReview");
+
+                    b.HasIndex("SaleId");
+
+                    b.ToTable("Exchanges");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.ExchangeItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExchangeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Qty")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("SaleItemId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExchangeId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SaleItemId");
+
+                    b.ToTable("ExchangeItems");
                 });
 
             modelBuilder.Entity("SimpleERP.Domain.Entities.Expense", b =>
@@ -1970,6 +2077,17 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Property<Guid>("PurchaseId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ReverseReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("ReversedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReversedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PaymentBatchId");
@@ -2374,6 +2492,52 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                     b.Navigation("SaleItem");
                 });
 
+            modelBuilder.Entity("SimpleERP.Domain.Entities.Exchange", b =>
+                {
+                    b.HasOne("SimpleERP.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.Sale", "Sale")
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.ExchangeItem", b =>
+                {
+                    b.HasOne("SimpleERP.Domain.Entities.Exchange", "Exchange")
+                        .WithMany("Items")
+                        .HasForeignKey("ExchangeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleERP.Domain.Entities.SaleItem", "SaleItem")
+                        .WithMany()
+                        .HasForeignKey("SaleItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Exchange");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("SaleItem");
+                });
+
             modelBuilder.Entity("SimpleERP.Domain.Entities.Expense", b =>
                 {
                     b.HasOne("SimpleERP.Domain.Entities.ExpenseCategory", "Category")
@@ -2746,6 +2910,11 @@ namespace SimpleERP.Infrastructure.Data.Migrations
                 {
                     b.Navigation("CreditNotes");
 
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("SimpleERP.Domain.Entities.Exchange", b =>
+                {
                     b.Navigation("Items");
                 });
 

@@ -34,6 +34,8 @@ public class AppDbContext : DbContext
     public DbSet<CommissionPayout>  CommissionPayouts  => Set<CommissionPayout>();
     public DbSet<CustomerReturn>     CustomerReturns     => Set<CustomerReturn>();
     public DbSet<CustomerReturnItem> CustomerReturnItems => Set<CustomerReturnItem>();
+    public DbSet<Exchange>           Exchanges           => Set<Exchange>();
+    public DbSet<ExchangeItem>       ExchangeItems       => Set<ExchangeItem>();
     public DbSet<SupplierReturn>     SupplierReturns     => Set<SupplierReturn>();
     public DbSet<SupplierReturnItem> SupplierReturnItems => Set<SupplierReturnItem>();
     public DbSet<CreditNote>         CreditNotes         => Set<CreditNote>();
@@ -72,6 +74,8 @@ public class AppDbContext : DbContext
             e.Property(c => c.Address).HasMaxLength(500);
             e.Property(c => c.TaxId).HasMaxLength(50);
             e.Property(c => c.NationalId).HasMaxLength(20);
+            e.Property(c => c.TaxName).HasMaxLength(300);
+            e.Property(c => c.TaxAddress).HasMaxLength(500);
             e.Property(c => c.DefaultDiscountPercent).HasColumnType("decimal(18,4)");
             e.Property(c => c.CreditLimit).HasColumnType("decimal(18,4)");   // same type as Sale.GrandTotal
             e.HasOne(c => c.SalesPerson).WithMany()
@@ -338,6 +342,9 @@ public class AppDbContext : DbContext
             e.Property(p => p.Amount).HasColumnType("decimal(18,4)");
             e.Property(p => p.Notes).HasMaxLength(300);
             e.Property(p => p.CreatedBy).HasMaxLength(100);
+            e.Property(p => p.ReversedBy).HasMaxLength(100);
+            e.Property(p => p.ReverseReason).HasMaxLength(300);
+            e.Ignore(p => p.IsReversed);
             e.HasOne(p => p.Purchase).WithMany(x => x.SupplierPayments)
                 .HasForeignKey(p => p.PurchaseId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(p => p.PaymentBatch).WithMany(b => b.SupplierPayments)
@@ -509,6 +516,37 @@ public class AppDbContext : DbContext
             // Backs the per-line returned-quantity cap.
             e.HasIndex(i => i.SaleItemId);
             e.HasIndex(i => i.ProductId);
+        });
+
+        // Tukar barang (HC, 2026-10-22): shaped like a sales return, with no money on it.
+        m.Entity<Exchange>(e => {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ExchangeNumber).IsRequired().HasMaxLength(50);
+            e.Property(x => x.Reason).IsRequired().HasMaxLength(500);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.Property(x => x.CreatedBy).HasMaxLength(100);
+            e.Property(x => x.ReviewedBy).HasMaxLength(100);
+            // Restrict: an exchange is cancelled, never deleted, and its invoice must stay resolvable.
+            e.HasOne(x => x.Sale).WithMany()
+                .HasForeignKey(x => x.SaleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Branch).WithMany()
+                .HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.ExchangeNumber).IsUnique();
+            e.HasIndex(x => x.SaleId);
+            e.HasIndex(x => x.ExchangeDate);
+            e.HasIndex(x => x.NeedsReview);
+        });
+        m.Entity<ExchangeItem>(e => {
+            e.HasKey(i => i.Id);
+            e.Property(i => i.Qty).HasColumnType("decimal(18,4)");
+            e.Property(i => i.Notes).HasMaxLength(500);
+            e.HasOne(i => i.Exchange).WithMany(x => x.Items)
+                .HasForeignKey(i => i.ExchangeId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.SaleItem).WithMany()
+                .HasForeignKey(i => i.SaleItemId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(i => i.Product).WithMany()
+                .HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(i => i.SaleItemId);
         });
 
         m.Entity<SupplierReturn>(e => {

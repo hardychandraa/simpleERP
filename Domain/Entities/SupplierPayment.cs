@@ -20,6 +20,16 @@ public class SupplierPayment
     /// </summary>
     public Guid?    PaymentBatchId { get; set; }
 
+    /// <summary>
+    /// Set when Admin reversed this payment (HC, 2026-10-21; the mirror of PaymentRecord): it
+    /// was entered wrong (amount, purchase or date). The row is kept for the audit trail but no
+    /// longer counts in the purchase's paid amount or its settlement. Null = a live payment.
+    /// </summary>
+    public DateTime? ReversedAt    { get; set; }
+    public string?   ReversedBy    { get; set; }
+    public string?   ReverseReason { get; set; }
+    public bool      IsReversed => ReversedAt != null;
+
     public Purchase? Purchase { get; set; }
     public PaymentBatch? PaymentBatch { get; set; }
 }

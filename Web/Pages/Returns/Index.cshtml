@@ -103,6 +103,37 @@
     }
 </div>
 
+<!-- ── Tukar barang (HC, 2026-10-22) ─────────────────────────────────────────── -->
+<div class="card">
+    <div class="card-title">🔁 @Localizer["Exchanges (Tukar barang)"] (@Model.Exchanges.Count)</div>
+    @if (Model.Exchanges.Count == 0)
+    {
+        <p style="color:#9ca3af;font-size:13px">@Localizer["No exchanges. Start one from the invoice: Exchange (warranty)."]</p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>@Localizer["Exchange"]</th><th>@Localizer["Date"]</th><th>@Localizer["Invoice"]</th><th>@Localizer["Customer"]</th>
+                <th>@Localizer["Product"]</th><th>@Localizer["What was wrong"]</th><th style="text-align:center">@Localizer["Status"]</th></tr></thead>
+            <tbody>
+            @foreach (var x in Model.Exchanges)
+            {
+                <tr>
+                    <td><a href="/Returns/Exchange/@x.Id" style="font-weight:600">@x.ExchangeNumber</a>
+                        @if (x.NeedsReview && x.Status == "Active" && User.ChecksStaffWork()) { <span class="badge warn">@Localizer["Perlu dicek"]</span> }</td>
+                    <td style="white-space:nowrap">@x.ExchangeDate.ToString("dd-MMM-yy")</td>
+                    <td><a href="/Sales/@x.SaleId">@x.InvoiceNumber</a></td>
+                    <td>@x.CustomerName</td>
+                    <td style="font-size:12px">@string.Join(", ", x.Items.Select(i => $"{i.ProductName} ×{i.Qty:N0}"))</td>
+                    <td style="font-size:12px">@x.Reason</td>
+                    <td style="text-align:center"><span class="badge @(x.Status == "Active" ? "ok" : "gray")">@Localizer[EnumDisplay.Key("ReturnStatus", x.Status)]</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
 <!-- ── Purchase returns (Admin only) ─────────────────────────────────────────── -->
 @if (supplierSide) {
 <div class="card">

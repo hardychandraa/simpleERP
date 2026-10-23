@@ -1,0 +1,25 @@
+@model IEnumerable<SimpleERP.Web.Pages.Shared.HubGroup>
+@* A page of tiles that stands in for a run of menu links (HC, 2026-10-22: the menu had grown to 37
+   links). Each tile opens its page; the pages and their URLs are unchanged. *@
+<style>
+  .hub-grp { margin-bottom: 18px; }
+  .hub-grp h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; margin: 0 0 8px; }
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+  .hub a { display: block; padding: 14px 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+           text-decoration: none; color: inherit; transition: border-color .15s, box-shadow .15s; }
+  .hub a:hover, .hub a:focus { border-color: #2563eb; box-shadow: 0 2px 8px rgba(37,99,235,.12); outline: none; }
+  .hub .t { font-weight: 700; color: #1a1a2e; font-size: 14px; }
+  .hub .d { font-size: 12px; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+</style>
+@foreach (var g in Model)
+{
+  <div class="hub-grp">
+    <h3>@Localizer[g.Title]</h3>
+    <div class="hub">
+      @foreach (var t in g.Tiles)
+      {
+        <a href="@t.Href"><div class="t">@t.Icon @Localizer[t.Title]</div><div class="d">@Localizer[t.Description]</div></a>
+      }
+    </div>
+  </div>
+}

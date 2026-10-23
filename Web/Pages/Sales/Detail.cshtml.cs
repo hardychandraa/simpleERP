@@ -17,17 +17,20 @@ public class DetailModel : PageModel
 
     private readonly IAppSettingsRepository _settingsRepo;
 
+    private readonly IExchangeService    _exchanges;
     public DetailModel(ISaleService s, ICommissionService commissions,
                        IReturnService returns, ICreditNoteService notes, IAppSettingsService cfg,
-                       IAppSettingsRepository settingsRepo)
+                       IAppSettingsRepository settingsRepo, IExchangeService exchanges)
     { _sales = s; _commissions = commissions; _returns = returns; _notes = notes; _settings = cfg;
-      _settingsRepo = settingsRepo; }
+      _settingsRepo = settingsRepo; _exchanges = exchanges; }
 
     public SaleDto        Sale           { get; set; } = null!;
     public AppSettingsDto AppSettings    { get; set; } = null!;
     public List<PaymentRecordDto> Payments      { get; set; } = new();
     public List<CommissionAccrualDto> Commissions { get; set; } = new();
     public List<ReturnListDto>    Returns       { get; set; } = new();
+    /// <summary>Tukar barang on this invoice (HC, 2026-10-22).</summary>
+    public List<ExchangeDto>      Exchanges     { get; set; } = new();
     /// <summary>Credit notes applied to this invoice, reversed ones included.</summary>
     public List<CreditNoteApplicationDto> NoteApplications { get; set; } = new();
     public decimal        TotalCollected { get; set; }
@@ -57,6 +60,7 @@ public class DetailModel : PageModel
         if (User.SeesCommission())
             Commissions = await _commissions.GetAccrualsForSaleAsync(id);
         Returns     = await _returns.GetReturnsForSaleAsync(id);
+        Exchanges   = await _exchanges.GetForSaleAsync(id);
         NoteApplications = await _notes.GetApplicationsForSaleAsync(id);
         TotalCollected = Payments.Where(p => !p.IsReversed).Sum(p => p.Amount);
         // Net of applied credit notes, so the payment form's cap matches what the service

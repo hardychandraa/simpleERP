@@ -1,0 +1,95 @@
+@page "/Purchases/Lines"
+@model SimpleERP.Web.Pages.Purchases.LinesModel
+@{ ViewData["Title"] = Localizer["Purchase lines"].Value; }
+@{ var tabs = new SimpleERP.Web.Pages.Shared.PageTab[] { new("List", Model.Query("/Purchases"), false), new("Purchase lines", Model.Query("/Purchases/Lines"), true) }; }
+<partial name="_Tabs" model="tabs" />
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success")">@Localizer[Model.Msg]</div>
+}
+
+<div class="card no-print" style="margin-bottom:14px">
+    <form method="get" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="margin:0;flex:1;min-width:130px"><label>@Localizer["From"]</label><input type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" /></div>
+        <div class="fg" style="margin:0;flex:1;min-width:130px"><label>@Localizer["To"]</label><input type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" /></div>
+        <div class="fg" style="margin:0;flex:1.5;min-width:180px"><label>@Localizer["Supplier"]</label>
+            <select data-searchable name="supplierId">
+                <option value="">— @Localizer["All suppliers"] —</option>
+                @foreach (var s in Model.Suppliers) { <option value="@s.Id" selected="@(s.Id == Model.SupplierId)">@s.Name</option> }
+            </select></div>
+        <div class="fg" style="margin:0;flex:1.5;min-width:160px"><label>@Localizer["Search"]</label><input type="text" name="search" value="@Model.Search" placeholder="@Localizer["PO no., supplier doc, supplier..."]" /></div>
+        <label style="display:inline-flex;align-items:center;gap:8px;margin:0 0 8px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">
+            <input type="checkbox" name="pending" value="true" checked="@Model.Pending" style="width:18px;height:18px" /> @Localizer["Needs checking"]
+        </label>
+        <button type="submit" class="btn btn-primary">@Localizer["Filter"]</button>
+        <a href="@Model.ExcelUrl" class="btn btn-outline btn-sm">⬇ @Localizer["Download Excel"]</a>
+        <button type="button" onclick="window.print()" class="btn btn-outline btn-sm">🖨 @Localizer["Print Report"]</button>
+    </form>
+</div>
+
+@if (Model.Total > Model.Purchases.Count)
+{
+    <div class="alert alert-info no-print">@Localizer["Showing the newest {0} of {1} purchases. Narrow the dates or pick a supplier.", Model.Purchases.Count, Model.Total]</div>
+}
+@if (!Model.Purchases.Any())
+{
+    <div class="card"><p style="text-align:center;color:#9ca3af;padding:20px">@Localizer["No purchases found."]</p></div>
+}
+@foreach (var p in Model.Purchases)
+{
+    var cancelled = p.Status != "Active";
+    <div class="card" id="p@(p.Id)" style="margin-bottom:12px;@(cancelled ? "opacity:.55" : "")">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+            <div>
+                <a href="/Purchases/@p.Id" style="font-weight:700;color:#2563eb">@p.PurchaseNumber</a>
+                <span style="color:#6b7280"> · @Localizer["Supplier Doc"]: <strong style="color:#1a1a2e">@(p.SupplierDocumentNumber ?? "—")</strong></span>
+                <div style="font-size:12px;color:#6b7280">@p.SupplierName · @p.PurchaseDate.ToString("dd MMM yyyy")
+                    @if (p.DueDate.HasValue) { <span> · @Localizer["Due"] @p.DueDate.Value.ToString("dd MMM yyyy")</span> }
+                    · @Localizer[EnumDisplay.Key("PaymentType", p.PaymentType)] · @(p.IsTaxInclusive ? Localizer["incl. PPN"] : Localizer["excl. PPN"])</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+                @if (cancelled) { <span class="badge gray">@Localizer["Cancelled"]</span> }
+                else if (p.NeedsReview)
+                {
+                    <span class="badge warn">@Localizer["Needs checking"]</span>
+                    <form method="post" action="@Model.ReviewUrl(p.Id)" asp-antiforgery="true" class="no-print">
+                        <button type="submit" class="btn btn-primary btn-sm">✓ @Localizer["Mark as checked"]</button>
+                    </form>
+                }
+                else { <span class="badge ok">✓ @Localizer["Checked"]</span> }
+            </div>
+        </div>
+        <table style="font-size:13px">
+            <thead><tr><th>@Localizer["Product"]</th><th style="text-align:right">@Localizer["Qty"]</th><th style="text-align:right">@Localizer["Unit Cost"]</th>
+                <th style="text-align:right">@Localizer["Discount"]</th><th style="text-align:right">@Localizer["Line Total"]</th></tr></thead>
+            <tbody>
+            @foreach (var i in p.Items)
+            {
+                <tr>
+                    <td>@i.ProductName <span style="color:#9ca3af;font-size:11px">@i.SKU</span>@if (!string.IsNullOrEmpty(i.Notes)) { <div style="font-size:11px;color:#6b7280">📝 @i.Notes</div> }</td>
+                    <td style="text-align:right">@i.Qty.ToString("N0")</td>
+                    <td style="text-align:right">@i.UnitCost.ToString("N0")</td>
+                    <td style="text-align:right;color:#6b7280">@(i.DiscountAmount != 0 ? (i.DiscountPercent is { } dp ? $"{dp:0.##}% · " : "") + i.DiscountAmount.ToString("N0") : "—")</td>
+                    <td style="text-align:right;font-weight:600">@i.LineTotal.ToString("N0")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <div style="display:flex;justify-content:flex-end;gap:22px;margin-top:8px;font-size:13px;flex-wrap:wrap">
+            @if (p.InvoiceDiscountAmount != 0) { <span>@Localizer["Invoice Discount"] <strong>@p.InvoiceDiscountAmount.ToString("N0")</strong></span> }
+            <span>DPP <strong>@p.TaxBase.ToString("N0")</strong></span>
+            <span>PPN <strong>@p.TaxAmount.ToString("N0")</strong></span>
+            <span style="font-size:15px">@Localizer["Total"] <strong>@p.GrandTotal.ToString("N0")</strong></span>
+        </div>
+    </div>
+}
+@if (Model.Purchases.Any())
+{
+    <div class="card" style="display:flex;justify-content:flex-end;gap:22px;font-size:14px;font-weight:700">
+        <span>@Localizer["{0} purchases", Model.Purchases.Count]</span>
+        <span>DPP @Model.Purchases.Where(p => p.Status == "Active").Sum(p => p.TaxBase).ToString("N0")</span>
+        <span>PPN @Model.Purchases.Where(p => p.Status == "Active").Sum(p => p.TaxAmount).ToString("N0")</span>
+        <span>@Localizer["Total"] @Model.Purchases.Where(p => p.Status == "Active").Sum(p => p.GrandTotal).ToString("N0")</span>
+    </div>
+}

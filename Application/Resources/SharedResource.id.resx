@@ -750,7 +750,7 @@
   <data name="Returns Against This Invoice" xml:space="preserve"><value>Retur Terhadap Faktur Ini</value></data>
   <data name="Returns Against This Purchase" xml:space="preserve"><value>Retur Terhadap Pembelian Ini</value></data>
   <data name="Revenue Breakdown" xml:space="preserve"><value>Rincian Pendapatan</value></data>
-  <data name="reversed" xml:space="preserve"><value>dikoreksi</value></data>
+  <data name="PPN {0}% reversed" xml:space="preserve"><value>PPN {0}% dikoreksi</value></data>
   <data name="Reward" xml:space="preserve"><value>Imbalan</value></data>
   <data name="Reward — what the supplier gives back" xml:space="preserve"><value>Imbalan — apa yang diberikan pemasok</value></data>
   <data name="Reward Product" xml:space="preserve"><value>Produk Imbalan</value></data>
@@ -1519,7 +1519,7 @@
   <data name="Count cancelled." xml:space="preserve"><value>Hitungan dibatalkan.</value></data>
   <data name="New stock count" xml:space="preserve"><value>Hitungan stok baru</value></data>
   <data name="Products that moved today" xml:space="preserve"><value>Produk yang bergerak hari ini</value></data>
-  <data name="daily" xml:space="preserve"><value>harian</value></data>
+  <data name="(daily)" xml:space="preserve"><value>(harian)</value></data>
   <data name="weekly / month-end" xml:space="preserve"><value>mingguan / akhir bulan</value></data>
   <data name="Pick products" xml:space="preserve"><value>Pilih produk</value></data>
   <data name="Start counting" xml:space="preserve"><value>Mulai menghitung</value></data>
@@ -1700,4 +1700,121 @@
   <data name="by {0}, entered {1}" xml:space="preserve"><value>oleh {0}, diinput {1}</value></data>
   <data name="Reversed" xml:space="preserve"><value>Dibatalkan</value></data>
   <data name="A reversed payment is struck through and no longer counts in its settlement's totals." xml:space="preserve"><value>Pembayaran yang dibatalkan dicoret dan tidak lagi dihitung dalam total pelunasannya.</value></data>
+  <data name="Stock List" xml:space="preserve"><value>Daftar Stok</value></data>
+  <data name="Last sale" xml:space="preserve"><value>Terakhir terjual</value></data>
+  <data name="Last Goods In" xml:space="preserve"><value>Barang masuk terakhir</value></data>
+  <data name="Days unsold" xml:space="preserve"><value>Hari tidak terjual</value></data>
+  <data name="Sold 30 days" xml:space="preserve"><value>Terjual 30 hari</value></data>
+  <data name="Sold 90 days" xml:space="preserve"><value>Terjual 90 hari</value></data>
+  <data name="Not sold for {0}+ days" xml:space="preserve"><value>Tidak terjual {0}+ hari</value></data>
+  <data name="Not sold for" xml:space="preserve"><value>Tidak terjual selama</value></data>
+  <data name="— whole list —" xml:space="preserve"><value>— semua —</value></data>
+  <data name="{0}+ days" xml:space="preserve"><value>{0}+ hari</value></data>
+  <data name="Value not sold for {0}+ days" xml:space="preserve"><value>Nilai tidak terjual {0}+ hari</value></data>
+  <data name="Value of this list" xml:space="preserve"><value>Nilai daftar ini</value></data>
+  <data name="Not yet included" xml:space="preserve"><value>Belum termasuk</value></data>
+  <data name="Days unsold: since the last sale or, for a product never sold, since its last Goods In; — = opening stock that never moved. Sold = sold less returned, cancelled invoices left out. Stock and value are the Products page's figures." xml:space="preserve"><value>Hari tidak terjual: sejak penjualan terakhir atau, untuk produk yang belum pernah terjual, sejak barang masuk terakhir; — = stok awal yang tidak pernah bergerak. Terjual = terjual dikurangi retur, faktur batal tidak dihitung. Stok dan nilai sama dengan halaman Produk.</value></data>
+  <data name="Date paid" xml:space="preserve"><value>Tanggal bayar</value></data>
+  <data name="The date paid can't be in the future." xml:space="preserve"><value>Tanggal bayar tidak boleh di masa depan.</value></data>
+  <data name="{0} is dated {1}: it can't have been paid before that." xml:space="preserve"><value>{0} bertanggal {1}: tidak mungkin dibayar sebelum itu.</value></data>
+  <data name="This payment is part of settlement {0}, which netted debit notes, so it can't be reversed on its own." xml:space="preserve"><value>Pembayaran ini bagian dari pelunasan {0} yang memotong nota debit, jadi tidak bisa dibatalkan sendiri.</value></data>
+  <data name="Paying {0} on time earned a rebate. Undo that rebate first, then reverse the payment." xml:space="preserve"><value>Pembayaran {0} tepat waktu menghasilkan rebat. Batalkan rebat itu dulu, lalu batalkan pembayarannya.</value></data>
+  <data name="The purchase's paid amount ({0}) is less than this payment ({1}). Nothing was changed; check the purchase." xml:space="preserve"><value>Jumlah terbayar pembelian ({0}) lebih kecil dari pembayaran ini ({1}). Tidak ada yang diubah; periksa pembeliannya.</value></data>
+  <data name="Reverse this payment? The purchase will owe this amount again." xml:space="preserve"><value>Batalkan pembayaran ini? Pembelian akan kembali terutang sebesar jumlah ini.</value></data>
+  <data name="Payment reversed. The purchase owes that amount again." xml:space="preserve"><value>Pembayaran dibatalkan. Pembelian kembali terutang sebesar jumlah itu.</value></data>
+  <data name="Payment to supplier recorded." xml:space="preserve"><value>Pembayaran ke pemasok dicatat.</value></data>
+  <data name="'{0}': {1} to exchange but the customer only has {2} of it from this invoice." xml:space="preserve"><value>'{0}': {1} akan ditukar, tetapi pelanggan hanya memegang {2} dari faktur ini.</value></data>
+  <data name="A line being exchanged is not on this invoice." xml:space="preserve"><value>Baris yang ditukar tidak ada di faktur ini.</value></data>
+  <data name="Afterwards" xml:space="preserve"><value>Sesudahnya</value></data>
+  <data name="All quantities must be greater than zero." xml:space="preserve"><value>Semua jumlah harus lebih dari nol.</value></data>
+  <data name="An exchange entered by staff: check that the faulty unit really came back." xml:space="preserve"><value>Tukar barang yang dicatat staf: pastikan unit rusaknya benar-benar kembali.</value></data>
+  <data name="Cancel Exchange" xml:space="preserve"><value>Batalkan Tukar Barang</value></data>
+  <data name="Cancel this exchange? The replacement goes back into stock and the faulty unit is taken out." xml:space="preserve"><value>Batalkan tukar barang ini? Unit pengganti kembali ke stok dan unit rusak dikeluarkan.</value></data>
+  <data name="Exchange" xml:space="preserve"><value>Tukar barang</value></data>
+  <data name="Exchange (warranty)" xml:space="preserve"><value>Tukar barang (garansi)</value></data>
+  <data name="Exchange Details" xml:space="preserve"><value>Detail Tukar Barang</value></data>
+  <data name="Exchange cancelled. The replacement is back in stock and the faulty unit taken out." xml:space="preserve"><value>Tukar barang dibatalkan. Unit pengganti kembali ke stok dan unit rusak dikeluarkan.</value></data>
+  <data name="Exchange checked." xml:space="preserve"><value>Tukar barang sudah dicek.</value></data>
+  <data name="Exchange not found." xml:space="preserve"><value>Tukar barang tidak ditemukan.</value></data>
+  <data name="Exchange {0}" xml:space="preserve"><value>Tukar Barang {0}</value></data>
+  <data name="Exchange {0} recorded: {1} unit(s) swapped. Send the faulty unit back to the supplier (Retur Pembelian) or write it off." xml:space="preserve"><value>Tukar barang {0} dicatat: {1} unit ditukar. Kirim unit rusak kembali ke pemasok (Retur Pembelian) atau hapuskan.</value></data>
+  <data name="Exchange — {0}" xml:space="preserve"><value>Tukar Barang — {0}</value></data>
+  <data name="Exchanged before" xml:space="preserve"><value>Sudah ditukar</value></data>
+  <data name="Exchanges (Tukar barang)" xml:space="preserve"><value>Tukar Barang</value></data>
+  <data name="Exchanges on This Invoice" xml:space="preserve"><value>Tukar Barang pada Faktur Ini</value></data>
+  <data name="Faulty unit swapped for the same product" xml:space="preserve"><value>Unit rusak ditukar dengan produk yang sama</value></data>
+  <data name="In stock" xml:space="preserve"><value>Stok</value></data>
+  <data name="Left invoice {0}, its payments, PPN, commission and warranty dates exactly as posted." xml:space="preserve"><value>Faktur {0}, pembayarannya, PPN, komisi dan tanggal garansinya tetap seperti semula.</value></data>
+  <data name="Next: send the faulty unit back to the supplier (Retur Pembelian), or write it off with Adjust Stock if the claim is refused." xml:space="preserve"><value>Berikutnya: kirim unit rusak kembali ke pemasok (Retur Pembelian), atau hapuskan dengan Penyesuaian Stok bila klaim ditolak.</value></data>
+  <data name="No exchanges. Start one from the invoice: Exchange (warranty)." xml:space="preserve"><value>Belum ada tukar barang. Mulai dari faktur: Tukar barang (garansi).</value></data>
+  <data name="Only an administrator can mark an exchange as checked." xml:space="preserve"><value>Hanya administrator yang dapat menandai tukar barang sudah dicek.</value></data>
+  <data name="Perlu dicek" xml:space="preserve"><value>Perlu dicek</value></data>
+  <data name="Record Exchange" xml:space="preserve"><value>Catat Tukar Barang</value></data>
+  <data name="Recorded by {0}" xml:space="preserve"><value>Dicatat oleh {0}</value></data>
+  <data name="ReferenceType_Exchange" xml:space="preserve"><value>Tukar barang</value></data>
+  <data name="Same product only: the faulty unit comes back into stock and a new one goes to the customer. No money, credit note or PPN, and the invoice and its warranty dates stay as they are. For a different product, use Return items and a new sale." xml:space="preserve"><value>Hanya produk yang sama: unit rusak masuk kembali ke stok dan unit baru diberikan ke pelanggan. Tanpa uang, nota kredit atau PPN; faktur dan tanggal garansinya tetap. Untuk produk lain, pakai Retur barang dan penjualan baru.</value></data>
+  <data name="Say what was wrong with the unit." xml:space="preserve"><value>Tuliskan kerusakan unitnya.</value></data>
+  <data name="Serial numbers / note" xml:space="preserve"><value>Nomor seri / catatan</value></data>
+  <data name="Swap qty" xml:space="preserve"><value>Jumlah tukar</value></data>
+  <data name="The exchange date can't be before the invoice date ({0})." xml:space="preserve"><value>Tanggal tukar tidak boleh sebelum tanggal faktur ({0}).</value></data>
+  <data name="The exchange date can't be in the future." xml:space="preserve"><value>Tanggal tukar tidak boleh di masa depan.</value></data>
+  <data name="The faulty unit is now in stock. Send it back to the supplier with a Retur Pembelian on the purchase it came from; the supplier's replacement then comes in as Goods In and is paid with that debit note. If the supplier refuses the claim, write it off with Adjust Stock." xml:space="preserve"><value>Unit rusak sekarang ada di stok. Kirim kembali ke pemasok dengan Retur Pembelian pada pembelian asalnya; unit pengganti dari pemasok lalu masuk lewat Barang Masuk dan dibayar dengan nota debit itu. Bila pemasok menolak klaim, hapuskan dengan Penyesuaian Stok.</value></data>
+  <data name="This exchange is already cancelled." xml:space="preserve"><value>Tukar barang ini sudah dibatalkan.</value></data>
+  <data name="This invoice is cancelled, so there is nothing to exchange on it." xml:space="preserve"><value>Faktur ini sudah dibatalkan, jadi tidak ada yang bisa ditukar.</value></data>
+  <data name="Took the faulty unit(s) back into stock and gave the same number of new ones: stock and its value are unchanged." xml:space="preserve"><value>Unit rusak diterima kembali ke stok dan unit baru dengan jumlah sama diberikan: stok dan nilainya tidak berubah.</value></data>
+  <data name="Tukar Barang" xml:space="preserve"><value>Tukar Barang</value></data>
+  <data name="Units Being Swapped" xml:space="preserve"><value>Unit yang Ditukar</value></data>
+  <data name="What was wrong" xml:space="preserve"><value>Kerusakan</value></data>
+  <data name="checked by {0}" xml:space="preserve"><value>dicek oleh {0}</value></data>
+  <data name="e.g. Not spinning, rusak dari pabrik" xml:space="preserve"><value>mis. Tidak berputar, rusak dari pabrik</value></data>
+  <data name="e.g. SN rusak / SN baru" xml:space="preserve"><value>mis. SN rusak / SN baru</value></data>
+  <data name="{0} staff exchange(s)" xml:space="preserve"><value>{0} tukar barang staf</value></data>
+  <data name="{0}: only {1} in stock, so there is no replacement to give ({2} needed)." xml:space="preserve"><value>{0}: stok hanya {1}, jadi tidak ada unit pengganti ({2} dibutuhkan).</value></data>
+  <data name="Daily" xml:space="preserve"><value>Harian</value></data>
+  <data name="Finance" xml:space="preserve"><value>Keuangan</value></data>
+  <data name="Store" xml:space="preserve"><value>Toko</value></data>
+  <data name="Users and data" xml:space="preserve"><value>Pengguna dan data</value></data>
+  <data name="Logs" xml:space="preserve"><value>Log</value></data>
+  <data name="General settings" xml:space="preserve"><value>Pengaturan umum</value></data>
+  <data name="Sales, cash in and payments collected for one day." xml:space="preserve"><value>Penjualan, kas masuk dan pembayaran yang diterima dalam satu hari.</value></data>
+  <data name="Laba Rugi for a period: sales, HPP, expenses, commission, rebate." xml:space="preserve"><value>Laba Rugi satu periode: penjualan, HPP, biaya, komisi, rebat.</value></data>
+  <data name="Ringkasan Posisi now: stock, receivables, payables, ageing." xml:space="preserve"><value>Ringkasan Posisi saat ini: stok, piutang, utang, umur piutang.</value></data>
+  <data name="PPN Keluaran and Masukan for the tax consultant." xml:space="preserve"><value>PPN Keluaran dan Masukan untuk konsultan pajak.</value></data>
+  <data name="What each product sold and earned in a period." xml:space="preserve"><value>Penjualan dan laba tiap produk dalam satu periode.</value></data>
+  <data name="What each customer bought, owes and has overdue." xml:space="preserve"><value>Pembelian, utang dan tunggakan tiap pelanggan.</value></data>
+  <data name="Stock and its value; what has not sold for 30, 60 or 90 days." xml:space="preserve"><value>Stok dan nilainya; barang yang tidak terjual 30, 60 atau 90 hari.</value></data>
+  <data name="Sold items and when their warranty ends." xml:space="preserve"><value>Barang terjual dan kapan garansinya habis.</value></data>
+  <data name="Store name, PPN rate, printer, limits, overdue grace days." xml:space="preserve"><value>Nama toko, tarif PPN, printer, batas, toleransi jatuh tempo.</value></data>
+  <data name="TOP 30, TOP 60 and the other credit terms." xml:space="preserve"><value>TOP 30, TOP 60 dan syarat kredit lainnya.</value></data>
+  <data name="Who sells; their codes on the invoice." xml:space="preserve"><value>Siapa yang menjual; kodenya di faktur.</value></data>
+  <data name="Logins, roles, passwords." xml:space="preserve"><value>Login, peran, kata sandi.</value></data>
+  <data name="Back up the database now, or download a backup." xml:space="preserve"><value>Cadangkan database sekarang, atau unduh cadangan.</value></data>
+  <data name="Lock a finished month so nothing in it can change." xml:space="preserve"><value>Kunci bulan yang sudah selesai agar isinya tidak bisa diubah.</value></data>
+  <data name="Who did what, and when." xml:space="preserve"><value>Siapa melakukan apa, dan kapan.</value></data>
+  <data name="Errors and refusals, for troubleshooting." xml:space="preserve"><value>Kesalahan dan penolakan, untuk pemecahan masalah.</value></data>
+  <data name="Close" xml:space="preserve"><value>Tutup</value></data>
+  <data name="The same layout as the TXT and the LX printer. In the print dialog choose the paper size of the form, or let the browser fit it." xml:space="preserve"><value>Tata letak sama dengan TXT dan printer LX. Di dialog cetak pilih ukuran kertas formulir, atau biarkan browser menyesuaikan.</value></data>
+  <data name="Tax identity (NPWP / NIK)" xml:space="preserve"><value>Identitas pajak (NPWP / NIK)</value></data>
+  <data name="Registered to the customer's own name and address" xml:space="preserve"><value>Atas nama dan alamat pelanggan sendiri</value></data>
+  <data name="Name on the NPWP / KTP" xml:space="preserve"><value>Nama di NPWP / KTP</value></data>
+  <data name="Address on the NPWP / KTP" xml:space="preserve"><value>Alamat di NPWP / KTP</value></data>
+  <data name="e.g. the owner's name" xml:space="preserve"><value>mis. nama pemilik</value></data>
+  <data name="Used in the PPN Summary for e-Faktur. The invoice keeps the customer's name and address." xml:space="preserve"><value>Dipakai di Rekap PPN untuk e-Faktur. Faktur penjualan tetap memakai nama dan alamat pelanggan.</value></data>
+  <data name="Tax in the name of {0}" xml:space="preserve"><value>Pajak atas nama {0}</value></data>
+  <data name="Tax name (NPWP/NIK)" xml:space="preserve"><value>Nama NPWP/NIK</value></data>
+  <data name="Tax address" xml:space="preserve"><value>Alamat NPWP/NIK</value></data>
+  <data name="List" xml:space="preserve"><value>Daftar</value></data>
+  <data name="Purchase lines" xml:space="preserve"><value>Rincian baris</value></data>
+  <data name="All suppliers" xml:space="preserve"><value>Semua pemasok</value></data>
+  <data name="Showing the newest {0} of {1} purchases. Narrow the dates or pick a supplier." xml:space="preserve"><value>Menampilkan {0} pembelian terbaru dari {1}. Persempit tanggal atau pilih pemasok.</value></data>
+  <data name="{0} purchases" xml:space="preserve"><value>{0} pembelian</value></data>
+  <data name="New backups are NOT encrypted: the backup passphrase on the server is shorter than 16 characters, so it is not used." xml:space="preserve"><value>Cadangan baru TIDAK dienkripsi: kata sandi cadangan di server kurang dari 16 karakter, jadi tidak dipakai.</value></data>
+  <data name="New backups are NOT encrypted: no backup passphrase is set on the server." xml:space="preserve"><value>Cadangan baru TIDAK dienkripsi: kata sandi cadangan belum diatur di server.</value></data>
+  <data name="Anyone who gets a copy can read all business data. Set Backup__Passphrase in the service settings (deployment runbook) and restart the service." xml:space="preserve"><value>Siapa pun yang mendapat salinannya bisa membaca seluruh data usaha. Atur Backup__Passphrase di pengaturan layanan (panduan deployment) lalu mulai ulang layanan.</value></data>
+  <data name="Encrypted backups (.enc) can only be opened with the backup passphrase; keep the passphrase in the password manager." xml:space="preserve"><value>Cadangan terenkripsi (.enc) hanya bisa dibuka dengan kata sandi cadangan; simpan kata sandinya di pengelola kata sandi.</value></data>
+  <data name="Encrypted" xml:space="preserve"><value>Terenkripsi</value></data>
+  <data name="Not encrypted" xml:space="preserve"><value>Tidak terenkripsi</value></data>
+  <data name="Automatic: {0}" xml:space="preserve"><value>Otomatis: {0}</value></data>
+  <data name="Leave empty to number it automatically." xml:space="preserve"><value>Kosongkan untuk penomoran otomatis.</value></data>
+  <data name="e.g. UNIT, PCS, SET" xml:space="preserve"><value>mis. UNIT, PCS, SET</value></data>
 </root>

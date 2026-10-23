@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<ICommissionPayoutRepository,  CommissionPayoutRepository>();
         services.AddScoped<ICustomerReturnRepository,    CustomerReturnRepository>();
         services.AddScoped<ISupplierReturnRepository,    SupplierReturnRepository>();
+        services.AddScoped<IExchangeRepository,          ExchangeRepository>();
         services.AddScoped<ICreditNoteRepository,        CreditNoteRepository>();
         services.AddScoped<ICreditNoteApplicationRepository, CreditNoteApplicationRepository>();
         services.AddScoped<IPaymentBatchRepository,      PaymentBatchRepository>();
@@ -102,6 +103,8 @@ public static class DependencyInjection
         // its own credit/debit notes straight through the repository rather than through
         // CreditNoteService, which keeps that service free of return-specific rules.
         services.AddScoped<IReturnService,       ReturnService>();
+        // Tukar barang: stock movements through InventoryService, the same pattern.
+        services.AddScoped<IExchangeService,     ExchangeService>();
         services.AddScoped<IExpenseService,      ExpenseService>();
         services.AddScoped<IAppSettingsService, AppSettingsService>();
         services.AddScoped<SimpleERP.Application.Services.AuditService>();

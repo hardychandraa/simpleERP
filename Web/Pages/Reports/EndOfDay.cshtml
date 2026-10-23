@@ -13,6 +13,7 @@
     </div>
     <button type="submit" class="btn btn-primary">@Localizer["View"]</button>
   </form>
+  <a href="/Reports/EndOfDay?handler=Excel&date=@Model.SelectedDate.ToString("yyyy-MM-dd")" class="btn btn-outline btn-sm">⬇ @Localizer["Download Excel"]</a>
   <button onclick="window.print()" class="btn btn-outline btn-sm">🖨 @Localizer["Print Report"]</button>
 </div>
 

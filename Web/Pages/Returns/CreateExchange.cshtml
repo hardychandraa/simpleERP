@@ -1,0 +1,119 @@
+@page "/Returns/Exchange/New/{saleId:guid}"
+@model SimpleERP.Web.Pages.Returns.CreateExchangeModel
+@using System.Globalization
+@{
+    ViewData["Title"] = Localizer["Exchange — {0}", Model.Form.InvoiceNumber].Value;
+    string Inv(decimal d) => d.ToString(CultureInfo.InvariantCulture);
+}
+
+<div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+    <a href="/Sales/@Model.Form.SaleId" class="btn btn-outline btn-sm">&larr; @Localizer["Invoice {0}", Model.Form.InvoiceNumber]</a>
+    <a href="/Returns" class="btn btn-outline btn-sm">@Localizer["All returns"]</a>
+</div>
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+@if (Model.Form.BlockReason != null)
+{
+    <div class="card"><div class="alert alert-warning" style="margin:0">@Model.Form.BlockReason</div></div>
+}
+else
+{
+<form method="post">
+<div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+
+<div class="card">
+    <div class="card-title">🔁 @Localizer["Units Being Swapped"]</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;padding:12px;background:#f9fafb;border-radius:6px">
+        <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">@Localizer["Invoice"]</div>
+            <div style="font-weight:600">@Model.Form.InvoiceNumber</div>
+            <div style="font-size:12px;color:#6b7280">@Model.Form.SaleDate.ToLocalTime().ToString("dd MMM yyyy")</div>
+        </div>
+        <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af">@Localizer["Customer"]</div>
+            <div style="font-weight:600">@Model.Form.CustomerName</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>@Localizer["Product"]</th>
+                <th style="text-align:center">@Localizer["Sold"]</th>
+                <th style="text-align:center">@Localizer["Already back"]</th>
+                <th style="text-align:center">@Localizer["Exchanged before"]</th>
+                <th style="text-align:center">@Localizer["In stock"]</th>
+                <th style="width:110px;text-align:center">@Localizer["Swap qty"]</th>
+                <th style="width:170px">@Localizer["Serial numbers / note"]</th>
+            </tr>
+        </thead>
+        <tbody>
+        @for (var i = 0; i < Model.Form.Lines.Count; i++)
+        {
+            var line   = Model.Form.Lines[i];
+            var posted = i < Model.Lines.Count ? Model.Lines[i] : null;
+            var max    = Math.Min(line.Exchangeable, Math.Max(0, line.InStock));
+            <tr style="@(max <= 0 ? "opacity:.5" : "")">
+                <td>
+                    <div style="font-weight:600">@line.ProductName</div>
+                    <div style="font-size:11px;color:#9ca3af">@line.SKU</div>
+                </td>
+                <td style="text-align:center">@line.SoldQty.ToString("N0")</td>
+                <td style="text-align:center">@(line.ReturnedQty > 0 ? line.ReturnedQty.ToString("N0") : "—")</td>
+                <td style="text-align:center">@(line.ExchangedQty > 0 ? line.ExchangedQty.ToString("N0") : "—")</td>
+                <td style="text-align:center;@(line.InStock <= 0 ? "color:#dc2626;font-weight:600" : "")">@line.InStock.ToString("N0")</td>
+                <td>
+                    <input type="hidden" name="Lines[@i].SourceItemId" value="@line.SaleItemId" />
+                    <input type="number" name="Lines[@i].Qty" min="0" max="@Inv(max)" step="1"
+                           value="@(posted != null && posted.Qty > 0 ? Inv(posted.Qty) : "")" placeholder="0"
+                           style="text-align:center" @(max <= 0 ? "readonly" : "") />
+                    <div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:2px">@Localizer["up to {0}", max.ToString("N0")]</div>
+                </td>
+                <td>
+                    <input type="text" name="Lines[@i].Notes" maxlength="500" value="@posted?.Notes"
+                           placeholder="@Localizer["e.g. SN rusak / SN baru"]" />
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <p style="font-size:11px;color:#9ca3af;margin-top:10px;line-height:1.6">
+        @Localizer["Same product only: the faulty unit comes back into stock and a new one goes to the customer. No money, credit note or PPN, and the invoice and its warranty dates stay as they are. For a different product, use Return items and a new sale."]
+    </p>
+</div>
+
+<div>
+    <div class="card">
+        <div class="card-title">@Localizer["Exchange Details"]</div>
+        <div class="fg">
+            <label>@Localizer["Date"]</label>
+            <input type="date" asp-for="ExchangeDate" max="@DateTime.Now.ToString("yyyy-MM-dd")" required />
+            <div style="font-size:11px;color:#6b7280;margin-top:3px">@Localizer["Cannot be before the invoice date."]</div>
+        </div>
+        <div class="fg">
+            <label>@Localizer["What was wrong"] <span style="color:#dc2626">*</span></label>
+            <input type="text" asp-for="Reason" maxlength="500" required placeholder="@Localizer["e.g. Not spinning, rusak dari pabrik"]" />
+        </div>
+        <div class="fg">
+            <label>@Localizer["Notes (optional)"]</label>
+            <textarea asp-for="Notes" rows="2" maxlength="500"></textarea>
+        </div>
+        <button type="submit" class="btn btn-warn" style="width:100%">🔁 @Localizer["Record Exchange"]</button>
+    </div>
+    <div class="card">
+        <div class="card-title">@Localizer["Afterwards"]</div>
+        <p style="font-size:12px;color:#6b7280;line-height:1.6">
+            @Localizer["The faulty unit is now in stock. Send it back to the supplier with a Retur Pembelian on the purchase it came from; the supplier's replacement then comes in as Goods In and is paid with that debit note. If the supplier refuses the claim, write it off with Adjust Stock."]
+        </p>
+    </div>
+</div>
+
+</div>
+</form>
+}

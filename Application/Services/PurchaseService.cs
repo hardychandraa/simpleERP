@@ -656,11 +656,13 @@ public class PurchaseService : IPurchaseService
                     - await _noteApplications.GetAppliedTotalForPurchaseAsync(purchase.Id);
         if (dto.Amount > balance)
             return _log.Refuse<SupplierPaymentDto>(_loc["Amount ({0}) exceeds balance owed ({1}).", dto.Amount.ToString("N0"), balance.ToString("N0")]);
+        var (paidAt, dateNo) = await PaidAtAsync(dto.PaidOn, new[] { purchase });
+        if (dateNo != null) return _log.Refuse<SupplierPaymentDto>(dateNo);
 
-        var record = await RecordPaymentCoreAsync(purchase, dto.Amount, dto.Notes, batchId: null, user);
+        var record = await RecordPaymentCoreAsync(purchase, dto.Amount, dto.Notes, batchId: null, paidAt, user);
 
         await _audit.LogAsync(user, "SupplierPayment.Record",
-            $"{purchase.PurchaseNumber} -{dto.Amount:N0}");
+            $"{purchase.PurchaseNumber} -{dto.Amount:N0}{PaidNote(paidAt)}");
         _log.LogInformation(
             "Payment {Amount} made against {PurchaseNumber} — paid {AmountPaid} of {GrandTotal}, by {User}",
             dto.Amount, purchase.PurchaseNumber, purchase.AmountPaid, purchase.GrandTotal, user);
@@ -678,12 +680,12 @@ public class PurchaseService : IPurchaseService
     /// transaction, so a single payment and a multi-purchase settlement both commit once.
     /// </summary>
     private async Task<SupplierPayment> RecordPaymentCoreAsync(
-        Purchase purchase, decimal amount, string? notes, Guid? batchId, string user)
+        Purchase purchase, decimal amount, string? notes, Guid? batchId, DateTime paidAt, string user)
     {
         var record = new SupplierPayment {
             Id             = Guid.NewGuid(),
             PurchaseId     = purchase.Id,
-            PaymentDate    = DateTime.UtcNow,
+            PaymentDate    = paidAt,
             Amount         = amount,
             Notes          = SanitiseText(notes, 300),
             CreatedBy      = user,
@@ -696,9 +698,92 @@ public class PurchaseService : IPurchaseService
 
         // Self-executing OnTimePayment rebate: if this payment clears the balance on or
         // before the due date, it accrues and settles in the same transaction. Scoped
-        // entirely to this one purchase, so settling several in a loop is safe.
+        // entirely to this one purchase, so settling several in a loop is safe. Judged on
+        // the day the money went out, not the day it was typed in.
         await _rebates.EvaluateOnPaymentAsync(purchase, record.PaymentDate, user);
         return record;
+    }
+
+    /// <summary>
+    /// When the money went out (HC, 2026-10-21; the mirror of SaleService.ReceivedAtAsync).
+    /// Payments used to be dated when typed in, so a late entry moved the payment, and the
+    /// on-time rebate decided by it, to the wrong day. Today keeps the clock time; an earlier
+    /// day is that day's local midnight (LedgerDate). Not in the future, not before any
+    /// purchase it pays, not in a closed month.
+    /// </summary>
+    private async Task<(DateTime At, string? Error)> PaidAtAsync(DateTime? localDay, IEnumerable<Purchase> purchases)
+    {
+        if (localDay is not { } day || day.Date == DateTime.Now.Date) return (DateTime.UtcNow, null);
+        day = day.Date;
+        if (day > DateTime.Now.Date)
+            return (default, _loc["The date paid can't be in the future."]);
+        foreach (var p in purchases)
+            if (day < p.PurchaseDate.Date)
+                return (default, _loc["{0} is dated {1}: it can't have been paid before that.", p.PurchaseNumber, p.PurchaseDate.ToString("dd MMM yyyy")]);
+        if (await _period.NewDateAsync(day) is { } closed) return (default, closed);
+        return (LedgerDate.FromLocalDay(day), null);
+    }
+
+    /// <summary>" (paid 13 Oct 2026)" for the audit line when the date isn't today.</summary>
+    private static string PaidNote(DateTime paidAtUtc)
+    {
+        var day = PeriodLock.LocalDay(paidAtUtc);
+        return day == DateTime.Now.Date ? "" : $" (paid {day:dd MMM yyyy})";
+    }
+
+    public async Task<ServiceResult> ReversePaymentAsync(Guid paymentId, string? reason, bool isAdmin, string user)
+    {
+        if (!isAdmin) return _log.Refuse(_loc["Only an administrator can reverse a payment."]);
+        var why = SanitiseText(reason, 300);
+        if (string.IsNullOrWhiteSpace(why)) return _log.Refuse(_loc["Say why the payment is being reversed."]);
+
+        var first = await _payments.GetByIdAsync(paymentId);
+        if (first == null) return _log.Refuse(_loc["Payment not found."]);
+        // The purchase and the settlement it may belong to (two lines of one settlement change
+        // the same totals). LockAsync forgets what was read before it, so read again below.
+        await _uow.LockAsync(first.PurchaseId, first.PaymentBatchId ?? Guid.Empty);
+
+        var payment = await _payments.GetByIdAsync(paymentId);
+        if (payment == null) return _log.Refuse(_loc["Payment not found."]);
+        if (payment.IsReversed) return _log.Refuse(_loc["This payment has already been reversed."]);
+        var purchase = await _purchases.GetByIdWithItemsAsync(payment.PurchaseId);
+        if (purchase == null) return _log.Refuse(_loc["Purchase not found."]);
+        if (purchase.Status == PurchaseStatus.Cancelled) return _log.Refuse(_loc["Purchase is already cancelled."]);
+
+        var paidDay = PeriodLock.LocalDay(payment.PaymentDate);
+        if (await _period.ExistingAsync(_loc["The payment of {0}", purchase.PurchaseNumber].Value, paidDay) is { } closed)
+            return _log.Refuse(closed);
+        // A settlement that netted debit notes settled those notes with this money: taking one
+        // line back would leave notes settled by a payment that no longer counts.
+        if (payment.PaymentBatch is { NotesAppliedAmount: > 0 } nb)
+            return _log.Refuse(_loc["This payment is part of settlement {0}, which netted debit notes, so it can't be reversed on its own.", nb.BatchNumber]);
+        // An on-time rebate was earned (and settled by a debit note) when this purchase was paid
+        // off; without the payment that rebate has no ground. Undo the rebate first, by hand.
+        if ((await _rebateAccruals.GetByPurchaseAsync(purchase.Id))
+                .Any(a => !a.IsVoided && a.Rule?.ConditionType == RebateConditionType.OnTimePayment))
+            return _log.Refuse(_loc["Paying {0} on time earned a rebate. Undo that rebate first, then reverse the payment.", purchase.PurchaseNumber]);
+        if (purchase.AmountPaid < payment.Amount)
+            return _log.Refuse(_loc["The purchase's paid amount ({0}) is less than this payment ({1}). Nothing was changed; check the purchase.", purchase.AmountPaid.ToString("N0"), payment.Amount.ToString("N0")]);
+
+        payment.ReversedAt    = DateTime.UtcNow;
+        payment.ReversedBy    = user;
+        payment.ReverseReason = why;
+        purchase.AmountPaid  -= payment.Amount;
+        _purchases.Update(purchase);
+        if (payment.PaymentBatch is { } b)
+        {
+            b.GrossAmount -= payment.Amount;
+            b.NetAmount   -= payment.Amount;
+        }
+
+        await _audit.LogAsync(user, "SupplierPayment.Reverse",
+            $"{purchase.PurchaseNumber} +{payment.Amount:N0} (paid {paidDay:dd MMM yyyy}, by {payment.CreatedBy})"
+            + (payment.PaymentBatch is { } bb ? $" in {bb.BatchNumber}" : "") + $" | {why}");
+        _log.LogInformation(
+            "Supplier payment {Amount} on {PurchaseNumber} reversed — paid now {AmountPaid} of {GrandTotal}, by {User}: {Reason}",
+            payment.Amount, purchase.PurchaseNumber, purchase.AmountPaid, purchase.GrandTotal, user, why);
+        await _uow.SaveChangesAsync();
+        return ServiceResult.Ok();
     }
 
     public async Task<ServiceResult<PaymentBatchDto>> RecordBatchPaymentAsync(
@@ -774,12 +859,14 @@ public class PurchaseService : IPurchaseService
             return _log.Refuse<PaymentBatchDto>(_loc["The selected debit notes ({0}) exceed the {1} being paid. Include more purchases, or untick a note and settle it against a later payment.", notesApplied.ToString("N0"), gross.ToString("N0")]);
 
         var batchNotes   = SanitiseText(dto.Notes, 500);
+        var (paidAt, dateNo) = await PaidAtAsync(dto.PaidOn, lines.Select(l => byId[l.PurchaseId]));
+        if (dateNo != null) return _log.Refuse<PaymentBatchDto>(dateNo);
 
         var batch = new PaymentBatch {
             Id                 = Guid.NewGuid(),
             BatchNumber        = await _batches.GenerateBatchNumberAsync(PaymentBatchDirection.Paid),
             Direction          = PaymentBatchDirection.Paid,
-            BatchDate          = DateTime.UtcNow,
+            BatchDate          = paidAt,
             SupplierId         = dto.SupplierId,
             GrossAmount        = gross,
             NotesAppliedAmount = notesApplied,
@@ -791,7 +878,7 @@ public class PurchaseService : IPurchaseService
         await _batches.AddAsync(batch);
 
         foreach (var line in lines)
-            await RecordPaymentCoreAsync(byId[line.PurchaseId], line.Amount, batchNotes, batch.Id, user);
+            await RecordPaymentCoreAsync(byId[line.PurchaseId], line.Amount, batchNotes, batch.Id, paidAt, user);
 
         // Tracked mutation — no Update() on entities EF is already following.
         foreach (var note in notes)
@@ -804,7 +891,7 @@ public class PurchaseService : IPurchaseService
 
         await _audit.LogAsync(user, "PaymentBatch.Record",
             $"{batch.BatchNumber} | {supplier.Name} | net {batch.NetAmount:N0} " +
-            $"({gross:N0} gross − {notesApplied:N0} notes) across {lines.Count} purchase(s)");
+            $"({gross:N0} gross − {notesApplied:N0} notes) across {lines.Count} purchase(s){PaidNote(paidAt)}");
         _log.LogInformation(
             "Settlement {BatchNumber} paid to {Supplier} — {NetAmount} net " +
             "({Gross} gross less {NotesApplied} in notes) across {PurchaseCount} purchase(s) " +
@@ -887,6 +974,16 @@ public class PurchaseService : IPurchaseService
                 .ToList(),
             OutstandingRebateAmount = outstandingRebate > 0 ? outstandingRebate : null
         };
+    }
+
+    public async Task<List<PurchaseDto>> GetDetailsAsync(IEnumerable<Guid> ids)
+    {
+        var list = ids.Distinct().ToList();
+        if (list.Count == 0) return new();
+        var purchases = await _purchases.GetByIdsWithItemsAsync(list);
+        var applied = await _noteApplications.GetAppliedTotalsForPurchasesAsync(list);
+        return purchases.Select(p => { var d = MapDto(p); d.AppliedNotesTotal = applied.GetValueOrDefault(p.Id); return d; })
+                        .OrderByDescending(d => d.PurchaseDate).ThenByDescending(d => d.CreatedAt).ToList();
     }
 
     public async Task<PurchaseDto?> GetByIdAsync(Guid id)
@@ -1119,7 +1216,8 @@ public class PurchaseService : IPurchaseService
         }).ToList(),
         PaymentHistory = p.SupplierPayments?.Select(x => new SupplierPaymentDto {
             Id = x.Id, PaymentDate = x.PaymentDate, Amount = x.Amount,
-            Notes = x.Notes, CreatedBy = x.CreatedBy
+            Notes = x.Notes, CreatedBy = x.CreatedBy, BatchNumber = x.PaymentBatch?.BatchNumber,
+            IsReversed = x.IsReversed, ReversedAt = x.ReversedAt, ReversedBy = x.ReversedBy, ReverseReason = x.ReverseReason
         }).OrderBy(x => x.PaymentDate).ToList() ?? new()
     };
 }

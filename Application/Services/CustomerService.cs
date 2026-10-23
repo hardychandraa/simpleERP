@@ -48,6 +48,7 @@ public class CustomerService : ICustomerService
             Id = Guid.NewGuid(), Name = TextClean.StripControl(dto.Name)!.Trim().ToUpperInvariant(),
             Phone = TextClean.StripControl(dto.Phone)?.Trim(), Address = TextClean.StripControl(dto.Address)?.Trim(),
             TaxId = Blank(dto.TaxId), NationalId = Blank(dto.NationalId),
+            TaxName = TaxHolderName(dto.TaxName), TaxAddress = TaxHolderAddress(dto.TaxAddress),
             SalesPersonId = dto.SalesPersonId, PaymentTermId = dto.PaymentTermId,
             DefaultDiscountPercent = NormaliseDiscount(dto.DefaultDiscountPercent),
             CreditLimit = dto.CreditLimit,
@@ -72,6 +73,7 @@ public class CustomerService : ICustomerService
         c.Name = TextClean.StripControl(dto.Name)!.Trim().ToUpperInvariant(); c.Phone = TextClean.StripControl(dto.Phone)?.Trim();
         c.Address = TextClean.StripControl(dto.Address)?.Trim(); c.IsActive = dto.IsActive;
         c.TaxId = Blank(dto.TaxId); c.NationalId = Blank(dto.NationalId);
+        c.TaxName = TaxHolderName(dto.TaxName); c.TaxAddress = TaxHolderAddress(dto.TaxAddress);
         c.SalesPersonId = dto.SalesPersonId; c.PaymentTermId = dto.PaymentTermId;
         c.DefaultDiscountPercent = NormaliseDiscount(dto.DefaultDiscountPercent);
         c.CreditLimit = dto.CreditLimit;
@@ -85,7 +87,8 @@ public class CustomerService : ICustomerService
             : list.Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
                            || (c.Phone ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
                            || (c.TaxId ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
-                           || (c.NationalId ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+                           || (c.NationalId ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+                           || (c.TaxName ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
         return q.Select(Map).ToList();
     }
 
@@ -135,9 +138,16 @@ public class CustomerService : ICustomerService
     /// <summary>0% is the same as no discount; stored as null so "none" has one meaning.</summary>
     private static decimal? NormaliseDiscount(decimal? discount) => discount is > 0 ? discount : null;
 
+    // The tax holder's name and address (HC, 2026-10-22): upper case like the customer's name; blank = the
+    // customer's own. Control characters stripped, as everything that may reach a printout (R9).
+    private static string? TaxHolderName(string? s) =>
+        TextClean.StripControl(s)?.Trim() is { Length: > 0 } t ? (t.Length > 300 ? t[..300] : t).ToUpperInvariant() : null;
+    private static string? TaxHolderAddress(string? s) =>
+        TextClean.StripControl(s)?.Trim() is { Length: > 0 } t ? (t.Length > 500 ? t[..500] : t) : null;
+
     private static CustomerDto Map(Domain.Entities.Customer c) => new()
         { Id=c.Id, Name=c.Name, Phone=c.Phone, Address=c.Address, IsActive=c.IsActive,
-          TaxId=c.TaxId, NationalId=c.NationalId,
+          TaxId=c.TaxId, NationalId=c.NationalId, TaxName=c.TaxName, TaxAddress=c.TaxAddress,
           SalesPersonId=c.SalesPersonId, PaymentTermId=c.PaymentTermId,
           DefaultDiscountPercent=c.DefaultDiscountPercent, CreditLimit=c.CreditLimit };
 }

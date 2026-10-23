@@ -23,6 +23,8 @@ public interface IProductService {
     Task<List<ProductDto>> GetAllActiveAsync(string? search = null);
     Task<ProductDto?> GetByIdAsync(Guid id);
     Task<ServiceResult> CreateAsync(CreateProductDto dto);
+    /// <summary>The SKU a product saved with an empty SKU field would get now.</summary>
+    Task<string> NextSkuAsync();
     Task<ServiceResult> UpdateAsync(UpdateProductDto dto);
     Task<ServiceResult> DeactivateAsync(Guid id);
 }
@@ -48,8 +50,26 @@ public record PurchaseReceiptLine(Guid ProductId, decimal Qty, decimal UnitCost)
 /// </summary>
 public record StockMovementLine(Guid ProductId, string ProductName, decimal Qty, decimal UnitCost);
 
+/// <summary>
+/// Tukar barang (HC, 2026-10-22): a faulty unit swapped for the same product, against one
+/// invoice. No money, credit note, PPN or commission; stock and its value are unchanged.
+/// Staff's exchanges wait for Admin's check, as Staff returns do.
+/// </summary>
+public interface IExchangeService {
+    Task<ExchangeFormDto?> GetFormAsync(Guid saleId);
+    Task<ServiceResult<ExchangeDto>> CreateAsync(CreateExchangeDto dto, string user, bool isAdmin);
+    Task<ServiceResult> CancelAsync(Guid id, string user);
+    Task<ServiceResult> MarkReviewedAsync(Guid id, bool isAdmin, string user);
+    Task<ExchangeDto?> GetAsync(Guid id);
+    Task<List<ExchangeDto>> GetForSaleAsync(Guid saleId);
+    Task<List<ExchangeDto>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null);
+    Task<int> CountNeedingReviewAsync();
+}
+
 public interface IInventoryService {
-    Task<ServiceResult> StockInAsync(StockInDto dto);
+    // Stok Masuk (a typed-cost stock-in with no supplier, payable or PPN) was removed on
+    // 2026-10-21 (HC, business-flow review S1): goods come in through Purchases / Goods In,
+    // corrections through Penyesuaian or Hitung Stok, exchanges through returns.
     /// <param name="at">The document's ledger date (UTC); null = now. See LedgerDate.</param>
     Task<ServiceResult> StockOutAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId, DateTime? at = null);
     Task StockInForCancelAsync(Guid productId, decimal qty, decimal unitCost, Guid referenceId, Guid branchId);
@@ -196,6 +216,11 @@ public interface IPurchaseService {
     Task<List<PurchaseListDto>> GetNeedingReviewAsync();
     Task<ServiceResult<SupplierPaymentDto>> RecordPaymentAsync(RecordSupplierPaymentDto dto, string user);
     /// <summary>
+    /// Admin takes back a supplier payment entered wrong (HC, 2026-10-21): the row stays, marked,
+    /// and the purchase owes that amount again. Reason required.
+    /// </summary>
+    Task<ServiceResult> ReversePaymentAsync(Guid paymentId, string? reason, bool isAdmin, string user);
+    /// <summary>
     /// Settles several of one supplier's open purchases in one action — the shape a real
     /// supplier statement takes — optionally netting open debit notes off the cash paid.
     /// All-or-nothing: if any line or note fails validation, nothing is written.
@@ -207,6 +232,8 @@ public interface IPurchaseService {
     /// </summary>
     Task<PaymentStatementDto?> GetSupplierStatementAsync(Guid supplierId, DateTime? from = null, DateTime? to = null);
     Task<PurchaseDto?> GetByIdAsync(Guid id);
+    /// <summary>Several purchases with their lines, for checking them against supplier invoices in one view.</summary>
+    Task<List<PurchaseDto>> GetDetailsAsync(IEnumerable<Guid> ids);
     Task<List<PurchaseListDto>> GetAllAsync(DateTime? from = null, DateTime? to = null, string? search = null);
     Task<List<DueSupplierDto>> GetDueSummaryAsync();
 }
@@ -388,4 +415,6 @@ public interface ISalesAnalysisService {
     Task<List<OpenDocumentDto>> GetOpenReceivablesAsync();
     /// <summary>Every open credit purchase, oldest due first.</summary>
     Task<List<OpenDocumentDto>> GetOpenPayablesAsync();
+    /// <summary>Every product that holds stock or is active, with its value and how long it has gone unsold.</summary>
+    Task<StockListDto> GetStockListAsync();
 }

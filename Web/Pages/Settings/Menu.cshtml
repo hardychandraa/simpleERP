@@ -1,0 +1,20 @@
+@page "/Settings/Menu"
+@using SimpleERP.Web.Pages.Shared
+@{
+    ViewData["Title"] = Localizer["Settings"].Value;
+    // Admin only (the /Settings folder, Program.cs). One menu link instead of eight (HC, 2026-10-22).
+    var groups = new[] {
+        new HubGroup("Store", new[] {
+            new HubTile("⚙️", "General settings", "Store name, PPN rate, printer, limits, overdue grace days.", "/Settings"),
+            new HubTile("📆", "Payment Terms", "TOP 30, TOP 60 and the other credit terms.", "/PaymentTerms"),
+            new HubTile("👤", "Sales People", "Who sells; their codes on the invoice.", "/SalesPersons") }),
+        new HubGroup("Users and data", new[] {
+            new HubTile("🔑", "Users", "Logins, roles, passwords.", "/Settings/Users"),
+            new HubTile("💾", "Backup", "Back up the database now, or download a backup.", "/Settings/Backup"),
+            new HubTile("🔒", "Close the Books", "Lock a finished month so nothing in it can change.", "/Settings/Period") }),
+        new HubGroup("Logs", new[] {
+            new HubTile("🔍", "Audit Log", "Who did what, and when.", "/Audit"),
+            new HubTile("🩺", "Diagnostic Log", "Errors and refusals, for troubleshooting.", "/Settings/Logs") }),
+    };
+}
+<partial name="_Hub" model="groups" />

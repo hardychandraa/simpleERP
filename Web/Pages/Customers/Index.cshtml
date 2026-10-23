@@ -21,7 +21,7 @@
       <td><strong>@c.Name</strong></td>
       <td>@(c.Phone ?? "—")</td>
       <td style="color:#6b7280;font-size:12px">@(c.Address ?? "—")</td>
-      <td style="font-size:12px;white-space:nowrap">@(c.TaxId ?? c.NationalId ?? "—")@if (c.TaxId != null && c.NationalId != null) {<br/><span style="color:#6b7280">@c.NationalId</span>}</td>
+      <td style="font-size:12px;white-space:nowrap">@(c.TaxId ?? c.NationalId ?? "—")@if (c.TaxId != null && c.NationalId != null) {<br/><span style="color:#6b7280">@c.NationalId</span>}@if (c.TaxName != null) {<br/><span style="color:#6b7280">a.n. @c.TaxName</span>}</td>
       @if (admin) {
         @* Receivables are Admin's (HC, 2026-10-09; Staff column removed 2026-10-18). *@
         <td>

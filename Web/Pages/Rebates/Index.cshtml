@@ -1,6 +1,8 @@
 @page "/Rebates"
 @model SimpleERP.Web.Pages.Rebates.IndexModel
 @{ ViewData["Title"] = Localizer["Rebates"].Value; }
+@{ var tabs = new SimpleERP.Web.Pages.Shared.PageTab[] { new("Rebates", "/Rebates", true), new("Rebate Rules", "/RebateRules", false) }; }
+<partial name="_Tabs" model="tabs" />
 
 @if (Model.Msg != null)
 {

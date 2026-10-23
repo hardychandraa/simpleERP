@@ -1,0 +1,47 @@
+@page "/Sales/Print/{id:guid}"
+@model SimpleERP.Web.Pages.Sales.PrintModel
+@{
+    Layout = null;
+    // The LX form: 96 columns = 12 characters per inch across 8 printable inches (80 or 132 = 10 cpi),
+    // 6 lines per inch. A fixed-width character is 0.6 em wide, so 12 cpi = 10pt, 10 cpi = 12pt.
+    var cpi = Model.Columns == 96 ? 12 : 10;
+    var fontPt = 72.0 / (cpi * 0.6);
+    var widthIn = Model.Columns / (double)cpi + 0.5;
+    var heightIn = Model.Lines / 6.0;
+    string F(double d) => d.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+}
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>@Model.InvoiceNumber</title>
+<style>
+  /* No page margin: the browser prints its URL / date / page header and footer in the margin,
+     so with none there is nowhere for them. The sheet keeps its own small inset instead. */
+  @@page { size: @(F(widthIn))in @(F(heightIn))in; margin: 0; }
+  html, body { margin: 0; padding: 0; background: #fff; color: #000; }
+  .sheet { width: @(F(widthIn))in; height: @(F(heightIn))in; box-sizing: border-box; padding: 0 0.25in;
+           overflow: hidden; page-break-after: always; break-after: page; }
+  .sheet:last-child { page-break-after: auto; break-after: auto; }
+  pre { margin: 0; font-family: "Courier New", Courier, monospace; font-size: @(F(fontPt))pt; line-height: 12pt; white-space: pre; }
+  b { font-weight: 700; }
+  .bar { font: 13px system-ui, sans-serif; padding: 10px 14px; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; }
+  .bar button { font: inherit; padding: 6px 14px; margin-right: 8px; cursor: pointer; }
+  @@media screen { .sheet { margin: 14px auto; box-shadow: 0 1px 6px rgba(0,0,0,.18); } body { background: #e5e7eb; } }
+  @@media print { .bar { display: none; } }
+</style>
+</head>
+<body>
+<div class="bar">
+  <button type="button" onclick="window.print()">🖨 @Localizer["Print"]</button>
+  <button type="button" onclick="window.close()">@Localizer["Close"]</button>
+  @Localizer["The same layout as the TXT and the LX printer. In the print dialog choose the paper size of the form, or let the browser fit it."]
+</div>
+@foreach (var page in Model.Pages)
+{
+@* A browser drops one newline straight after <pre>; this one, so the sheet's own first (blank) line stays. *@
+<div class="sheet"><pre>@Html.Raw("\n")@foreach (var line in page) {@if (line.Bold) {<b>@line.Text.TrimEnd()</b>} else {@line.Text.TrimEnd()}@Html.Raw("\n")}</pre></div>
+}
+<script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 200); });</script>
+</body>
+</html>

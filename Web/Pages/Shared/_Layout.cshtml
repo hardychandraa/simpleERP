@@ -54,11 +54,12 @@
       <a href="/CreditNotes" class="@(page.StartsWith("/CreditNotes")?"active":"")">📄 @Localizer["Credit / Debit Notes"]</a>
       @if (isAdmin)
       {
-          <a href="/Commissions"  class="@(page.StartsWith("/Commissions")?"active":"")">🧾 @Localizer["Commissions"]</a>
+          @* Commission Rules is a tab on this page (HC, 2026-10-22). *@
+          <a href="/Commissions"  class="@(page.StartsWith("/Commissions")||page.StartsWith("/CommissionRules")?"active":"")">🧾 @Localizer["Commissions"]</a>
       }
     </details>
 
-    <details class="sb-grp" data-grp="purchasing" open="@Open("/GoodsIn", "/Purchases", "/Rebates/")">
+    <details class="sb-grp" data-grp="purchasing" open="@Open("/GoodsIn", "/Purchases", "/Rebates/", "/RebateRules")">
       <summary class="sb-sec">@Localizer["Purchasing"]</summary>
       @* Goods In: Staff record deliveries without prices (HC, 2026-10-08). Admin enters them on
          Purchases, so the link is Staff's only (HC, 2026-10-10); the page still opens by URL. *@
@@ -72,7 +73,8 @@
              button on the Purchases page. *@
           <a href="/Purchases"        class="@(page.StartsWith("/Purchases/")&&page!="/Purchases/Due"&&page!="/Purchases/Statement"?"active":"")">📦 @Localizer["Purchases"]@if (pendingChecks > 0) { <span class="badge warn" style="margin-left:6px;font-size:10px" title="@Localizer["Needs checking"]">@pendingChecks</span> }</a>
           <a href="/Purchases/Due"    class="@(page=="/Purchases/Due"||page=="/Purchases/Statement"?"active":"")">💰 @Localizer["Payables"]</a>
-          <a href="/Rebates"          class="@(page.StartsWith("/Rebates/")?"active":"")">💰 @Localizer["Rebates"]</a>
+          @* Rebate Rules is a tab on this page (HC, 2026-10-22). *@
+          <a href="/Rebates"          class="@(page.StartsWith("/Rebates/")||page.StartsWith("/RebateRules")?"active":"")">💰 @Localizer["Rebates"]</a>
       }
     </details>
 
@@ -87,7 +89,7 @@
       <a href="/StockCounts"      class="@(page.StartsWith("/StockCounts")?"active":"")">📝 @Localizer["Stock counts"]@if (pendingCounts > 0) { <span class="badge warn" style="margin-left:6px;font-size:10px" title="@Localizer["Waiting for decision"]">@pendingCounts</span> }</a>
       @if (isAdmin)
       {
-          <a href="/Inventory/Adjust" class="@(page=="/Inventory/Adjust"||page=="/Inventory/StockIn"?"active":"")">⚖️ @Localizer["Adjust Stock"]</a>
+          <a href="/Inventory/Adjust" class="@(page=="/Inventory/Adjust"?"active":"")">⚖️ @Localizer["Adjust Stock"]</a>
       }
     </details>
 
@@ -95,51 +97,34 @@
       <summary class="sb-sec">@Localizer["Reports"]</summary>
       @if (isAdmin)
       {
-          <a href="/Reports/EndOfDay"   class="@(page=="/Reports/EndOfDay" ?"active":"")">📅 @Localizer["End of Day"]</a>
-          <a href="/Reports/ProfitLoss" class="@(page=="/Reports/ProfitLoss"?"active":"")">📊 @Localizer["Profit & Loss"]</a>
-          <a href="/Reports/Position"   class="@(page=="/Reports/Position" ?"active":"")">⚖️ @Localizer["Position Summary"]</a>
-          <a href="/Reports/SalesByProduct"  class="@(page=="/Reports/SalesByProduct" ?"active":"")">📦 @Localizer["Margin by Product"]</a>
-          <a href="/Reports/SalesByCustomer" class="@(page=="/Reports/SalesByCustomer"?"active":"")">👥 @Localizer["Sales by Customer"]</a>
-          <a href="/Reports/Ppn"             class="@(page=="/Reports/Ppn"            ?"active":"")">🧾 @Localizer["PPN Summary"]</a>
-      }
-      <a href="/Reports/Warranty"  class="@(page=="/Reports/Warranty" ?"active":"")">🛡 @Localizer["Warranty"]</a>
-      @if (isAdmin)
-      {
+          @* One Reports page with every report as a tile (HC, 2026-10-22: the menu had 37 links). *@
+          <a href="/Reports"       class="@(page.StartsWith("/Reports/")?"active":"")">📊 @Localizer["Reports"]</a>
           <a href="/Expenses"      class="@(page.StartsWith("/Expenses")?"active":"")">💸 @Localizer["Expenses"]</a>
+      }
+      else
+      {
+          <a href="/Reports/Warranty"  class="@(page=="/Reports/Warranty" ?"active":"")">🛡 @Localizer["Warranty"]</a>
       }
     </details>
 
-    <details class="sb-grp" data-grp="master" open="@Open("/Customers", "/Suppliers", "/PaymentTerms", "/SalesPersons", "/RebateRules", "/CommissionRules")">
+    <details class="sb-grp" data-grp="master" open="@Open("/Customers", "/Suppliers", isAdmin ? "/Customers" : "/SalesPersons")">
       <summary class="sb-sec">@Localizer["Master Data"]</summary>
       <a href="/Customers"         class="@(page.StartsWith("/Customers")?"active":"")">👥 @Localizer["Customers"]</a>
       @if (isAdmin)
       {
           <a href="/Suppliers"     class="@(page.StartsWith("/Suppliers")   ?"active":"")">🏭 @Localizer["Suppliers"]</a>
       }
-      @if (isAdmin)
+      else
       {
-          @* Admin's since 2026-10-14 (G6). *@
-          <a href="/PaymentTerms"  class="@(page.StartsWith("/PaymentTerms")?"active":"")">📆 @Localizer["Payment Terms"]</a>
-      }
-      <a href="/SalesPersons"      class="@(page.StartsWith("/SalesPersons")?"active":"")">👤 @Localizer["Sales People"]</a>
-      @if (isAdmin)
-      {
-          <a href="/RebateRules"     class="@(page.StartsWith("/RebateRules") ?"active":"")">🎁 @Localizer["Rebate Rules"]</a>
-          <a href="/CommissionRules" class="@(page.StartsWith("/CommissionRules")?"active":"")">🎯 @Localizer["Commission Rules"]</a>
+          @* Admin reaches Sales People, Payment Terms and the rules from Settings / their pages' tabs. *@
+          <a href="/SalesPersons"  class="@(page.StartsWith("/SalesPersons")?"active":"")">👤 @Localizer["Sales People"]</a>
       }
     </details>
 
     @if (isAdmin)
     {
-    <details class="sb-grp" data-grp="system" open="@Open("/Settings", "/Audit")">
-      <summary class="sb-sec">@Localizer["System"]</summary>
-      <a href="/Settings" class="@(page=="/Settings/Index"?"active":"")">⚙️ @Localizer["Settings"]</a>
-      <a href="/Settings/Users" class="@(page.StartsWith("/Settings/Users")?"active":"")">🔑 @Localizer["Users"]</a>
-      <a href="/Settings/Backup" class="@(page=="/Settings/Backup"?"active":"")">💾 @Localizer["Backup"]</a>
-      <a href="/Settings/Period" class="@(page=="/Settings/Period"?"active":"")">🔒 @Localizer["Close the Books"]</a>
-      <a href="/Audit"         class="@(page.StartsWith("/Audit") ?"active":"")">🔍 @Localizer["Audit Log"]</a>
-      <a href="/Settings/Logs" class="@(page=="/Settings/Logs"?"active":"")">🩺 @Localizer["Diagnostic Log"]</a>
-    </details>
+        @* One Settings page with users, backup, closing, logs, payment terms and sales people (HC, 2026-10-22). *@
+        <a href="/Settings/Menu" class="@(page.StartsWith("/Settings")||page.StartsWith("/Audit")||page.StartsWith("/PaymentTerms")||page.StartsWith("/SalesPersons")?"active":"")">⚙️ @Localizer["Settings"]</a>
     }
   </div>
 </nav>

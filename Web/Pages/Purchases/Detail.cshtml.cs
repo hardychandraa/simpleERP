@@ -47,6 +47,7 @@ public class DetailModel : PageModel
         // will actually accept rather than inviting a refusal.
         StillOwed   = Math.Max(0, purchase.NetBalanceDue);
         PayInput.PurchaseId = id;
+        PayInput.PaidOn     = DateTime.Now.Date;
         Msg = msg; IsErr = err;
         return Page();
     }
@@ -59,6 +60,21 @@ public class DetailModel : PageModel
         return RedirectToPage(new {
             id,
             msg = result.Success ? "Payment to supplier recorded." : result.Error,
+            err = !result.Success
+        });
+    }
+
+    /// <summary>Admin takes back a supplier payment entered wrong (HC, 2026-10-21).</summary>
+    public async Task<IActionResult> OnPostReversePaymentAsync(Guid id, Guid paymentId, string? reverseReason)
+    {
+        // The page is Admin-only (Program.cs); only a payment on THIS purchase.
+        var purchase = await _purchases.GetByIdAsync(id);
+        if (purchase == null || !purchase.PaymentHistory.Any(p => p.Id == paymentId))
+            return this.Refuse("payment does not belong to this purchase");
+        var result = await _purchases.ReversePaymentAsync(paymentId, reverseReason, isAdmin: true, this.CurrentUserName());
+        return RedirectToPage(new {
+            id,
+            msg = result.Success ? "Payment reversed. The purchase owes that amount again." : result.Error,
             err = !result.Success
         });
     }

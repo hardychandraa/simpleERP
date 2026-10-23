@@ -14,7 +14,11 @@ namespace SimpleERP.Web.Pages.Returns;
 public class IndexModel : PageModel
 {
     private readonly IReturnService _returns;
-    public IndexModel(IReturnService returns) => _returns = returns;
+    private readonly IExchangeService _exchanges;
+    public IndexModel(IReturnService returns, IExchangeService exchanges) { _returns = returns; _exchanges = exchanges; }
+
+    /// <summary>Tukar barang (HC, 2026-10-22).</summary>
+    public List<ExchangeDto> Exchanges { get; set; } = new();
 
     public List<ReturnListDto> CustomerReturns { get; set; } = new();
     public List<ReturnListDto> SupplierReturns { get; set; } = new();
@@ -39,6 +43,7 @@ public class IndexModel : PageModel
         Msg  = msg;  IsErr = err;
 
         CustomerReturns = await _returns.GetCustomerReturnsAsync(from, to, search);
+        Exchanges       = await _exchanges.GetAllAsync(from, to, search);
         // Purchase returns carry purchase cost: Admin only (HC, 2026-10-08).
         if (User.SeesSupplierSide())
             SupplierReturns = await _returns.GetSupplierReturnsAsync(from, to, search);

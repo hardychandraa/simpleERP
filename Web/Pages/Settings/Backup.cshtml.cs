@@ -17,6 +17,7 @@ public class BackupModel : PageModel
 
     public List<BackupService.BackupFile> Files { get; set; } = new();
     public string  BackupDir => _backup.BackupDir;
+    public BackupService.EncryptionState Encryption => _backup.Encryption;
     public string? Msg   { get; set; }
     public bool    IsErr { get; set; }
 

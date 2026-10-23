@@ -1,0 +1,8 @@
+@model IEnumerable<SimpleERP.Web.Pages.Shared.PageTab>
+@* Pages that belong together, one click apart (HC, 2026-10-22): e.g. Rebates and their rules. *@
+<div class="no-print" style="display:flex;gap:4px;border-bottom:1px solid #e5e7eb;margin-bottom:16px;flex-wrap:wrap">
+  @foreach (var t in Model)
+  {
+    <a href="@t.Href" style="padding:8px 14px;text-decoration:none;font-size:13px;font-weight:600;border-bottom:2px solid @(t.Active ? "#2563eb" : "transparent");color:@(t.Active ? "#2563eb" : "#6b7280");margin-bottom:-1px">@Localizer[t.Title]</a>
+  }
+</div>

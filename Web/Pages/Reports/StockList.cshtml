@@ -1,0 +1,88 @@
+@page "/Reports/StockList"
+@model SimpleERP.Web.Pages.Reports.StockListModel
+@{ ViewData["Title"] = Localizer["Stock List"].Value;
+   var rows = Model.Rows; var idleValue = rows.Sum(r => r.StockValue); }
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-bottom:18px" class="no-print">
+  <form method="get" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+    <div class="fg" style="margin:0">
+      <label>@Localizer["Not sold for"]</label>
+      <select name="idle" onchange="this.form.submit()">
+        @foreach (var n in SimpleERP.Web.Pages.Reports.StockListModel.IdleChoices)
+        {
+          <option value="@n" selected="@(n == Model.Idle)">@(n == 0 ? Localizer["— whole list —"] : Localizer["{0}+ days", n])</option>
+        }
+      </select>
+    </div>
+    @if (Model.Idle == 0)
+    {
+      <label style="display:inline-flex;align-items:center;gap:8px;margin:0 0 8px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" name="showEmpty" value="true" checked="@Model.ShowEmpty" onchange="this.form.submit()" style="width:18px;height:18px" />
+        @Localizer["Show 0 stock"]
+      </label>
+    }
+  </form>
+  <a href="@Model.ExcelUrl" class="btn btn-outline btn-sm">⬇ @Localizer["Download Excel"]</a>
+  <button type="button" onclick="window.print()" class="btn btn-outline btn-sm">🖨 @Localizer["Print Report"]</button>
+</div>
+<div style="text-align:center;margin-bottom:16px">
+  <div style="font-size:22px;font-weight:800;color:#1a1a2e">@Model.Heading()</div>
+  <div style="color:#6b7280;margin-top:4px">@Localizer["As of {0}", Model.Report.AsOf.ToString("dd MMM yyyy HH:mm")]</div>
+</div>
+<div class="stats" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat blue"><div class="stat-lbl">@Localizer["Total Stock Value:"]</div><div class="stat-val" style="font-size:18px">@Model.Report.TotalValue.ToString("N0")</div></div>
+  <div class="stat @(Model.Idle > 0 ? "orange" : "green")"><div class="stat-lbl">@(Model.Idle > 0 ? Localizer["Value not sold for {0}+ days", Model.Idle] : Localizer["Value of this list"])</div><div class="stat-val" style="font-size:18px">@idleValue.ToString("N0")</div></div>
+  <div class="stat purple"><div class="stat-lbl">@Localizer["Products"]</div><div class="stat-val" style="font-size:18px">@rows.Count.ToString("N0")</div></div>
+</div>
+<div class="card">
+  <div class="table-scroll">
+  <table>
+    <thead><tr>
+      <th>@Localizer["Product"]</th><th>@Localizer["Category"]</th>
+      <th style="text-align:right">@Localizer["Stock"]</th><th style="text-align:right">@Localizer["Avg Cost"]</th>
+      <th style="text-align:right">@Localizer["Stock Value"]</th>
+      <th>@Localizer["Last sale"]</th><th>@Localizer["Last Goods In"]</th>
+      <th style="text-align:right">@Localizer["Days unsold"]</th>
+      <th style="text-align:right">@Localizer["Sold 30 days"]</th><th style="text-align:right">@Localizer["Sold 90 days"]</th>
+    </tr></thead>
+    <tbody>
+    @foreach (var r in rows)
+    {
+      <tr>
+        <td>
+          <a href="/Inventory/Ledger?productId=@r.ProductId"><strong>@r.Name</strong></a>
+          <span style="color:#9ca3af;font-size:12px"> · @r.SKU</span>
+          @if (!r.IsActive) { <span class="badge gray">@Localizer["Inactive"]</span> }
+        </td>
+        <td>@(r.Category ?? "—")</td>
+        <td style="text-align:right"><span class="badge @(r.Stock < 0 ? "err" : "gray")">@r.Stock.ToString("N0")</span> <span style="font-size:11px;color:#9ca3af">@r.Unit</span></td>
+        <td style="text-align:right">@r.AvgCost.ToString("N0")</td>
+        <td style="text-align:right;font-weight:600">@r.StockValue.ToString("N0")</td>
+        <td style="white-space:nowrap">@(r.LastSale?.ToString("dd-MMM-yy") ?? Localizer["Never"].Value)</td>
+        <td style="white-space:nowrap">@(r.LastPurchase?.ToString("dd-MMM-yy") ?? "—")</td>
+        <td style="text-align:right;color:@(r.Stock > 0 && (r.IdleDays ?? int.MaxValue) >= 30 ? "#d97706" : "inherit")">@(r.IdleDays?.ToString("N0") ?? "—")</td>
+        <td style="text-align:right">@r.Sold30.ToString("N0")</td>
+        <td style="text-align:right">@r.Sold90.ToString("N0")</td>
+      </tr>
+    }
+    @if (!rows.Any())
+    {
+      <tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:28px">@Localizer["No products in stock."]</td></tr>
+    }
+    else
+    {
+      <tr style="font-weight:700;border-top:2px solid #1a1a2e">
+        <td colspan="2">@Localizer["Total"]</td>
+        <td style="text-align:right">@rows.Sum(r => r.Stock).ToString("N0")</td><td></td>
+        <td style="text-align:right">@idleValue.ToString("N0")</td>
+        <td colspan="3"></td>
+        <td style="text-align:right">@rows.Sum(r => r.Sold30).ToString("N0")</td>
+        <td style="text-align:right">@rows.Sum(r => r.Sold90).ToString("N0")</td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  </div>
+  <p style="font-size:11px;color:#9ca3af;margin-top:12px;line-height:1.6">
+    @Localizer["Days unsold: since the last sale or, for a product never sold, since its last Goods In; — = opening stock that never moved. Sold = sold less returned, cancelled invoices left out. Stock and value are the Products page's figures."]
+  </p>
+</div>

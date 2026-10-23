@@ -126,7 +126,12 @@ public enum ReferenceType {
     /// goods inflate the very thresholds that earned them), while still flowing
     /// through the normal moving-average costing at zero cost.
     /// </summary>
-    RebateInKind   = 8
+    RebateInKind   = 8,
+    /// <summary>
+    /// Tukar barang (HC, 2026-10-22): a faulty unit back and its replacement out, both at the
+    /// current average cost, so stock and value are unchanged. See Exchange.
+    /// </summary>
+    Exchange       = 9
 }
 
 /// <summary>

@@ -24,27 +24,6 @@ public class InventoryService : IInventoryService
         IStringLocalizer<SharedResource> loc, ILogger<InventoryService> log)
     { _ledger=ledger; _products=products; _branches=branches; _adjustments=adjustments; _uow=uow;  _loc = loc; _log = log; }
 
-    public async Task<ServiceResult> StockInAsync(StockInDto dto)
-    {
-        if (dto.Qty <= 0)    return _log.Refuse(_loc["Quantity must be > 0."]);
-        if (!Limits.IsWholeUnits(dto.Qty)) return _log.Refuse(_loc["Quantities must be whole units (no fractions)."]);
-        if (dto.UnitCost < 0) return _log.Refuse(_loc["Cost cannot be negative."]);
-        if (dto.Qty > Limits.MaxQty) return _log.Refuse(_loc["Quantity is too large (at most {0} per line).", Limits.MaxQty.ToString("N0")]);
-        if (dto.UnitCost > Limits.MaxUnitAmount) return _log.Refuse(_loc["Amount is too large (at most {0}).", Limits.MaxUnitAmount.ToString("N0")]);
-        if (await _products.GetByIdAsync(dto.ProductId) == null) return _log.Refuse(_loc["Product not found."]);
-        var branch = await _branches.GetDefaultAsync();
-        if (branch == null) return _log.Refuse(_loc["Default branch not found."]);
-        await StockInCore(dto.ProductId, dto.Qty, dto.UnitCost, Guid.NewGuid(), branch.Id, ReferenceType.Purchase);
-        // Manual stock-in has no document behind it and — unlike sales, purchases and
-        // returns — writes no audit entry either, so before this it moved stock and cost
-        // leaving nothing but a ledger row tagged Purchase.
-        _log.LogInformation(
-            "Manual stock in — {Qty} units of product {ProductId} at {UnitCost} each",
-            dto.Qty, dto.ProductId, dto.UnitCost);
-        await _uow.SaveChangesAsync();
-        return ServiceResult.Ok();
-    }
-
     // Called inside SaleService transaction — does NOT SaveChanges
     public async Task<ServiceResult> StockOutAsync(Guid productId, decimal qty, Guid referenceId, Guid branchId,
         DateTime? at = null)
@@ -207,6 +186,43 @@ public class InventoryService : IInventoryService
                      name, stock.ToString("N2"), want.ToString("N2")]);
 
     public Task LockStockAsync(IEnumerable<Guid> productIds) => _ledger.LockProductsAsync(productIds);
+
+    /// <summary>
+    /// Tukar barang (HC, 2026-10-22): per line, the replacement leaves and the faulty unit
+    /// comes back, both at the current average cost, so the stock and its value end where
+    /// they started and the average does not move. On create a replacement has to be on the
+    /// shelf; a cancellation puts the replacement back first and needs no stock. Locks the
+    /// products. No SaveChanges.
+    /// </summary>
+    public async Task<ServiceResult> ExchangeStockAsync(IReadOnlyList<StockMovementLine> lines, Guid exchangeId,
+        Guid branchId, DateTime at, bool cancel = false)
+    {
+        var moving = lines.Where(l => l.Qty > 0).ToList();
+        await _ledger.LockProductsAsync(moving.Select(l => l.ProductId));
+        if (!cancel)
+            foreach (var g in moving.GroupBy(l => l.ProductId))
+            {
+                var stock = await _ledger.GetCurrentStockAsync(g.Key, branchId);
+                var want  = g.Sum(l => l.Qty);
+                if (stock < want)
+                    return _log.Refuse(_loc["{0}: only {1} in stock, so there is no replacement to give ({2} needed).",
+                        g.First().ProductName, stock.ToString("N0"), want.ToString("N0")]);
+            }
+        foreach (var l in moving)
+        {
+            var cost = await _ledger.GetCurrentAvgCostAsync(l.ProductId, branchId);
+            InventoryLedger Row(bool isIn) => new() {
+                Id = Guid.NewGuid(), TransactionDate = at, EnteredAt = DateTime.UtcNow,
+                BranchId = branchId, ProductId = l.ProductId,
+                ReferenceType = ReferenceType.Exchange, ReferenceId = exchangeId,
+                QtyIn = isIn ? l.Qty : 0, QtyOut = isIn ? 0 : l.Qty,
+                UnitCost = cost, TotalCost = cost * l.Qty };
+            // Create: the replacement goes out, then the faulty unit comes in. Cancel: the reverse.
+            await _ledger.AddAsync(Row(isIn: cancel));
+            await _ledger.AddAsync(Row(isIn: !cancel));
+        }
+        return ServiceResult.Ok();
+    }
 
     public async Task<ServiceResult> AdjustStockAsync(StockAdjustmentDto dto, string user)
     {

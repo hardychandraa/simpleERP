@@ -41,14 +41,14 @@ public class ProductService : IProductService
     public async Task<ServiceResult> CreateAsync(CreateProductDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return _log.Refuse(_loc["Product name is required."]);
-        if (string.IsNullOrWhiteSpace(dto.SKU))  return _log.Refuse(_loc["SKU is required."]);
         if (dto.UnitPrice < 0)   return _log.Refuse(_loc["Unit price cannot be negative."]);
         if (dto.PurchasePrice < 0) return _log.Refuse(_loc["Purchase price cannot be negative."]);
         if (dto.LowStockThreshold < 0) return _log.Refuse(_loc["Low stock threshold cannot be negative."]);
         var unitError = ValidateUnit(dto.Unit);
         if (unitError != null) return unitError;
 
-        var sku = dto.SKU.Trim().ToUpper();
+        // Left empty: the next P### (HC, 2026-10-23). Typed in: used as typed, upper-cased.
+        var sku = string.IsNullOrWhiteSpace(dto.SKU) ? await NextSkuAsync() : dto.SKU.Trim().ToUpper();
         if (await _products.SkuExistsAsync(sku))
             return _log.Refuse(_loc["SKU '{0}' is already used by another product.", sku]);
 
@@ -120,7 +120,24 @@ public class ProductService : IProductService
         return null;
     }
 
-    private static string NormaliseUnit(string? unit) => (unit ?? "PCS").Trim().ToUpperInvariant();
+    /// <summary>
+    /// The SKU an empty SKU field gets: "P" + one more than the highest P-number in use, at least
+    /// three digits (the products' existing P001… numbering). A number someone typed by hand that
+    /// is already taken is skipped. Two products saved at the same moment could pick the same
+    /// number: the unique index refuses the second, as it does for a typed duplicate.
+    /// </summary>
+    public async Task<string> NextSkuAsync()
+    {
+        const string prefix = "P";
+        var used = (await _products.GetSkusStartingWithAsync(prefix))
+            .Select(s => s.Length > prefix.Length && s[prefix.Length..].All(char.IsAsciiDigit)
+                         && int.TryParse(s[prefix.Length..], out var n) ? n : 0);
+        var next = used.DefaultIfEmpty(0).Max() + 1;
+        while (await _products.SkuExistsAsync($"{prefix}{next:D3}")) next++;
+        return $"{prefix}{next:D3}";
+    }
+
+    private static string NormaliseUnit(string? unit) => (unit ?? "UNIT").Trim().ToUpperInvariant();
     /// <summary>Upper-case like name and SKU (HC, 2026-10-06); blank means no category.</summary>
     private static string? NormaliseCategory(string? category) =>
         string.IsNullOrWhiteSpace(category) ? null : category.Trim().ToUpperInvariant();

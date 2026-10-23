@@ -12,7 +12,8 @@
   @* A cancelled invoice is not printed (HC, 2026-10-09): no print, LX or TXT button, and the
      LX print and TXT download refuse it too. *@
   @if (Model.Sale.Status == "Active") {
-  <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 @Localizer["Browser Print"]</button>
+  @* The TXT / LX layout in the browser, without the browser's URL footer (HC, 2026-10-22). *@
+  <a href="/Sales/Print/@Model.Sale.Id" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">🖨 @Localizer["Browser Print"]</a>
   @if (Model.AppSettings.PrinterEnabled && !string.IsNullOrEmpty(Model.AppSettings.PrinterName)) {
     <button id="btnDot" class="btn btn-success btn-sm" onclick="dotPrint('@Model.Sale.Id')">
       🖨 @Localizer["Print to {0}", Model.AppSettings.PrinterName ?? ""]
@@ -24,6 +25,8 @@
   }
   @if (Model.Sale.Status == "Active") {
     <a href="/Returns/Customer/New/@Model.Sale.Id" class="btn btn-warn btn-sm">↩ @Localizer["Return items"]</a>
+    @* Same product, faulty unit swapped (HC, 2026-10-22). *@
+    <a href="/Returns/Exchange/New/@Model.Sale.Id" class="btn btn-outline btn-sm">🔁 @Localizer["Exchange (warranty)"]</a>
     @* Hidden once a credit invoice has payments — ReviseAsync refuses it anyway. *@
     @if (Model.CanChange && (Model.Sale.PaymentType == "Cash" || Model.Sale.AmountPaid == 0)) {
     <a href="/Sales/Create?revise=@Model.Sale.Id" class="btn btn-outline btn-sm"
@@ -116,6 +119,9 @@
       }
       @if (!string.IsNullOrEmpty(Model.Sale.CustomerNationalId)) {
         <div class="no-print" style="color:#6b7280;font-size:12px">NIK @Model.Sale.CustomerNationalId</div>
+      }
+      @if (!string.IsNullOrEmpty(Model.Sale.CustomerTaxName)) {
+        <div class="no-print" style="color:#6b7280;font-size:12px">@Localizer["Tax in the name of {0}", Model.Sale.CustomerTaxName]</div>
       }
       @if (!string.IsNullOrEmpty(Model.Sale.SalesPersonName)) {
         <div style="color:#6b7280;font-size:12px;margin-top:4px">👤 @Localizer["Sold by {0}", Model.Sale.SalesPersonName]</div>
@@ -298,6 +304,30 @@
           <button type="submit" class="btn btn-success" style="width:100%">✓ @Localizer["Confirm Payment"]</button>
         </form>
       }
+    </div>
+  }
+
+  <!-- Exchanges (Tukar barang) -->
+  @if (Model.Exchanges.Any()) {
+    <div class="card">
+      <div class="card-title">🔁 @Localizer["Exchanges on This Invoice"]</div>
+      <table>
+        <thead><tr><th>@Localizer["Exchange"]</th><th>@Localizer["Product"]</th><th style="text-align:center">@Localizer["Status"]</th></tr></thead>
+        <tbody>
+        @foreach (var x in Model.Exchanges) {
+          <tr>
+            <td style="font-size:12px">
+              <a href="/Returns/Exchange/@x.Id" style="color:#2563eb;font-weight:600">@x.ExchangeNumber</a>
+              <div style="color:#9ca3af;font-size:11px">@x.ExchangeDate.ToString("dd-MMM-yy")</div>
+            </td>
+            <td style="font-size:12px">@string.Join(", ", x.Items.Select(i => $"{i.ProductName} ×{i.Qty:N0}"))</td>
+            <td style="text-align:center;font-size:11px">
+              <span class="badge @(x.Status == "Active" ? "ok" : "gray")">@Localizer[EnumDisplay.Key("ReturnStatus", x.Status)]</span>
+            </td>
+          </tr>
+        }
+        </tbody>
+      </table>
     </div>
   }
 

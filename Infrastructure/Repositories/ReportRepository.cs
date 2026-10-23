@@ -34,7 +34,8 @@ public class ReportRepository : IReportRepository
            .Where(s => s.SaleDate >= fromUtc && s.SaleDate < toUtc && s.Status == SaleStatus.Active)
            .OrderBy(s => s.SaleDate).ThenBy(s => s.InvoiceNumber)
            .Select(s => new TaxDocFact(s.Id, s.SaleDate, s.InvoiceNumber, null, s.Customer!.Name,
-                s.Customer.TaxId, s.Customer.NationalId, s.TaxBase, s.TaxAmount, s.GrandTotal, false))
+                s.Customer.TaxId, s.Customer.NationalId, s.TaxBase, s.TaxAmount, s.GrandTotal, false,
+                s.Customer.TaxName ?? s.Customer.Name, s.Customer.TaxAddress ?? s.Customer.Address))
            .ToListAsync();
 
     public Task<List<TaxDocFact>> GetSalesReturnsForTaxAsync(DateTime from, DateTime to) =>
@@ -42,7 +43,8 @@ public class ReportRepository : IReportRepository
            .Where(r => r.ReturnDate >= from && r.ReturnDate < to && r.Status == ReturnStatus.Active)
            .OrderBy(r => r.ReturnDate).ThenBy(r => r.ReturnNumber)
            .Select(r => new TaxDocFact(r.Id, r.ReturnDate, r.ReturnNumber, r.Sale!.InvoiceNumber, r.Sale.Customer!.Name,
-                r.Sale.Customer.TaxId, r.Sale.Customer.NationalId, r.TaxBase, r.TaxAmount, r.GrandTotal, false))
+                r.Sale.Customer.TaxId, r.Sale.Customer.NationalId, r.TaxBase, r.TaxAmount, r.GrandTotal, false,
+                r.Sale.Customer.TaxName ?? r.Sale.Customer.Name, r.Sale.Customer.TaxAddress ?? r.Sale.Customer.Address))
            .ToListAsync();
 
     public Task<List<TaxDocFact>> GetPurchasesForTaxAsync(DateTime from, DateTime to) =>
@@ -61,4 +63,18 @@ public class ReportRepository : IReportRepository
                 r.Purchase!.SupplierDocumentNumber ?? r.Purchase.PurchaseNumber, r.Purchase.Supplier!.Name,
                 r.Purchase.Supplier.TaxId, null, r.TaxBase, r.TaxAmount, r.GrandTotal, false))
            .ToListAsync();
+
+    public Task<Dictionary<Guid, DateTime>> GetLastSaleDatesAsync() =>
+        _db.SaleItems.AsNoTracking()
+           .Where(i => i.Sale!.Status == SaleStatus.Active)
+           .GroupBy(i => i.ProductId)
+           .Select(g => new { g.Key, Last = g.Max(i => i.Sale!.SaleDate) })
+           .ToDictionaryAsync(x => x.Key, x => x.Last);
+
+    public Task<Dictionary<Guid, DateTime>> GetLastPurchaseDatesAsync() =>
+        _db.PurchaseItems.AsNoTracking()
+           .Where(i => i.Purchase!.Status == PurchaseStatus.Active)
+           .GroupBy(i => i.ProductId)
+           .Select(g => new { g.Key, Last = g.Max(i => i.Purchase!.PurchaseDate) })
+           .ToDictionaryAsync(x => x.Key, x => x.Last);
 }

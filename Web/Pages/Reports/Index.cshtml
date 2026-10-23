@@ -1,0 +1,21 @@
+@page "/Reports"
+@using SimpleERP.Web.Pages.Shared
+@{
+    ViewData["Title"] = Localizer["Reports"].Value;
+    // Admin only (Program.cs). One page instead of eight menu links (HC, 2026-10-22).
+    var groups = new[] {
+        new HubGroup("Daily", new[] {
+            new HubTile("📅", "End of Day", "Sales, cash in and payments collected for one day.", "/Reports/EndOfDay") }),
+        new HubGroup("Finance", new[] {
+            new HubTile("📊", "Profit & Loss", "Laba Rugi for a period: sales, HPP, expenses, commission, rebate.", "/Reports/ProfitLoss"),
+            new HubTile("⚖️", "Position Summary", "Ringkasan Posisi now: stock, receivables, payables, ageing.", "/Reports/Position"),
+            new HubTile("🧾", "PPN Summary", "PPN Keluaran and Masukan for the tax consultant.", "/Reports/Ppn") }),
+        new HubGroup("Sales", new[] {
+            new HubTile("📦", "Margin by Product", "What each product sold and earned in a period.", "/Reports/SalesByProduct"),
+            new HubTile("👥", "Sales by Customer", "What each customer bought, owes and has overdue.", "/Reports/SalesByCustomer") }),
+        new HubGroup("Stock", new[] {
+            new HubTile("🗃", "Stock List", "Stock and its value; what has not sold for 30, 60 or 90 days.", "/Reports/StockList"),
+            new HubTile("🛡", "Warranty", "Sold items and when their warranty ends.", "/Reports/Warranty") }),
+    };
+}
+<partial name="_Hub" model="groups" />

@@ -9,7 +9,8 @@
    printed paperwork already use. Only the English chrome and explanatory prose switch. *@
 
 <partial name="_PendingChecks" model="Model.PendingChecks" />
-<div style="display:flex;justify-content:flex-end;margin-bottom:18px" class="no-print">
+<div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:18px" class="no-print">
+  <a href="/Reports/Position?handler=Excel" class="btn btn-outline btn-sm">⬇ @Localizer["Download Excel"]</a>
   <button onclick="window.print()" class="btn btn-outline btn-sm">🖨 @Localizer["Print Report"]</button>
 </div>
 

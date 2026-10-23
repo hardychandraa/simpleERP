@@ -7,13 +7,14 @@
 <form method="post">
   <div class="frow frow2">
     <div class="fg"><label>@Localizer["Product Name"] *</label><input type="text" class="upper" asp-for="Input.Name" required placeholder="@Localizer["e.g. Samsung Galaxy A55"]"/></div>
-    <div class="fg"><label>@Localizer["SKU"] *</label><input type="text" class="upper" asp-for="Input.SKU" required placeholder="@Localizer["e.g. SAM-A55"]"/></div>
+    <div class="fg"><label>@Localizer["SKU"]</label><input type="text" class="upper" asp-for="Input.SKU" placeholder="@Localizer["Automatic: {0}", Model.NextSku]"/>
+      <div style="font-size:13px;color:#4b5563;margin-top:4px">@Localizer["Leave empty to number it automatically."]</div></div>
   </div>
   <div class="frow frow3">
     <div class="fg"><label>@Localizer["Selling Price"] *</label><input type="number" asp-for="Input.UnitPrice" required min="0" step="0.01"/></div>
     <div class="fg"><label>@Localizer["Purchase Price"]</label><input type="number" asp-for="Input.PurchasePrice" min="0" step="0.01"/>
       <div style="font-size:13px;color:#4b5563;margin-top:4px">@Localizer["The usual harga beli. Shown as the default cost on a new purchase; it can be changed there."]</div></div>
-    <div class="fg"><label>@Localizer["Unit"] *</label><input type="text" asp-for="Input.Unit" required maxlength="10" placeholder="@Localizer["e.g. PCS, UNIT, SET"]" style="text-transform:uppercase"/></div>
+    <div class="fg"><label>@Localizer["Unit"] *</label><input type="text" asp-for="Input.Unit" required maxlength="10" placeholder="@Localizer["e.g. UNIT, PCS, SET"]" style="text-transform:uppercase"/></div>
     <div class="fg"><label>@Localizer["Category"]</label><input type="text" class="upper" asp-for="Input.Category" placeholder="@Localizer["e.g. Smartphone"]"/></div>
   </div>
   <div class="frow frow2">

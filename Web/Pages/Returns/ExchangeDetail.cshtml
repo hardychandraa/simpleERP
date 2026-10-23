@@ -1,0 +1,91 @@
+@page "/Returns/Exchange/{id:guid}"
+@model SimpleERP.Web.Pages.Returns.ExchangeDetailModel
+@{
+    ViewData["Title"] = Localizer["Exchange {0}", Model.Exchange.ExchangeNumber].Value;
+    var x = Model.Exchange;
+    var isActive = x.Status == "Active";
+}
+
+@if (Model.Msg != null)
+{
+    <div class="alert @(Model.IsErr ? "alert-danger" : "alert-success") no-print">@Localizer[Model.Msg]</div>
+}
+@* Admin only (HC, 2026-10-16): Staff see no check status. *@
+@if (isActive && x.NeedsReview && User.ChecksStaffWork())
+{
+    <div class="alert alert-warning no-print">
+        ⚠ @Localizer["An exchange entered by staff: check that the faulty unit really came back."]
+        <form method="post" asp-page-handler="Reviewed" asp-route-id="@x.Id" style="display:inline;margin-left:8px">
+            <button type="submit" class="btn btn-primary btn-sm">✓ @Localizer["Mark as checked"]</button>
+        </form>
+    </div>
+}
+
+<div class="no-print" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <a href="/Returns" class="btn btn-outline btn-sm">&larr; @Localizer["Returns"]</a>
+    <a href="/Sales/@x.SaleId" class="btn btn-outline btn-sm">@Localizer["Invoice {0}", x.InvoiceNumber]</a>
+    <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨 @Localizer["Print"]</button>
+    @if (isActive)
+    {
+        <form method="post" asp-page-handler="Cancel" asp-route-id="@x.Id" style="margin-left:auto"
+              onsubmit="return confirm('@Localizer["Cancel this exchange? The replacement goes back into stock and the faulty unit is taken out."]')">
+            <button type="submit" class="btn btn-danger btn-sm">✕ @Localizer["Cancel Exchange"]</button>
+        </form>
+    }
+</div>
+
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+        <div>
+            <div style="font-size:20px;font-weight:800;color:#1a1a2e">@Localizer["Tukar Barang"]</div>
+            <div style="color:#6b7280;font-size:12px">@Localizer["Faulty unit swapped for the same product"]</div>
+        </div>
+        <div style="text-align:right">
+            <div style="font-size:18px;font-weight:700;color:#2563eb">@x.ExchangeNumber</div>
+            <div style="color:#9ca3af;font-size:12px">@x.ExchangeDate.ToString("dd MMM yyyy")</div>
+            @if (!isActive)
+            {
+                <div style="color:#dc2626;font-weight:700;font-size:13px;margin-top:4px;text-transform:uppercase">⛔ @Localizer["Cancelled"]</div>
+            }
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;padding:12px;background:#f9fafb;border-radius:6px">
+        <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">@Localizer["Customer"]</div>
+            <div style="font-weight:600">@x.CustomerName</div>
+            <div style="font-size:12px;color:#6b7280">@Localizer["Against invoice {0}", x.InvoiceNumber]</div>
+        </div>
+        <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:3px">@Localizer["What was wrong"]</div>
+            <div style="font-weight:600">@x.Reason</div>
+        </div>
+    </div>
+
+    <table style="margin-bottom:14px">
+        <thead><tr><th>@Localizer["Product"]</th><th style="text-align:center">@Localizer["Qty"]</th><th>@Localizer["Serial numbers / note"]</th></tr></thead>
+        <tbody>
+        @foreach (var i in x.Items)
+        {
+            <tr>
+                <td><div style="font-weight:600">@i.ProductName</div><div style="font-size:11px;color:#9ca3af">@i.SKU</div></td>
+                <td style="text-align:center">@i.Qty.ToString("N0")</td>
+                <td style="font-size:12px;color:#4b5563">@(i.Notes ?? "—")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    @if (!string.IsNullOrEmpty(x.Notes))
+    {
+        <div style="padding:10px;background:#f9fafb;border-radius:6px;font-size:13px;color:#6b7280"><strong>@Localizer["Notes:"]</strong> @x.Notes</div>
+    }
+
+    <ul style="font-size:12px;color:#6b7280;line-height:1.8;padding-left:18px;margin-top:14px">
+        <li>@Localizer["Took the faulty unit(s) back into stock and gave the same number of new ones: stock and its value are unchanged."]</li>
+        <li>@Localizer["Left invoice {0}, its payments, PPN, commission and warranty dates exactly as posted.", x.InvoiceNumber]</li>
+        <li>@Localizer["Next: send the faulty unit back to the supplier (Retur Pembelian), or write it off with Adjust Stock if the claim is refused."]</li>
+    </ul>
+    <div style="font-size:12px;color:#9ca3af;margin-top:8px">@Localizer["Recorded by {0}", x.CreatedBy]
+        @if (x.ReviewedBy != null && User.ChecksStaffWork()) { <span> · @Localizer["checked by {0}", x.ReviewedBy]</span> }
+    </div>
+</div>

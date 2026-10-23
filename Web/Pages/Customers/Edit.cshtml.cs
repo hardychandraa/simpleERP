@@ -19,7 +19,7 @@ public EditModel(ICustomerService s, ISalesPersonService people, IPaymentTermSer
         ViewData["Title"]="Edit Customer";
         var c=await _svc.GetByIdAsync(id);if(c==null)return RedirectToPage("/Customers/Index");
         Input=new UpdateCustomerDto{Id=c.Id,Name=c.Name,Phone=c.Phone,Address=c.Address,IsActive=c.IsActive,
-            TaxId=c.TaxId,NationalId=c.NationalId,
+            TaxId=c.TaxId,NationalId=c.NationalId,TaxName=c.TaxName,TaxAddress=c.TaxAddress,
             SalesPersonId=c.SalesPersonId,PaymentTermId=c.PaymentTermId,DefaultDiscountPercent=c.DefaultDiscountPercent,
             CreditLimit=c.CreditLimit};
         await LoadAsync();

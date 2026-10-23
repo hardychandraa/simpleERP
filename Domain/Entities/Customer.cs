@@ -11,6 +11,13 @@ public class Customer {
     /// have a company NPWP, a NIK, or both (HC, 2026-10-09). Optional.
     /// </summary>
     public string? NationalId { get; set; }
+    /// <summary>
+    /// The name and address the NPWP / NIK are registered to, when they are not the customer's own
+    /// (HC, 2026-10-22: "PT XYZ" trades at one address, its NPWP / NIK is an individual's at another).
+    /// Coretax e-Faktur needs the tax holder's. Null = the same as Name / Address.
+    /// </summary>
+    public string? TaxName    { get; set; }
+    public string? TaxAddress { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

@@ -2,6 +2,8 @@
 @model SimpleERP.Web.Pages.RebateRules.IndexModel
 @using SimpleERP.Domain.Enums
 @{ ViewData["Title"] = Localizer["Rebate Rules"].Value; }
+@{ var tabs = new SimpleERP.Web.Pages.Shared.PageTab[] { new("Rebates", "/Rebates", false), new("Rebate Rules", "/RebateRules", true) }; }
+<partial name="_Tabs" model="tabs" />
 
 @if (Model.Msg != null)
 {

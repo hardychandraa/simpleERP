@@ -1,6 +1,8 @@
 @page "/CommissionRules"
 @model SimpleERP.Web.Pages.CommissionRules.IndexModel
 @{ ViewData["Title"] = Localizer["Commission Rules"].Value; }
+@{ var tabs = new SimpleERP.Web.Pages.Shared.PageTab[] { new("Commissions", "/Commissions", false), new("Commission Rules", "/CommissionRules", true) }; }
+<partial name="_Tabs" model="tabs" />
 
 @if (Model.Msg != null)
 {

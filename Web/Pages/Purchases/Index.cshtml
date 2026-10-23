@@ -1,6 +1,16 @@
 @page "/Purchases"
 @model SimpleERP.Web.Pages.Purchases.IndexModel
 @{ ViewData["Title"] = Localizer["Purchases"].Value; }
+@{
+    // The same filters on the lines view (HC, 2026-10-22: check supplier invoices without opening each PO).
+    var q = string.Join("&", new[] {
+        Model.From.HasValue ? $"from={Model.From:yyyy-MM-dd}" : null, Model.To.HasValue ? $"to={Model.To:yyyy-MM-dd}" : null,
+        string.IsNullOrEmpty(Model.Search) ? null : "search=" + Uri.EscapeDataString(Model.Search),
+        Model.PendingOnly ? "pending=true" : null }.Where(x => x != null));
+    var tabs = new SimpleERP.Web.Pages.Shared.PageTab[] { new("List", "/Purchases" + (q.Length > 0 ? "?" + q : ""), true),
+                                                          new("Purchase lines", "/Purchases/Lines" + (q.Length > 0 ? "?" + q : ""), false) };
+}
+<partial name="_Tabs" model="tabs" />
 
 @if (Model.Msg != null)
 {

@@ -19,12 +19,13 @@ public class SalesAnalysisService : ISalesAnalysisService
     private readonly IPurchaseRepository _purchases;
     private readonly ICreditNoteApplicationRepository _applications;
     private readonly ISaleService        _saleService;
+    private readonly IInventoryService   _inventory;
 
     public SalesAnalysisService(IReportRepository reports, IProductRepository products, ICustomerRepository customers,
         ISaleRepository sales, IPurchaseRepository purchases, ICreditNoteApplicationRepository applications,
-        ISaleService saleService)
+        ISaleService saleService, IInventoryService inventory)
     { _reports = reports; _products = products; _customers = customers; _sales = sales; _purchases = purchases;
-      _applications = applications; _saleService = saleService; }
+      _applications = applications; _saleService = saleService; _inventory = inventory; }
 
     public async Task<SalesAnalysisDto> GetByProductAsync(DateTime from, DateTime to)
     {
@@ -63,7 +64,7 @@ public class SalesAnalysisService : ISalesAnalysisService
         var (start, end, startUtc, endUtc) = Period(from, to);
         static TaxDocDto Map(TaxDocFact f, bool utc) => new() {
             Id = f.Id, Date = utc ? f.Date.ToLocalTime().Date : f.Date.Date, Number = f.Number, OtherNumber = f.OtherNumber,
-            Party = f.Party, TaxId = f.TaxId, NationalId = f.NationalId,
+            Party = f.Party, TaxId = f.TaxId, NationalId = f.NationalId, TaxName = f.TaxName, TaxAddress = f.TaxAddress,
             TaxBase = f.TaxBase, TaxAmount = f.TaxAmount, GrandTotal = f.GrandTotal, Unchecked = f.Unchecked };
         return new PpnSummaryDto {
             From = start, To = end.AddDays(-1),
@@ -97,6 +98,48 @@ public class SalesAnalysisService : ISalesAnalysisService
             DaysLate = DaysLate(p.DueDate, today),
             GrandTotal = p.GrandTotal, Paid = p.AmountPaid, NotesApplied = applied.GetValueOrDefault(p.Id)
         }).ToList();
+    }
+
+    public async Task<StockListDto> GetStockListAsync()
+    {
+        var today = DateTime.Now.Date;
+        // The Products page's own query, so stock, cost and value agree with it to the rupiah.
+        var levels = await _inventory.GetAllStockLevelsAsync();
+        var products = (await _products.GetAllAsync()).ToDictionary(p => p.Id);
+        var lastSale = await _reports.GetLastSaleDatesAsync();
+        var lastPurchase = await _reports.GetLastPurchaseDatesAsync();
+        var sold30 = await NetSoldAsync(today.AddDays(-29), today);
+        var sold90 = await NetSoldAsync(today.AddDays(-89), today);
+
+        var rows = levels.Select(l =>
+        {
+            products.TryGetValue(l.ProductId, out var p);
+            DateTime? sale = lastSale.TryGetValue(l.ProductId, out var s) ? s.ToLocalTime().Date : null;
+            DateTime? bought = lastPurchase.TryGetValue(l.ProductId, out var b) ? b.Date : null;
+            var since = sale ?? bought;
+            return new StockListRowDto {
+                ProductId = l.ProductId, Name = l.ProductName, SKU = l.SKU, Category = p?.Category, Unit = p?.Unit ?? "",
+                UnitPrice = p?.UnitPrice ?? 0, IsActive = l.IsActive,
+                Stock = l.CurrentStock, AvgCost = l.AvgCost, StockValue = l.StockValue,
+                LastSale = sale, LastPurchase = bought,
+                IdleDays = since is { } d ? Math.Max(0, (today - d).Days) : null,
+                Sold30 = sold30.GetValueOrDefault(l.ProductId), Sold90 = sold90.GetValueOrDefault(l.ProductId)
+            };
+        });
+        return new StockListDto {
+            AsOf = DateTime.Now,
+            Rows = rows.OrderByDescending(r => r.StockValue).ThenBy(r => r.Name).ToList(),
+            TotalValue = levels.Sum(l => l.StockValue)
+        };
+    }
+
+    /// <summary>Quantity sold less returned per product, local days from..to inclusive.</summary>
+    private async Task<Dictionary<Guid, decimal>> NetSoldAsync(DateTime from, DateTime to)
+    {
+        var (_, _, lines, returns) = await LoadAsync(from, to);
+        var net = lines.GroupBy(l => l.ProductId).ToDictionary(g => g.Key, g => g.Sum(l => l.Qty));
+        foreach (var r in returns) net[r.ProductId] = net.GetValueOrDefault(r.ProductId) - r.Qty;
+        return net;
     }
 
     // ── Shared ────────────────────────────────────────────────────────────────

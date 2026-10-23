@@ -18,9 +18,12 @@ public class IndexModel : PageModel
 
     public IndexModel(IProductService p, ICustomerService c, ISaleService s, IInventoryService inv,
                       IReportService reports, IPurchaseService purchases, IStockCountService counts,
-                      ICreditNoteService notes, IReturnService returns)
+                      ICreditNoteService notes, IReturnService returns, IExchangeService exchanges)
     { _p = p; _c = c; _s = s; _inv = inv; _reports = reports; _purchases = purchases; _counts = counts;
-      _notes = notes; _returns = returns; }
+      _notes = notes; _returns = returns; _exchanges = exchanges; }
+    private readonly IExchangeService _exchanges;
+    /// <summary>Staff exchanges (Tukar barang) waiting for Admin's check.</summary>
+    public int ExchangesToCheck { get; set; }
 
     /// <summary>Staff work waiting for Admin (HC, 2026-10-14): flagged sales, credit notes, cash-sale returns.</summary>
     public int SalesToCheck   { get; set; }
@@ -72,6 +75,7 @@ public class IndexModel : PageModel
             SalesToCheck   = (await _s.GetNeedingReviewAsync()).Count;
             NotesToApprove = await _notes.CountAwaitingApprovalAsync();
             ReturnsToCheck = await _returns.CountCustomerReturnsNeedingReviewAsync();
+            ExchangesToCheck = await _exchanges.CountNeedingReviewAsync();
             PaymentsToVerify = (await _s.GetPendingPaymentsAsync()).Count;
             CancelledToday = await _s.GetCancelledTodayAsync();
         }

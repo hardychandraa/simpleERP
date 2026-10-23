@@ -1,0 +1,29 @@
+@model SimpleERP.Web.Pages.Customers.TaxIdentityVm
+@* The NPWP / NIK and whose they are (HC, 2026-10-22), shared by Create and Edit and posted as Input.*
+   like the rest of the form. "Same as the customer" leaves the tax name and address empty, which
+   means the customer's own; untick it when the NPWP / NIK is an individual's at another address. *@
+@{ var same = string.IsNullOrEmpty(Model.TaxName) && string.IsNullOrEmpty(Model.TaxAddress); }
+<div class="card-title" style="margin-top:18px">@Localizer["Tax identity (NPWP / NIK)"]</div>
+<div class="frow frow2">
+  <div class="fg"><label>NPWP</label><input type="text" name="Input.TaxId" value="@Model.TaxId" maxlength="50" placeholder="@Localizer["Optional"]"/></div>
+  <div class="fg"><label>@Localizer["NIK (KTP)"]</label><input type="text" name="Input.NationalId" value="@Model.NationalId" maxlength="20" inputmode="numeric" placeholder="@Localizer["Optional, 16 digits"]"/></div>
+</div>
+<label style="display:inline-flex;align-items:center;gap:8px;margin:0 0 10px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;cursor:pointer">
+  <input type="checkbox" id="taxSame" @(same ? "checked" : "") style="width:18px;height:18px" />
+  @Localizer["Registered to the customer's own name and address"]
+</label>
+<div id="taxOther" style="@(same ? "display:none" : "")">
+  <div class="fg"><label>@Localizer["Name on the NPWP / KTP"]</label><input type="text" class="upper" name="Input.TaxName" value="@Model.TaxName" maxlength="300" placeholder="@Localizer["e.g. the owner's name"]"/></div>
+  <div class="fg"><label>@Localizer["Address on the NPWP / KTP"]</label><textarea name="Input.TaxAddress" rows="2" maxlength="500">@Model.TaxAddress</textarea></div>
+  <div style="font-size:11px;color:#6b7280;margin:-4px 0 8px">@Localizer["Used in the PPN Summary for e-Faktur. The invoice keeps the customer's name and address."]</div>
+</div>
+<script>
+(function () {
+  var cb = document.getElementById('taxSame'), box = document.getElementById('taxOther');
+  cb.addEventListener('change', function () {
+    box.style.display = cb.checked ? 'none' : '';
+    // Ticked = the customer's own: send the tax name and address empty.
+    if (cb.checked) box.querySelectorAll('input,textarea').forEach(function (e) { e.value = ''; });
+  });
+})();
+</script>

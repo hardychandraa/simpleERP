@@ -9,7 +9,7 @@ public class ProductDto {
     public string  SKU                   { get; set; } = "";
     public decimal UnitPrice             { get; set; }
     public decimal PurchasePrice         { get; set; }
-    public string  Unit                  { get; set; } = "PCS";
+    public string  Unit                  { get; set; } = "UNIT";
     public string? Category              { get; set; }
     public int?    DefaultWarrantyMonths { get; set; }
     public int     LowStockThreshold     { get; set; } = 2;
@@ -21,10 +21,11 @@ public class ProductDto {
 }
 public class CreateProductDto {
     public string  Name                  { get; set; } = "";
-    public string  SKU                   { get; set; } = "";
+    /// <summary>Empty = the next free P### is assigned on save (HC, 2026-10-23).</summary>
+    public string? SKU                   { get; set; }
     public decimal UnitPrice             { get; set; }
     public decimal PurchasePrice         { get; set; }
-    public string  Unit                  { get; set; } = "PCS";
+    public string  Unit                  { get; set; } = "UNIT";
     public string? Category              { get; set; }
     public int?    DefaultWarrantyMonths { get; set; }
     public int     LowStockThreshold     { get; set; } = 2;
@@ -35,7 +36,7 @@ public class UpdateProductDto {
     public string  SKU                   { get; set; } = "";
     public decimal UnitPrice             { get; set; }
     public decimal PurchasePrice         { get; set; }
-    public string  Unit                  { get; set; } = "PCS";
+    public string  Unit                  { get; set; } = "UNIT";
     public string? Category              { get; set; }
     public int?    DefaultWarrantyMonths { get; set; }
     public int     LowStockThreshold     { get; set; } = 2;
@@ -52,6 +53,9 @@ public class CustomerDto {
     public string? TaxId      { get; set; }
     /// <summary>NIK from the KTP (optional); serves as the NPWP for individuals.</summary>
     public string? NationalId { get; set; }
+    /// <summary>Name / address the NPWP / NIK are registered to; null = the customer's own (HC, 2026-10-22).</summary>
+    public string? TaxName    { get; set; }
+    public string? TaxAddress { get; set; }
     public bool    IsActive { get; set; }
     public decimal TotalDue { get; set; }
     /// <summary>Defaults pre-filled on a new sale (see Customer). All optional.</summary>
@@ -69,6 +73,9 @@ public class CreateCustomerDto {
     public string? TaxId      { get; set; }
     /// <summary>NIK from the KTP (optional); serves as the NPWP for individuals.</summary>
     public string? NationalId { get; set; }
+    /// <summary>Name / address the NPWP / NIK are registered to; null = the customer's own (HC, 2026-10-22).</summary>
+    public string? TaxName    { get; set; }
+    public string? TaxAddress { get; set; }
     /// <summary>Defaults pre-filled on a new sale (see Customer). All optional.</summary>
     public Guid?   SalesPersonId { get; set; }
     public Guid?   PaymentTermId { get; set; }
@@ -85,6 +92,9 @@ public class UpdateCustomerDto {
     public string? TaxId      { get; set; }
     /// <summary>NIK from the KTP (optional); serves as the NPWP for individuals.</summary>
     public string? NationalId { get; set; }
+    /// <summary>Name / address the NPWP / NIK are registered to; null = the customer's own (HC, 2026-10-22).</summary>
+    public string? TaxName    { get; set; }
+    public string? TaxAddress { get; set; }
     public bool    IsActive { get; set; }
     /// <summary>Defaults pre-filled on a new sale (see Customer). All optional.</summary>
     public Guid?   SalesPersonId { get; set; }
@@ -95,12 +105,6 @@ public class UpdateCustomerDto {
 }
 
 // ── Inventory ─────────────────────────────────────────────────────────────────
-public class StockInDto {
-    public Guid    ProductId { get; set; }
-    public decimal Qty       { get; set; }
-    public decimal UnitCost  { get; set; }
-    public string? Notes     { get; set; }
-}
 public class StockAdjustmentDto {
     public Guid    ProductId  { get; set; }
     /// <summary>
@@ -395,6 +399,8 @@ public class RecordSupplierPaymentDto {
     public Guid    PurchaseId { get; set; }
     public decimal Amount     { get; set; }
     public string? Notes      { get; set; }
+    /// <summary>The local day the money went out (HC, 2026-10-21); null or today = now.</summary>
+    public DateTime? PaidOn   { get; set; }
 }
 public class SupplierPaymentDto {
     public Guid     Id          { get; set; }
@@ -402,6 +408,13 @@ public class SupplierPaymentDto {
     public decimal  Amount      { get; set; }
     public string?  Notes       { get; set; }
     public string   CreatedBy   { get; set; } = "";
+    /// <summary>The settlement (STL-P-…) this payment was one line of, if any.</summary>
+    public string?  BatchNumber { get; set; }
+    /// <summary>Reversed by Admin (HC, 2026-10-21): shown struck through, counted nowhere.</summary>
+    public bool      IsReversed    { get; set; }
+    public DateTime? ReversedAt    { get; set; }
+    public string?   ReversedBy    { get; set; }
+    public string?   ReverseReason { get; set; }
 }
 /// <summary>One supplier's outstanding AP, for the payables summary.</summary>
 public class DueSupplierDto {
@@ -469,6 +482,67 @@ public class CreateSupplierReturnDto {
     public string?   Notes      { get; set; }
     public List<CreateReturnItemDto> Items { get; set; } = new();
 }
+// ── Tukar barang (HC, 2026-10-22) ─────────────────────────────────────────────
+/// <summary>The exchange form for one invoice: every line, with how many units can still be exchanged.</summary>
+public class ExchangeFormDto {
+    public Guid     SaleId        { get; set; }
+    public string   InvoiceNumber { get; set; } = "";
+    public DateTime SaleDate      { get; set; }
+    public string   CustomerName  { get; set; } = "";
+    /// <summary>Set when nothing on this invoice can be exchanged (it is cancelled).</summary>
+    public string?  BlockReason   { get; set; }
+    public List<ExchangeableLineDto> Lines { get; set; } = new();
+}
+public class ExchangeableLineDto {
+    public Guid    SaleItemId   { get; set; }
+    public Guid    ProductId    { get; set; }
+    public string  ProductName  { get; set; } = "";
+    public string  SKU          { get; set; } = "";
+    public decimal SoldQty      { get; set; }
+    /// <summary>Returned by active returns: those units are no longer the customer's.</summary>
+    public decimal ReturnedQty  { get; set; }
+    /// <summary>Exchanged before (a replacement can be faulty too, so this does not lower the cap).</summary>
+    public decimal ExchangedQty { get; set; }
+    public decimal Exchangeable => Math.Max(0, SoldQty - ReturnedQty);
+    /// <summary>On the shelf now: a replacement has to be there to give.</summary>
+    public decimal InStock      { get; set; }
+}
+public class CreateExchangeDto {
+    public Guid      SaleId       { get; set; }
+    /// <summary>The local day the customer brought the unit in; null = today.</summary>
+    public DateTime? ExchangeDate { get; set; }
+    public string?   Reason       { get; set; }
+    public string?   Notes        { get; set; }
+    /// <summary>SourceItemId = the SaleItem; Notes = serial numbers.</summary>
+    public List<CreateReturnItemDto> Items { get; set; } = new();
+}
+public class ExchangeDto {
+    public Guid      Id             { get; set; }
+    public string    ExchangeNumber { get; set; } = "";
+    public DateTime  ExchangeDate   { get; set; }
+    public Guid      SaleId         { get; set; }
+    public string    InvoiceNumber  { get; set; } = "";
+    public string    CustomerName   { get; set; } = "";
+    public string    Reason         { get; set; } = "";
+    public string?   Notes          { get; set; }
+    public string    Status         { get; set; } = "";
+    public string    CreatedBy      { get; set; } = "";
+    public DateTime  CreatedAt      { get; set; }
+    public bool      NeedsReview    { get; set; }
+    public string?   ReviewedBy     { get; set; }
+    public DateTime? ReviewedAt     { get; set; }
+    public int       LineCount      => Items.Count;
+    public decimal   Units          => Items.Sum(i => i.Qty);
+    public List<ExchangeItemDto> Items { get; set; } = new();
+}
+public class ExchangeItemDto {
+    public Guid    SaleItemId  { get; set; }
+    public string  ProductName { get; set; } = "";
+    public string  SKU         { get; set; } = "";
+    public decimal Qty         { get; set; }
+    public string? Notes       { get; set; }
+}
+
 public class CreateReturnItemDto {
     /// <summary>The SaleItem or PurchaseItem being returned against.</summary>
     public Guid    SourceItemId { get; set; }
@@ -967,6 +1041,8 @@ public class SaleDto {
     /// <summary>Customer NPWP / NIK, for the invoice screen only (not printed; HC 2026-10-09).</summary>
     public string?   CustomerTaxId { get; set; }
     public string?   CustomerNationalId { get; set; }
+    /// <summary>Whose the NPWP / NIK are when not the customer's own (HC, 2026-10-22); screen only.</summary>
+    public string?   CustomerTaxName { get; set; }
     /// <summary>Warehouse code of the branch the goods left from. Empty when not set.</summary>
     public string    BranchCode    { get; set; } = "";
     /// <summary>Credit term in days, e.g. 30. Null for Cash or open credit.</summary>
@@ -1210,6 +1286,8 @@ public class SaleBatchPaymentLineDto {
 public class RecordSupplierBatchPaymentDto {
     public Guid    SupplierId { get; set; }
     public string? Notes      { get; set; }
+    /// <summary>The local day the money went out (HC, 2026-10-21); null or today = now.</summary>
+    public DateTime? PaidOn   { get; set; }
     public List<SupplierBatchPaymentLineDto> Lines { get; set; } = new();
     /// <summary>Open debit notes to net off this settlement. Applied in full or not at all.</summary>
     public List<Guid> ApplyCreditNoteIds { get; set; } = new();
@@ -1677,6 +1755,41 @@ public class SalesAnalysisDto {
     public int PendingChecks { get; set; }
 }
 
+/// <summary>
+/// One product on the stock list (HC, 2026-10-21): what is on the shelf, what it is worth and how
+/// long it has gone unsold. Stock, average cost and value are the Products page's figures.
+/// </summary>
+public class StockListRowDto {
+    public Guid     ProductId    { get; set; }
+    public string   Name         { get; set; } = "";
+    public string   SKU          { get; set; } = "";
+    public string?  Category     { get; set; }
+    public string   Unit         { get; set; } = "";
+    public decimal  UnitPrice    { get; set; }
+    public bool     IsActive     { get; set; }
+    public decimal  Stock        { get; set; }
+    public decimal  AvgCost      { get; set; }
+    public decimal  StockValue   { get; set; }
+    /// <summary>Local day of the newest active sale; null = never sold.</summary>
+    public DateTime? LastSale     { get; set; }
+    /// <summary>Day of the newest active purchase / Goods In; null = none (opening stock only).</summary>
+    public DateTime? LastPurchase { get; set; }
+    /// <summary>
+    /// Days since it last sold or, never sold, since it last came in. Null = neither (opening
+    /// stock that never moved): idle for as long as the books go back.
+    /// </summary>
+    public int?     IdleDays     { get; set; }
+    /// <summary>Sold less returned, last 30 / 90 days including today.</summary>
+    public decimal  Sold30       { get; set; }
+    public decimal  Sold90       { get; set; }
+}
+public class StockListDto {
+    public DateTime AsOf { get; set; }
+    public List<StockListRowDto> Rows { get; set; } = new();
+    /// <summary>Every product in stock, whatever the filter: the Products page's Total Stock Value.</summary>
+    public decimal TotalValue { get; set; }
+}
+
 /// <summary>One document in the PPN summary, with the stored DPP and PPN.</summary>
 public class TaxDocDto {
     public Guid     Id         { get; set; }
@@ -1687,6 +1800,9 @@ public class TaxDocDto {
     public string   Party      { get; set; } = "";
     public string?  TaxId      { get; set; }
     public string?  NationalId { get; set; }
+    /// <summary>Sales: the name / address the NPWP / NIK are registered to (the customer's own when not set).</summary>
+    public string?  TaxName    { get; set; }
+    public string?  TaxAddress { get; set; }
     public decimal  TaxBase    { get; set; }
     public decimal  TaxAmount  { get; set; }
     public decimal  GrandTotal { get; set; }
